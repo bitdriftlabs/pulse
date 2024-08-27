@@ -1,0 +1,63 @@
+inflows:
+  prom_remote_write:
+    routes: ["processor:populate_cache"]
+    prom_remote_write:
+      bind: "[::]:8000"
+      downstream_id_source:
+        request_header: "X-Scope-OrgID"
+
+processors:
+  populate_cache:
+    routes: ["processor:aggregation"]
+    populate_cache: {}
+
+  aggregation:
+    routes: ["processor:elision", "processor:sampler"]
+    aggregation:
+      counters:
+        absolute_counters:
+          emit_as_delta_rate: true
+      enable_last_aggregation_admin_endpoint: true
+      emit_prometheus_stale_markers: true
+      post_flush_send_jitter: 5s
+
+  elision:
+    routes: ["outflow:prom_remote_write"]
+    elision:
+      emit: { ratio: 0.1 }
+      blocklist:
+        prom: true
+        allowed_metrics:
+          http:
+            url: https://foo/v1/mme/resource/allowlists/prom-exact.fst
+            auth_bearer_token:
+              file_path: /mnt/secrets-store/api-key
+            cache_path: /cache/allow-prom-exact.fst
+        blocked_metrics:
+          http:
+            url: https://foo/v1/mme/resource/blocklists/prom-exact.fst
+            auth_bearer_token:
+              file_path: /mnt/secrets-store/api-key
+            cache_path: /cache/block-prom-exact.fst
+
+  sampler:
+    routes: ["outflow:saas"]
+    sampler: {}
+
+outflows:
+  prom_remote_write:
+    prom_remote_write:
+      send_to: "https://aps-workspaces.us-east-1.amazonaws.com/workspaces/foo/api/v1/remote_write"
+      batch_max_samples: 200
+      auth:
+        aws:
+          default: {}
+
+  saas:
+    prom_remote_write:
+      send_to:  "https://foo/v1/mme/ingest"
+      batch_max_samples: 200
+      metadata_only: true
+      auth:
+        bearer_token:
+          file_path: /mnt/secrets-store/api-key

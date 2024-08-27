@@ -1,0 +1,168 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.processor.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/wrappers.proto";
+import "validate/validate.proto";
+
+// Configuration for the aggregation processor.
+message AggregationConfig {
+  message QuantileTimers {
+    // Extended output configuration for timers.
+    message Extended {
+      // The mean time during the interval.
+      bool mean = 1;
+      // The lowest time during the interval.
+      bool lower = 2;
+      // The highest time during the interval.
+      bool upper = 3;
+      // The sample count during the interval.
+      bool count = 4;
+      // The sample rate during the interval.
+      bool rate = 5;
+    }
+
+    // Optional aggregated timer name prefix.
+    optional string prefix = 1;
+
+    // Aggregated timer error epsilon. Defaults to 0.01.
+    optional double eps = 2;
+
+    // Aggregated timer quantiles. Defaults to [0.5, 0.95, 0.99].
+    repeated double quantiles = 3;
+
+    // Extended output configuration for timers.
+    Extended extended = 4;
+  }
+
+  message ReservoirTimers {
+    // The size of the reservoir for each timer. If not set defaults to 100.
+    optional uint32 reservoir_size = 1;
+  }
+
+  message Counters {
+    message AbsoluteCounters {
+      // Whether to emit counters as delta rates or not. If not specified, counters are emited as
+      // absolute counters. If specified, counters increments are converted to delta increments, and
+      // divided by the flush interval in seconds to produce a per second value for the flush. Using
+      // this option means that when working with Prometheus rate() is no longer needed, which has
+      // substantial benefits when paired with elision, as by default rate() does not work with
+      // missing values and the rate window has to be as long as the elision window. Using this
+      // option means that it is easier to construct working queries using `or vector(0)`.
+      bool emit_as_delta_rate = 3 [(validate.rules).bool.const = true];
+    }
+
+    // Extended output configuration for counters.
+    message Extended {
+      // The count of samples during the interval.
+      bool count = 1;
+      // The sum of samples during the interval.
+      bool sum = 2;
+      // The rate of samples during the interval.
+      bool rate = 3;
+      // The lowest sample during the interval.
+      bool lower = 4;
+      // The largest sample during the interval.
+      bool upper = 5;
+    }
+
+    // Optional aggregated counter name prefix.
+    optional string prefix = 1;
+
+    // Extended output configuration for counters.
+    Extended extended = 2;
+
+    // Configuration for absolute counters.
+    AbsoluteCounters absolute_counters = 3;
+  }
+
+  message Gauges {
+    // Extended output configuration for gauges.
+    message Extended {
+      // The sum of samples during the interval.
+      bool sum = 1;
+      // The mean of samples during the interval.
+      bool mean = 2;
+      // The minimum sample during the interval.
+      bool min = 3;
+      // The maximum sample during the interval.
+      bool max = 4;
+    }
+
+    // Optional aggregated gauge name prefix.
+    optional string prefix = 1;
+
+    // Extended output configuration for gauges.
+    Extended extended = 2;
+  }
+
+  message Histograms {
+    // Optional aggregated histograms name prefix.
+    optional string prefix = 1;
+  }
+
+  message Summaries {
+    // Optional aggregated summaries name prefix.
+    optional string prefix = 11;
+  }
+
+  // Configuration for timers. If not specified quantile timers with default values will be used.
+  oneof timer_type {
+    // Timers will be aggregated into quantiles.
+    QuantileTimers quantile_timers = 1;
+
+    // Timers will be aggregated into a reservoir and emited in bulk up to the reservoir size at
+    // each aggregation interval.
+    ReservoirTimers reservoir_timers = 2;
+  }
+
+  // Configuration for counters.
+  Counters counters = 3;
+
+  // Configuration for gauges.
+  Gauges gauges = 4;
+
+  // Configuration for histograms.
+  Histograms histograms = 5;
+
+  // Configurations for summaries.
+  Summaries summaries = 6;
+
+  // Flush interval for aggregated metrics. Defaults to 60s.
+  google.protobuf.Duration flush_interval = 7 [(validate.rules).duration.gt = {}];
+
+  // By default the flush interval is rounded to the nearest second, and is pegged to *wall clock
+  // time.* A setting of 60s will attempt to fire as close to the 1st second of every minute as
+  // possible. A setting of 5s will attempt to fire at the [0, 5, 10, ...] seconds of every minute.
+  // Jitter for the sending of the aggregated metrics can be added via the `post_flush_send_jitter`
+  // setting. Setting this to false will instead pin the interval to process startup. This is
+  // preferrable if this is being used as a first stage aggregation before sending to a central
+  // aggregator.
+  google.protobuf.BoolValue pin_flush_interval_to_wall_clock = 8;
+
+  // If true, the /last_aggregation admin endpoint will be available which will dump the metric IDs
+  // aggregated in the previous window. Enabling has CPU and memory cost so it is optional.
+  bool enable_last_aggregation_admin_endpoint = 9;
+
+  // If set, defines the maximum amount of time that the aggregated data will be jittered before
+  // being sent further in the pipeline. The actual jitter will be a random value between 0 and
+  // this value. This can be used to avoid synchronized receives by backends if all processors
+  // restart at a similar time.
+  google.protobuf.Duration post_flush_send_jitter = 10 [(validate.rules).duration.gt = {}];
+
+  // If set, the aggregation processor will emit prometheus stale markers for missing metrics
+  // during each aggregation interval. In practice, this means emitting a metric with the same
+  // name and the special stale marker NaN value. In cases where the processor is handling
+  // metric values that come and go this may be required to avoid stale metrics in queries.
+  //
+  // See https://docs.google.com/document/d/1LPhVRSFkGNSuU1fBd81ulhsCPR4hkSZyyBj1SZ8fWOM/edit#heading=h.hfqkr2527w2g
+  // for more information.
+  bool emit_prometheus_stale_markers = 11;
+}

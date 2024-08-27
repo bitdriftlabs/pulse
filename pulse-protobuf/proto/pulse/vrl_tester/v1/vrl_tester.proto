@@ -1,0 +1,75 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.vrl_tester.v1;
+
+import "validate/validate.proto";
+
+// A metric transform to test in a given test context.
+message MetricTransform {
+  // The input metric. Currently this string must be specified in statsd format. For example:
+  // foo:1|c|#foo:bar
+  string input = 1 [(validate.rules).string = {min_len: 1}];
+
+  // The expected output metric. Currently this string must be specified in statsd format. For
+  // example:
+  // foo:1|c|#foo:bar,blah:baz
+  string output = 2 [(validate.rules).string = {min_len: 1}];
+}
+
+// A transform to test against a given test context (program and metadata).
+message Transform {
+  oneof transform_type {
+    option (validate.required) = true;
+
+    // A metric transform.
+    MetricTransform metric = 1;
+  }
+}
+
+// Optional K8s metadata to make available to the VRL program at runtime.
+message KubernetesMetadata {
+  string namespace = 1 [(validate.rules).string = {min_len: 1}];
+  string pod_name = 2 [(validate.rules).string = {min_len: 1}];
+  map<string, string> pod_labels = 3;
+  map<string, string> pod_annotations = 4;
+  optional string service_name = 5;
+}
+
+// An individual test case, composed of a VRL program, optional K8s metadata, and a number of
+// test transforms to perform.
+message VrlTestCase {
+  oneof program_type {
+    option (validate.required) = true;
+
+    // The VRL program to test against.
+    string program = 1 [(validate.rules).string = {min_len: 1}];
+
+    // The name of the mutate processor in the supplied proxy config to load the program from.
+    string mutate_processor_name = 2 [(validate.rules).string = {min_len: 1}];
+  }
+
+  // Optional fixed string replacements to perform in the program before compiling it. Meant to
+  // mimic a sed style replacement that might happen on the real config.
+  map<string, string> program_replacements = 3;
+
+  // The optional K8s metadata to make available to the VRL program at runtime.
+  KubernetesMetadata kubernetes_metadata = 4;
+
+  // Optional envionment variables to make available to the VRL program at runtime.
+  map<string, string> environment = 5;
+
+  // 1 or more test transforms that will be tested against the above parameters.
+  repeated Transform transforms = 6 [(validate.rules).repeated .min_items = 1];
+}
+
+// Root configuration for a test run. Each test run is composed of 1 or more test cases.
+message VrlTesterConfig {
+  // The test cases in the test run.
+  repeated VrlTestCase test_cases = 1 [(validate.rules).repeated .min_items = 1];
+}

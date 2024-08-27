@@ -1,0 +1,81 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.processor.v1;
+
+import "google/protobuf/duration.proto";
+import "validate/validate.proto";
+
+// Track cardinality of different metric groupings and output them on a built-in
+// /cardinality_tracker admin endpoint. In the future this information will be sent via API to the
+// SaaS for display. We can also considering emitting metrics.
+message CardinalityTrackerConfig {
+  // Approximates the cardinality of a specific metric name, matched based on regular expression.
+  // Every metric that matches will be counted. This uses a HyperLogLog algorithm to approximate
+  // the cardinality so it is lightweight from a memory perspective.
+  message Count {
+    // The regular expression to match metric names.
+    string name_regex = 1 [(validate.rules).string = {min_len: 1}];
+  }
+
+  // Approximates the top K cardinality of a specific metric grouping. The way this works is as
+  // follows:
+  // 1. In the first phase of each counting interval, a streaming topk algorithm (filtered space
+  //    saving) is used to track the relative frequency of each grouping, as determined
+  //    by the number of increments attributed to the grouping. (The grouping will be incremented
+  //    for every metric that matches the grouping, multiple times for different tag sets.)
+  // 2. Once the top K groupings are known, the second phase of counting will maintain a hash map
+  //    of exact grouping to HyperLogLog sketches. This will acquire a roughly accurate total
+  //    cardinality count for each top grouping.
+  // The purpose of this is to avoid having to keep a first tier HashMap of all possible groupings
+  // which would be very memory intensive. Both phases are repeated over time to maintain a roughly
+  // accurate accounting with limited memory usage.
+  message TopK {
+    message TagList {
+      repeated string tags = 1;
+    }
+
+    oneof group_by {
+      option (validate.required) = true;
+
+      // Grouping is performed by a regular expression on the metric name. If empty, all metrics
+      // are considered.
+      string name_regex = 1;
+
+      // Grouping is performed by the content of a list of tag names. The tag values are effectively
+      // concatenated together to form the grouping. If a tag value is missing, it is treated as
+      // unknown.
+      TagList tag_names = 2;
+    }
+
+    // The number of top groupings to track.
+    uint32 top_k = 3 [(validate.rules).uint32.gt = 0];
+  }
+
+  message TrackingType {
+    oneof type {
+      option (validate.required) = true;
+
+      Count count = 1;
+      TopK top_k = 2;
+    }
+
+    // The name of the tracking type. Used for display in the admin endpoint.
+    string name = 3 [(validate.rules).string = {min_len: 1}];
+  }
+
+  // The cardinality types to track.
+  repeated TrackingType tracking_types = 1;
+
+  // How often to rotate the trackers. For count trackers, after this interval the approximate
+  // cardinality will be snapped and shown on the admin endpoint, until the next rotation snap.
+  // For TopK trackers, every rotation interval the tracker will switch between the estimation of
+  // topk phase and the cardinality counting phase. Thus, to see anything on the admin endpoint it
+  // will require 2x this interval. If not specified this defaults to 5 minutes.
+  google.protobuf.Duration rotate_after = 2 [(validate.rules).duration.gt = {}];
+}

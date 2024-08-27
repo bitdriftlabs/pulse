@@ -1,0 +1,26 @@
+[package]
+edition      = "2021"
+license-file = "../LICENSE"
+name         = "pulse-promloadgen"
+publish      = false
+version      = "1.0.0"
+
+[dependencies]
+anyhow.workspace          = true
+async-trait.workspace     = true
+bd-server-stats.workspace = true
+bd-shutdown.workspace     = true
+bd-time.workspace         = true
+bytes.workspace           = true
+futures.workspace         = true
+log.workspace             = true
+parking_lot.workspace     = true
+pulse-common              = { path = "../pulse-common" }
+pulse-metrics             = { path = "../pulse-metrics" }
+pulse-protobuf            = { path = "../pulse-protobuf" }
+regex.workspace           = true
+serde.workspace           = true
+serde_json.workspace      = true
+thiserror.workspace       = true
+time.workspace            = true
+tokio.workspace           = true

@@ -1,0 +1,111 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.outflow.v1;
+
+import "pulse/config/common/v1/common.proto";
+import "pulse/config/common/v1/retry.proto";
+import "pulse/config/outflow/v1/queue_policy.proto";
+import "google/protobuf/duration.proto";
+import "validate/validate.proto";
+
+// Authentication configuration for Prometheus remote write.
+message PromRemoteWriteAuthConfig {
+  // Use AWS authentication.
+  message AwsAuthConfig {
+    // Use the default credential chain, region provider, and SDK configuration specified by the
+    // environment.
+    message Default {
+      optional string assume_role = 1 [(validate.rules).string = {min_len: 1}];
+    }
+
+    oneof auth_type {
+      option (validate.required) = true;
+
+      // Default configuration.
+      Default default = 1;
+    }
+  }
+
+  oneof auth_type {
+    option (validate.required) = true;
+
+    // Bearer token configuration.
+    common.v1.BearerTokenConfig bearer_token = 2;
+
+    // AWS auth configuration.
+    AwsAuthConfig aws = 3;
+  }
+}
+
+// Configuration for a Prometheus remote write outflow/client.
+message PromRemoteWriteClientConfig {
+  // An individual request header sent with the remote write request.
+  message RequestHeader {
+    // The name of the header.
+    string name = 1 [(validate.rules).string = {min_len: 1}];
+
+    oneof value_type {
+      option (validate.required) = true;
+
+      // The fixed value of the header.
+      common.v1.EnvOrInline value = 2;
+
+      // Replaced with the timestamp, defined as the number of seconds since the unix epoch.
+      bool timestamp = 3 [(validate.rules).bool.const = true];
+    }
+  }
+
+  // Configuration specific to the Lyft's use of M3. This can be generalized later if needed. Will
+  // end up setting `M3-Metrics-Type: aggregated` and `M3-Storage-Policy` to the value of each
+  // policy below.
+  message LyftSpecificConfig {
+    // Catch-all storage policy.
+    string general_storage_policy = 1 [(validate.rules).string = {min_len: 1}];
+    // Metrics that have a "host" tag.
+    optional string instance_metrics_storage_policy = 2;
+    // Metrics that do not have a "statsd" "source" tag, and are of the form <namespace>:infra:aws.
+    optional string cloudwatch_metrics_storage_policy = 3;
+  }
+
+  // The URI to send to.
+  string send_to = 1 [(validate.rules).string = {min_len: 1}];
+
+  // The request timeout. Defaults to 10s.
+  google.protobuf.Duration request_timeout = 2 [(validate.rules).duration.gt = {}];
+
+  // The maximum number of inflight requests. Defaults to 16.
+  optional uint64 max_in_flight = 3;
+
+  // Queue policy for the client.
+  QueuePolicy queue_policy = 4;
+
+  // The maximum numer of samples per batch. Defaults to 1000.
+  optional uint64 batch_max_samples = 5;
+
+  // Whether to send metadata (name and tags) only. If true, samples are dropped.
+  bool metadata_only = 6;
+
+  // What auth to use. If not specified, no auth is used.
+  PromRemoteWriteAuthConfig auth = 7;
+
+  // Optional additional request headers that are sent with the remote write request.
+  repeated RequestHeader request_headers = 8;
+
+  // Whether to attempt conversion to Prometheus name format:
+  // https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels.
+  //
+  // If false, the name will be passed through even if it is not compliant. Defaults to true.
+  optional bool convert_metric_name = 9;
+
+  // Retry policy. If not specified default values are used.
+  common.v1.RetryPolicy retry_policy = 10;
+
+  // Lyft specific configuration. To be generalized later.
+  LyftSpecificConfig lyft_specific_config = 11;
+}

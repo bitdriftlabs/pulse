@@ -1,0 +1,27 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.processor.v1;
+
+import "google/protobuf/duration.proto";
+import "validate/validate.proto";
+
+// The configuration for the sampler processor. This processor will cache metrics and emit them
+// onward every configured interval of time.
+message SamplerConfig {
+  // How often a metric should be emitted to further pipeline stages. Defaults to 12 hours. This
+  // value is jittered over the full duration so the metric will not be emitted evenly at this
+  // interval.
+  google.protobuf.Duration emit_interval = 1 [(validate.rules).duration.gt = {}];
+
+  // After startup, this interval will determine the initial jittered interval for sending new
+  // metrics. The purpose of this is to avoid overloading the sampler backend, but still send new
+  // metrics in a reasonable time period. This defaults to 15 minutes if not set. After the
+  // startup interval, new metrics are immediately sent.
+  google.protobuf.Duration startup_interval = 2;
+}

@@ -1,0 +1,26 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.outflow.v1;
+
+import "pulse/config/outflow/v1/prom_remote_write.proto";
+import "pulse/config/outflow/v1/wire.proto";
+import "validate/validate.proto";
+
+// Configuration for an individual outflow.
+message OutflowConfig {
+  oneof config_type {
+    option (validate.required) = true;
+
+    NullClientConfig null_outflow = 1;
+    UnixClientConfig unix = 2;
+    TcpClientConfig tcp = 3;
+    UdpClientConfig udp = 4;
+    PromRemoteWriteClientConfig prom_remote_write = 5;
+  }
+}

@@ -1,0 +1,129 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.bootstrap.v1;
+
+import "pulse/config/common/v1/common.proto";
+import "pulse/config/inflow/v1/inflow.proto";
+import "pulse/config/processor/v1/processor.proto";
+import "pulse/config/outflow/v1/outflow.proto";
+import "pulse/config/outflow/v1/prom_remote_write.proto";
+import "pulse/config/outflow/v1/wire.proto";
+import "google/protobuf/duration.proto";
+import "validate/validate.proto";
+
+// Advanced pipeline configuration.
+message AdvancedPipelineConfig {
+  // An optional maximum number of metrics (active timeseries) that the proxy will cache. This
+  // plays a large part in limiting the maximum memory that the proxy will use and should be
+  // scaled to the deployment. It is highly recommended that this be tuned and set. This is a stop
+  // gap until the proxy has more dynamic load shed / overload support.
+  optional uint64 max_cached_metrics = 1;
+}
+
+// Configuration for a pipeline.
+message PipelineConfig {
+  // All inflow configurations.
+  map<string, inflow.v1.InflowConfig> inflows = 1;
+
+  // All processor configurations.
+  map<string, processor.v1.ProcessorConfig> processors = 2;
+
+  // All outflow configurations.
+  map<string, outflow.v1.OutflowConfig> outflows = 3;
+
+  // Advanced configuration for the pipeline.
+  AdvancedPipelineConfig advanced = 4;
+}
+
+// Configuration for output of "meta" stats for the proxy. These are metrics that get sent
+// directly to a target without going through the rest of the pipeline.
+message MetaStats {
+  // Protocol configuration for meta stats export.
+  message MetaProtocol {
+    oneof protocol {
+      option (validate.required) = true;
+
+      // Configuration for a TCP based export (statsd or carbon).
+      outflow.v1.TcpClientConfig wire = 1;
+
+      // Configuration for a Prometheus remote write export.
+      outflow.v1.PromRemoteWriteClientConfig prom_remote_write = 2;
+    }
+  }
+
+  // Tags sent with each meta stat.
+  message MetaTag {
+    // Tag key. Cannot be "source." Set "source" using the node ID.
+    string key = 1 [(validate.rules).string = {min_len: 1}];
+
+    // Tag value.
+    string value = 2 [(validate.rules).string = {min_len: 1}];
+  }
+
+  // Which protocol to use for sending meta stats. Multiple protocols can be configured to send data
+  // to multiple targets.
+  repeated MetaProtocol meta_protocol = 1 [(validate.rules).repeated .min_items = 1];
+
+  // An optional prefix to use on each meta stat name. Defaults to pulse_proxy if not set.
+  optional string meta_prefix = 2;
+
+  // The set of tags to send with each meta stat.
+  repeated MetaTag meta_tag = 3;
+
+  // The node ID used to populate the "source" meta stat tag.
+  common.v1.EnvOrInline node_id = 4;
+
+  // Flush interval for meta stats. Defaults to 60s.
+  // Note: This interval is rounded to the nearest second, and is pegged to *wall clock time.*
+  // A setting of 60s will attempt to fire as close to the 1st second of every minute as possible.
+  // A setting of 5s will attempt to fire at the [0, 5, 10, ...] seconds of every minute.
+  google.protobuf.Duration flush_interval = 5 [(validate.rules).duration.gt = {}];
+}
+
+// Admin server configuration.
+message AdminConfig {
+  // The IP/port that the admin server should bind to.
+  string bind = 1 [(validate.rules).string = {min_len: 1}];
+}
+
+// Bootstrap configuration for Kubernetes integration.
+message KubernetesBootstrapConfig {
+  // Supplies the node name used for K8s API lookups against the node.
+  common.v1.EnvOrInline node_name = 1;
+
+  // Determines whether service evaluation will occur, typically to look for Prometheus scrape
+  // labels on the service. This can be expensive as all services need to be loaded for this
+  // to be evaluated. If only pod labels/annotations are being used this can be disabled. Defaults
+  // to true.
+  optional bool evaluate_services = 2;
+}
+
+// Main bootstrap config for the proxy.
+message Config {
+  // Admin configuration.
+  AdminConfig admin = 1;
+
+  // Configuration for output of "meta" stats for the proxy. These are metrics that get sent
+  // directly to a target without going through the rest of the pipeline.
+  MetaStats meta_stats = 2;
+
+  // Bootstrap configuration for Kubernetes integration.
+  KubernetesBootstrapConfig kubernetes = 3;
+
+  oneof pipeline_type {
+    option (validate.required) = true;
+
+    // Static pipeline configured in the bootstrap.
+    PipelineConfig pipeline = 4;
+
+    // Pipeline that will be read and watched from the filesystem (e.g., K8s config maps). Reloads
+    // are meant to occur on atomic symbolic link swaps.
+    common.v1.RuntimeConfig fs_watched_pipeline = 5;
+  }
+}

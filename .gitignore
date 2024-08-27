@@ -1,0 +1,16 @@
+*.log
+*.o
+*.py[co]
+*.swp
+*.trs
+.deps
+.idea
+.dirstamp
+/target
+out/
+*.tar
+tmp/
+_repos/
+.DS_Store
+.dockerignore
+vendor/

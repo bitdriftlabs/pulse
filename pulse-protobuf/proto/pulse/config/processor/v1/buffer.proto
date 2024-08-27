@@ -1,0 +1,24 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.processor.v1;
+
+import "validate/validate.proto";
+
+// This is a basic buffer processor that accepts incoming metrics up to a limit before dropping.
+// A fixed number of consumers pull metric batches and move them further along the pipeline.
+// In the future we can add more sophisticated functionality such as spill to disk, a remote queue,
+// etc.
+message BufferConfig {
+  // The maximum number of metrics that will be buffered. Metrics beyond this amount will be
+  // dropped.
+  uint32 max_buffered_metrics = 1 [(validate.rules).uint32.gt = 0];
+
+  // The number of consumers that will pull metric batches from the buffer.
+  uint32 num_consumers = 2 [(validate.rules).uint32.gt = 0];
+}

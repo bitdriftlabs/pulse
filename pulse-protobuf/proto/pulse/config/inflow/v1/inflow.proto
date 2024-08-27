@@ -1,0 +1,32 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.inflow.v1;
+
+import "pulse/config/inflow/v1/k8s_prom.proto";
+import "pulse/config/inflow/v1/metric_generator.proto";
+import "pulse/config/inflow/v1/prom_remote_write.proto";
+import "pulse/config/inflow/v1/wire.proto";
+import "validate/validate.proto";
+
+// Configuration for an individual inflow.
+message InflowConfig {
+  // The routes that the inflow sends to.
+  repeated string routes = 1;
+
+  oneof config_type {
+    option (validate.required) = true;
+
+    MetricGeneratorConfig metric_generator = 2;
+    PromRemoteWriteServerConfig prom_remote_write = 3;
+    TcpServerConfig tcp = 4;
+    UdpServerConfig udp = 5;
+    UnixServerConfig unix = 6;
+    KubernetesPrometheusConfig k8s_prom = 7;
+  }
+}

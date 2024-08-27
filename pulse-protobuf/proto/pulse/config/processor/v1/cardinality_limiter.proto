@@ -1,0 +1,57 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.processor.v1;
+
+import "google/protobuf/duration.proto";
+import "validate/validate.proto";
+
+// Configuration for a cardinality limiting processor. The processor uses Cuckoo filters to keep
+// track of each metric ID without using very much space. Multiple buckets can be configured so that
+// the limits smoothly roll across multiple time periods. When checking for the limit, only the
+// first bucket is consulted. After this check, the metric is added to all buckets which provides
+// the smooth rotation.
+message CardinalityLimiterConfig {
+  // Global limit configuration.
+  message GlobalLimit {
+    // How many metrics can be stored in each bucket.
+    uint32 size_limit = 1 [(validate.rules).uint32.gt = 0];
+  }
+
+  // Per-pod limit configuration.
+  message PerPodLimit {
+    // The default cardinality limit for each pod.
+    uint32 default_size_limit = 1 [(validate.rules).uint32.gt = 0];
+
+    oneof override_limit_location {
+      // Supplies a VRL program that can compute the cardinality limit for a pod. The program will
+      // be passed standard metadata for the pod and must return an integer result. See the mutate
+      // processor for more information on VRL programs.
+      string vrl_program = 2 [(validate.rules).string = {min_len: 1}];
+    }
+  }
+
+  oneof limit_type {
+    option (validate.required) = true;
+
+    // Configuration for a single global limit that will be used by all metrics that flow through
+    // this processor.
+    GlobalLimit global_limit = 1;
+
+    // Configuration for per-pod limits. Each dynamically discovered pod will get its own set of
+    // buckets.
+    PerPodLimit per_pod_limit = 2;
+  }
+
+  // How many buckets to store the metrics across.
+  uint32 buckets = 3 [(validate.rules).uint32.gt = 0];
+
+  // How often to rotate the buckets. During each rotation the first bucket is dropped and a fresh
+  // bucket is added.
+  google.protobuf.Duration rotate_after = 4 [(validate.rules).duration.gt = {}];
+}

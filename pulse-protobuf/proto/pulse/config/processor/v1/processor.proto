@@ -1,0 +1,46 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.processor.v1;
+
+import "pulse/config/processor/v1/aggregation.proto";
+import "pulse/config/processor/v1/buffer.proto";
+import "pulse/config/processor/v1/cardinality_limiter.proto";
+import "pulse/config/processor/v1/cardinality_tracker.proto";
+import "pulse/config/processor/v1/elision.proto";
+import "pulse/config/processor/v1/internode.proto";
+import "pulse/config/processor/v1/mutate.proto";
+import "pulse/config/processor/v1/populate_cache.proto";
+import "pulse/config/processor/v1/regex.proto";
+import "pulse/config/processor/v1/sampler.proto";
+import "validate/validate.proto";
+
+// Configuration for an individual processor.
+message ProcessorConfig {
+  // The routes that the processor sends to.
+  repeated string routes = 1;
+
+  // Alternate routes that the process can send to (for example for failover). Usage is processor
+  // specific.
+  repeated string alt_routes = 2;
+
+  oneof processor_type {
+    option (validate.required) = true;
+
+    AggregationConfig aggregation = 3;
+    ElisionConfig elision = 4;
+    InternodeConfig internode = 5;
+    PopulateCacheConfig populate_cache = 6;
+    SamplerConfig sampler = 7;
+    BufferConfig buffer = 8;
+    MutateConfig mutate = 9;
+    CardinalityLimiterConfig cardinality_limiter = 10;
+    RegexConfig regex = 11;
+    CardinalityTrackerConfig cardinality_tracker = 12;
+  }
+}

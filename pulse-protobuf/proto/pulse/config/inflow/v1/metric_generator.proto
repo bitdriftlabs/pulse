@@ -1,0 +1,29 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.inflow.v1;
+
+import "pulse/config/common/v1/common.proto";
+import "google/protobuf/duration.proto";
+import "validate/validate.proto";
+
+// Configuration for the metric generator inflow.
+message MetricGeneratorConfig {
+  // Which protocol to generate.
+  common.v1.WireProtocol protocol = 1 [(validate.rules).message.required = true];
+
+  // The number of tasks to spawn for generating metrics. Defaults to 16.
+  optional uint64 n_tasks = 2;
+
+  // How many metrics to emit per flush interval. This is divided between all tasks. Defaults to
+  // 128.
+  optional uint64 batch_size = 3;
+
+  // How often to emit batches. Defauls to 1s.
+  google.protobuf.Duration flush_interval = 4 [(validate.rules).duration.gt = {}];
+}
