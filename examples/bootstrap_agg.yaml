@@ -1,0 +1,16 @@
+admin:
+  bind: "[::]:9999"
+
+meta_stats:
+  meta_protocol:
+    - prom_remote_write:
+        send_to: "https://aps-workspaces.us-east-1.amazonaws.com/workspaces/foo/api/v1/remote_write"
+        auth:
+          aws:
+            default: {}
+  node_id:
+    env_var: "POD_NAME"
+
+fs_watched_pipeline:
+  dir: "/config_map/pipeline_config"
+  file: "/config_map/pipeline_config/config.yaml"

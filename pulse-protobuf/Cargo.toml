@@ -1,0 +1,14 @@
+[package]
+edition      = "2021"
+license-file = "../LICENSE"
+name         = "pulse-protobuf"
+publish      = false
+version      = "1.0.0"
+
+[dependencies]
+bd-pgv.workspace   = true
+bytes.workspace    = true
+protobuf.workspace = true
+
+[build-dependencies]
+protobuf-codegen.workspace = true

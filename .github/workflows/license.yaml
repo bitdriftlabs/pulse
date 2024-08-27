@@ -1,0 +1,15 @@
+name: "License check"
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+jobs:
+  cargo-deny:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - uses: EmbarkStudios/cargo-deny-action@v2.0.1
+      with:
+        command: check licenses

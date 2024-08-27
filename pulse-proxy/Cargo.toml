@@ -1,0 +1,58 @@
+[package]
+edition      = "2021"
+license-file = "../LICENSE"
+name         = "pulse-proxy"
+publish      = false
+version      = "1.0.0"
+
+[dependencies]
+anyhow.workspace            = true
+async-trait.workspace       = true
+bd-runtime-config.workspace = true
+bd-server-stats.workspace   = true
+bd-shutdown.workspace       = true
+bytes.workspace             = true
+clap.workspace              = true
+futures.workspace           = true
+http-body-util.workspace    = true
+http.workspace              = true
+hyper-util.workspace        = true
+log.workspace               = true
+parking_lot.workspace       = true
+prometheus.workspace        = true
+protobuf.workspace          = true
+pulse-common                = { path = "../pulse-common" }
+pulse-metrics               = { path = "../pulse-metrics" }
+pulse-protobuf              = { path = "../pulse-protobuf" }
+regex.workspace             = true
+serde.workspace             = true
+serde_json.workspace        = true
+serde_yaml.workspace        = true
+thiserror.workspace         = true
+tikv-jemallocator.workspace = true
+time.workspace              = true
+tokio.workspace             = true
+
+[dev-dependencies]
+ahash.workspace             = true
+assert_matches.workspace    = true
+axum.workspace              = true
+bd-grpc.workspace           = true
+bd-proto.workspace          = true
+bd-test-helpers.workspace   = true
+criterion.workspace         = true
+ctor.workspace              = true
+fst.workspace               = true
+itertools.workspace         = true
+matches.workspace           = true
+pretty_assertions.workspace = true
+protobuf.workspace          = true
+reusable-fmt.workspace      = true
+snap.workspace              = true
+tempfile.workspace          = true
+tokio-test.workspace        = true
+uuid.workspace              = true
+vrl.workspace               = true
+
+[build-dependencies]
+built.workspace = true

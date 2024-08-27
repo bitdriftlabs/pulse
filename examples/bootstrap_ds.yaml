@@ -1,0 +1,22 @@
+admin:
+  bind: "[::]:9999"
+
+meta_stats:
+  meta_protocol:
+    - prom_remote_write:
+        send_to: "http://pulse-agg.pulse.svc.cluster.local:8000/api/v1/prom/write"
+        request_headers:
+          - name: "X-Scope-OrgID"
+            value:
+              env_var: "K8S_NODE"
+  node_id:
+    env_var: "POD_NAME"
+  flush_interval: 15s
+
+kubernetes:
+  node_name:
+    env_var: "K8S_NODE"
+
+fs_watched_pipeline:
+  dir: "/config_map/pipeline_config"
+  file: "/config_map/pipeline_config/config.yaml"

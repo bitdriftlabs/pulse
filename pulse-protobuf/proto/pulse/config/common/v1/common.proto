@@ -1,0 +1,80 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.common.v1;
+
+import "validate/validate.proto";
+
+// Wire protocol type.
+message WireProtocol {
+  message Carbon {
+  }
+
+  message StatsD {
+    // Whether to attempt parsing lyft/statsrelay style tags of the form:
+    // foo.__bar=baz:3.0|c
+    // This will produce the ("bar", "baz") tag.
+    // This is currently only supported for inflow. It will be ignored on outflow.
+    bool lyft_tags = 1;
+  }
+
+  oneof protocol_type {
+    option (validate.required) = true;
+
+    Carbon carbon = 1;
+    StatsD statsd = 2;
+  }
+}
+
+// Specify a bearer token. This is currently specified in the x-bitdrift-api-key header.
+message BearerTokenConfig {
+  oneof token_type {
+    option (validate.required) = true;
+
+    // The token specified inline.
+    string token = 1 [(validate.rules).string = {min_len: 1}];
+
+    // The file to load the token from.
+    string file_path = 2 [(validate.rules).string = {min_len: 1}];
+  }
+}
+
+// Wraps data that can be specified inline or come via environment.
+message EnvOrInline {
+  oneof data_type {
+    option (validate.required) = true;
+
+    // The data will be pulled from this environment variable.
+    string env_var = 1 [(validate.rules).string = {min_len: 1}];
+
+    // The data is specified by this value.
+    string inline = 2 [(validate.rules).string = {min_len: 1}];
+  }
+}
+
+// Wraps data that can be specified inline, via the environment, or within a file.
+message EnvInlineOrFile {
+  oneof data_type {
+    option (validate.required) = true;
+
+    // The data will be pulled from the environment or inline.
+    EnvOrInline env_or_inline = 1;
+
+    // The data will be pulled from the specified file path.
+    string file_path = 2 [(validate.rules).string = {min_len: 1}];
+  }
+}
+
+// A file that is watched on the filesystem, typically within a K8s config map.
+message RuntimeConfig {
+  // Directory to watch for updates.
+  string dir = 1 [(validate.rules).string = {min_len: 1}];
+
+  // File to watch for updates.
+  string file = 2 [(validate.rules).string = {min_len: 1}];
+}

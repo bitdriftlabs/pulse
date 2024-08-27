@@ -1,0 +1,43 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.inflow.v1;
+
+import "google/protobuf/duration.proto";
+import "validate/validate.proto";
+
+// Collect prometheus metrics by discovering endpoints via Kubernetes. The annotations checked are
+// the standard Prometheus annotations such as prometheus.io/scrape, prometheus.io/path, etc.
+message KubernetesPrometheusConfig {
+  // How often eligible Prometheus endpoints are scraped.
+  google.protobuf.Duration scrape_interval = 1 [(validate.rules).message.required = true];
+
+  // Scrapes metrics from Prometheues endpoints defined on pods via associated service annotations.
+  // Resolves to all pod-local endpoints using the service annotations to infer path, port, etc.
+  message Endpoint {
+  }
+
+  // Scrape metrics from endpoints discovered on the node. This will resolve to the kubelet
+  // endpoint on the local node.
+  message Node {
+    // The path to the prometheus endpoint on the node.
+    string path = 1 [(validate.rules).string = {min_len: 1}];
+  }
+
+  // Scrapes metrics from Prometheus endpoints defined on pods via pod annotations.
+  message Pod {
+  }
+
+  oneof target {
+    option (validate.required) = true;
+
+    Endpoint endpoint = 2;
+    Node node = 3;
+    Pod pod = 4;
+  }
+}

@@ -1,0 +1,55 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.common.v1;
+
+import "pulse/config/common/v1/common.proto";
+import "google/protobuf/duration.proto";
+import "validate/validate.proto";
+
+// Local file source configuration.
+message LocalFileSourceConfig {
+  // The path to the file. This file will be watched for changes and reloaded as needed. Atomic
+  // file swaps should be used to make sure file reads are consistent.
+  RuntimeConfig runtime_config = 1 [(validate.rules).message.required = true];
+}
+
+// HTTP file source configuration.
+message HttpFileSourceConfig {
+  // The URL to fetch. The first fetch does not supply an if-none-match header and expects a 200
+  // response with the file contents as well as an etag. Future requests will return the etag in the
+  // if-none-match header and expect a 304 response if the contents have not changed.
+  string url = 1 [(validate.rules).string = {min_len: 1}];
+
+  // How often the file will be checked for changes. Defaults to 60s.
+  google.protobuf.Duration interval = 2 [(validate.rules).duration.gt = {}];
+
+  // Whether an authentication token will be provided in the x-bitdrift-api-key header.
+  optional BearerTokenConfig auth_bearer_token = 3;
+
+  // Fetch request timeout. If not set defaults to 15s.
+  google.protobuf.Duration request_timeout = 4 [(validate.rules).duration.gt = {}];
+
+  // If configured, the fetched file will be cached to this path. Furthermore, on startup, if the
+  // remote server cannot be contacted, the file cache contents will be used as long as the
+  // integrity is verified.
+  optional string cache_path = 5 [(validate.rules).string = {min_len: 1}];
+}
+
+// Configuration for an individual file source.
+message FileSourceConfig {
+  oneof file_source_type {
+    option (validate.required) = true;
+
+    // A local file source.
+    LocalFileSourceConfig local = 1;
+
+    // A remote HTTP based file source.
+    HttpFileSourceConfig http = 2;
+  }
+}

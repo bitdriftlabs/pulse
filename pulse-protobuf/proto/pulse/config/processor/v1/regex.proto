@@ -1,0 +1,22 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.processor.v1;
+
+// Configuration for a regex allow/deny processor. Metrics can either be explicitly allowed (any
+// that don't match will be dropped) or explicitly denied (any that do match will be dropped).
+// Both types of rules can be supplied. While these rules can be expressed as VRL programs and
+// aborts in the mutate filter, this processor is provided for performance reasons. The regular
+// expression syntax is the one documented here: https://docs.rs/regex/latest/regex/#syntax
+message RegexConfig {
+  // Allow rules. All are processed in parallel.
+  repeated string allow = 1;
+
+  // Deny rules. All are processed in parallel.
+  repeated string deny = 2;
+}

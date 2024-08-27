@@ -1,0 +1,53 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.inflow.v1;
+
+import "validate/validate.proto";
+
+// Configuration for the Prometheus remote write server inflow.
+message PromRemoteWriteServerConfig {
+  // Parser settings for incoming remote write protocol.
+  message ParseConfig {
+    // https://github.com/lyft/statsrelay/ sets the Prometheus SUMMARY metric type for StatsD timer
+    // values. This is not compliant with the actual Prometheus data model.
+    bool summary_as_timer = 1;
+
+    // https://github.com/lyft/statsrelay/ sets the Prometheus COUNTER metric type for StatsD delta
+    // counter values. This is not compliant with the actual Prometheus data model.
+    bool counter_as_delta = 2;
+
+    // https://github.com/lyft/statsrelay/ does not dedup metric family metadata in the metadata
+    // list. If set, ignore duplicate entries and do not warn about them.
+    bool ignore_duplicate_metadata = 3;
+  }
+
+  // Configuration for determining the downstream ID of incoming metrics.
+  message DownstreamIdSource {
+    oneof source_type {
+      option (validate.required) = true;
+
+      // Uses the remote IP address of the incoming connection.
+      bool remote_ip = 1 [(validate.rules).bool.const = true];
+
+      // Uses the value found in the specified request header. If the request header is not found,
+      // falls back to remote IP address.
+      string request_header = 2 [(validate.rules).string = {min_len: 1}];
+    }
+  }
+
+  // Which address to bind to.
+  string bind = 1 [(validate.rules).string = {min_len: 1}];
+
+  // Extra configuration for parsing incoming remote write protocol.
+  ParseConfig parse_config = 2;
+
+  // How to determine the downstrean ID of incoming metrics. If not specified, defaults to
+  // `remote_ip`.
+  DownstreamIdSource downstream_id_source = 3;
+}

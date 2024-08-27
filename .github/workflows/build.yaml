@@ -1,0 +1,151 @@
+name: build
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+env:
+  CARGO_NET_GIT_FETCH_WITH_CLI: true
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2.7.3
+
+      - name: Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          profile: minimal
+          components: clippy
+
+      - name: Clippy
+        # Typically: cargo clippy --workspace --bins --examples --tests -- --no-deps
+        run: make clippy
+
+      - name: Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+          profile: minimal
+          components: rustfmt
+
+      - name: Fmt
+        run: cargo +nightly fmt --all --check
+
+      - uses: bufbuild/buf-setup-action@v1
+      - uses: bufbuild/buf-lint-action@v1
+
+  build:
+    strategy:
+      matrix:
+        os: [
+          {runner: ubuntu-latest-16-cores, arch: linux/amd64, tag_suffix: amd64},
+          {runner: ubuntu-latest-arm-16-cores, arch: linux/arm64, tag_suffix: arm64},
+        ]
+    name: build
+    permissions:
+      id-token: write # required to use OIDC authentication
+      contents: read
+    runs-on: ${{ matrix.os.runner }}
+    steps:
+      # Checkout repo to Github Actions runner
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rust Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: "stable"
+          profile: minimal
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2.7.3
+
+      - name: Build
+        env:
+          ARCH: ${{ matrix.os.arch }}
+        run: make release-all
+
+      - name: Build Container Image
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          ARCH: ${{ matrix.os.arch }}
+          TAG_SUFFIX: ${{ matrix.os.tag_suffix }}
+        run: make docker-build
+
+      - name: Setup AWS credentials
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::750483288132:role/terraform-bitdriftlabs-star-oidc
+          aws-region: us-east-1
+
+      - name: Setup push AWS credentials
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::750483288132:role/ecr-push
+          role-duration-seconds: 1200
+          role-chaining: true
+
+      - name: Login to ECR
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v1
+        with:
+          registry-type: public
+
+      - name: Push Container Image
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          ARCH: ${{ matrix.os.arch }}
+          TAG_SUFFIX: ${{ matrix.os.tag_suffix }}
+        run: make docker-push
+
+  multi-arch:
+    needs: build
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    permissions:
+      id-token: write # required to use OIDC authentication
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::750483288132:role/terraform-bitdriftlabs-star-oidc
+          aws-region: us-east-1
+
+      - name: Setup push AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::750483288132:role/ecr-push
+          role-duration-seconds: 1200
+          role-chaining: true
+
+      - name: Login to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v1
+        with:
+          registry-type: public
+
+      - name: Push Container Image
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: make docker-multi-arch-push

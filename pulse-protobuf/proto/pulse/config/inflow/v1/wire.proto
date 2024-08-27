@@ -1,0 +1,71 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.inflow.v1;
+
+import "pulse/config/common/v1/common.proto";
+import "google/protobuf/duration.proto";
+import "validate/validate.proto";
+
+// Advanced configuration for socket based inflows.
+message AdvancedSocketServerConfig {
+  // How long to wait for a connection to receive data before it is shutdown for being idle.
+  // Defaults to 60s.
+  google.protobuf.Duration idle_timeout = 1 [(validate.rules).duration.gt = {}];
+
+  // How much data to buffer on an incoming socket before applying back pressure. Defaults to
+  // 8KiB.
+  optional uint64 buffer_size = 2;
+
+  // The maximum amount of time an incoming connection will be kept alive. Can be usefull to force
+  // connection rotation and fix imbalance for downstreams. Defaults to none.
+  google.protobuf.Duration max_connection_duration = 3 [(validate.rules).duration.gt = {}];
+}
+
+// Configuration for a TCP based inflow.
+message TcpServerConfig {
+  // Which address to bind to.
+  string bind = 1 [(validate.rules).string = {min_len: 1}];
+
+  // Which protocol is expected.
+  common.v1.WireProtocol protocol = 2 [(validate.rules).message.required = true];
+
+  // Advanced configuration for the inflow.
+  AdvancedSocketServerConfig advanced = 3;
+
+  // If true, the KubernetesBootstrapConfig will be used to watch all pods on the node. Incoming
+  // metrics will be looked up by remote IP to match the origin pod and its metadata to the
+  // metrics.
+  bool bind_k8s_pod_metadata_by_remote_ip = 4;
+}
+
+// Configuration for a UDP based inflow.
+message UdpServerConfig {
+  // Which address to bind to.
+  string bind = 1 [(validate.rules).string = {min_len: 1}];
+
+  // Which protocol is expected.
+  common.v1.WireProtocol protocol = 2 [(validate.rules).message.required = true];
+
+  // If true, the KubernetesBootstrapConfig will be used to watch all pods on the node. Incoming
+  // metrics will be looked up by remote IP to match the origin pod and its metadata to the
+  // metrics.
+  bool bind_k8s_pod_metadata_by_remote_ip = 3;
+}
+
+// Configuration for a unix domain docket based inflow.
+message UnixServerConfig {
+  // The path to bind to.
+  string path = 1 [(validate.rules).string = {min_len: 1}];
+
+  // Which protocol is expected.
+  common.v1.WireProtocol protocol = 2 [(validate.rules).message.required = true];
+
+  // Advanced configuration for the inflow.
+  AdvancedSocketServerConfig advanced = 3;
+}

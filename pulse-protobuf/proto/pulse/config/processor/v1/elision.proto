@@ -1,0 +1,130 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.processor.v1;
+
+import "pulse/config/common/v1/file_watcher.proto";
+import "google/protobuf/duration.proto";
+import "validate/validate.proto";
+
+// Configuration for the elision processor.
+message ElisionConfig {
+  // Emission configuration.
+  message EmitConfig {
+    message ConsistentEveryPeriod {
+      // Emit every N periods.
+      uint32 periods = 1 [(validate.rules).uint32.gt = 0];
+
+      // How long each period is. Defaults to 60s.
+      optional uint32 period_seconds = 2;
+    }
+
+    oneof emit_type {
+      option (validate.required) = true;
+
+      // Metrics should be emited at least every interval time.
+      google.protobuf.Duration interval = 1 [(validate.rules).duration.gt = {}];
+
+      // Metrics should be emited in the given ratio, from (0.0-1.0].
+      double ratio = 2;
+
+      // Metrics should be emitted every N seconds, based *only* on the metric timestamp.
+      // Additionally, the emission will will be jittered based on a hash of the metric name.
+      // Thus, all metrics with the same name (but different tags) will get emitted on the same
+      // second. This method has various benefits including being stateless (no internode needed),
+      // resilient to out of order metrics, and having all variants of a metric show up at the
+      // same time interval which will make charts that show sporadic data look better.
+      ConsistentEveryPeriod consistent_every_period = 3;
+    }
+  }
+
+  // Zero elision configuration.
+  message ZeroElisionConfig {
+    // Configuration for counters.
+    message Counters {
+      // Configuration for absolute counters.
+      message AbsoluteCounters {
+        // If true, elision will take place if the absolute counter does not change (true zero
+        // elision). This can yield substantially better savings, but has impact on queries as
+        // rate() does not work correctly across missing values in standard Prometheus. Queries
+        // will typically need to be adjusted to take into account the elision window. Alternatively,
+        // consider using the aggregation processor to switch to delta counters to avoid this
+        // problem (that will also require query changes, but the changes are more intuitive).
+        bool elide_if_no_change = 2;
+      }
+
+      // Configuration for absolute counters.
+      AbsoluteCounters absolute_counters = 1;
+    }
+
+    // Configuration for histograms.
+    message Histograms {
+      // If true, elision will take place if the absolute histogram sample count does not change
+      // (true zero elision). This can yield substantially better savings, but has impact on queries
+      // as rate() does not work correctly across missing values in standard Prometheus. Queries
+      // will typically need to be adjusted to take into account the elision window. Alternatively,
+      // consider using the aggregation processor to switch to delta histograms to avoid this
+      // problem (that will also require query changes, but the changes are more intuitive).
+      bool elide_if_no_change = 3;
+    }
+
+    // Whether zeros should be elided. Defaults to true.
+    optional bool enabled = 1;
+
+    // Configuration for counters.
+    Counters counters = 2;
+
+    // Configuraiton for histograms.
+    Histograms histograms = 3;
+  }
+
+  // Blocklist configuration.
+  message BlocklistConfig {
+    // A file source providing regex patterns that will be allowed. One metric pattern per line.
+    common.v1.FileSourceConfig allowed_metric_patterns = 1;
+
+    // A file source providing an FST for the exact allow list. This provides a compact format for
+    // allowing a large number of individual metrics. The FST format is the same as implemented in
+    // https://github.com/BurntSushi/fst.
+    common.v1.FileSourceConfig allowed_metrics = 2;
+
+    // A file source providing an FST for the exact block list. This provides a compact format for
+    // blocking a large number of individual metrics. The FST format is the same as implemented in
+    // https://github.com/BurntSushi/fst.
+    common.v1.FileSourceConfig blocked_metrics = 3 [(validate.rules).message.required = true];
+
+    // Whether blocklist metric names are provided in Prometheus naming format.
+    bool prom = 4;
+  }
+
+  // Configures overrides for emission based on metric name regex.
+  message RegexOverrideConfig {
+    // The overriden emission configuration.
+    EmitConfig emit = 1 [(validate.rules).message.required = true];
+
+    // The regex to use for evaluating the emission override.
+    string regex = 2 [(validate.rules).string = {min_len: 1}];
+  }
+
+  // Global emission settings for any metrics/samples blocked by the processor. Emission can be
+  // overriden using regex via the `regex_overrides` settings.
+  EmitConfig emit = 1 [(validate.rules).message.required = true];
+
+  // Whether the processor runs in analyze only mode.
+  bool analyze_mode = 2;
+
+  // Regular expression overrides for emission settings. The first override that matches wins so
+  // ordering is important if there are overlaps.
+  repeated RegexOverrideConfig regex_overrides = 3;
+
+  // Zero elision configuration. If not specified, defaults to enabled.
+  ZeroElisionConfig zero = 4;
+
+  // Blocklist configuration. If not specified, defaults to none.
+  BlocklistConfig blocklist = 5;
+}

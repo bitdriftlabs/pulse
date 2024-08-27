@@ -1,0 +1,33 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.processor.v1;
+
+import "validate/validate.proto";
+
+// Processor that performs basic mutation based on metadata. Mutation is performed by a VRL program,
+// which is documented at a high level here: https://vector.dev/docs/reference/vrl/. Pulse supports
+// a limited set of operations on metrics, and provides context metadata that can be used during
+// transforms. The following context is provided:
+// .name is the name of hte metric. Can be modified.
+// .tags are the metric tags as a map. Can be modified.
+//
+// If using Kubernetes discovery, the following metadata is provided:
+// %k8s.service.name is the name of the service if service discovery is enabled and there is an
+//                   associated service.
+// %k8s.namespace is the namespace of the pod.
+// %k8s.pod.name is the name of the pod.
+// %k8s.pod.labels are the labels of the pod.
+// %k8s.pod.annotations are the annotations of the pod.
+//
+// Errors and abort() are handled differently. Errors will emit a periodic warnings and are
+// assumed to be real operator errors. Aborts via abort() are assumed to be intentional with the
+// desire to drop the metric.
+message MutateConfig {
+  string vrl_program = 1 [(validate.rules).string = {min_len: 1}];
+}

@@ -1,0 +1,66 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.common.v1;
+
+import "google/protobuf/duration.proto";
+import "validate/validate.proto";
+
+// Offload queue that uses AWS SQS
+message AwsSqsRetryOffloadQueue {
+  // The queue name to lookup and use.
+  string queue_name = 1 [(validate.rules).string = {min_len: 1}];
+}
+
+// Offload queue for local integration testing only.
+message LoopbackForTestOffloadQueue {
+}
+
+// Configuration for the retry offload queue: the ability to offload metrics to durable storage
+// to be retried later.
+message RetryOffloadQueue {
+  // The maximum number of send attempts. If not set, retries are unbounded and only governed by
+  // the window defined below.
+  optional uint32 max_send_attempts = 1;
+
+  // The base backoff time for each request. The backoff is multiplied by the current send attempt.
+  // Defaults to 20s.
+  google.protobuf.Duration backoff = 2 [(validate.rules).duration.gt = {}];
+
+  // The total duration each request will be attempted, across all retries.
+  // Defaults to 20m.
+  google.protobuf.Duration window = 3 [(validate.rules).duration.gt = {}];
+
+  oneof queue_type {
+    option (validate.required) = true;
+
+    // Configure AWS SQS for offloading.
+    AwsSqsRetryOffloadQueue aws_sqs = 4;
+
+    // Configure local loopback. This is for integration testing.
+    LoopbackForTestOffloadQueue loopback_for_test = 5;
+  }
+}
+
+// Retry policy configuration.
+message RetryPolicy {
+  // Controls the number of retries that are allowed concurrently. The "budget" is defined as a %
+  // where the number of retries is a % of the number of active requests. The default if not
+  // specified is 0.1 (10%). Valid values are > 0.0 and <= 1.0.
+  //
+  // For example, with a budget of 10%, if there are 10 active requests, 1 retry will be allowed.
+  // If there are 20, 2 will be allowed, and so on.
+  optional double budget = 1;
+
+  // Sets the maximum number of retry attempts. Default is unlimited and governed only by the
+  // request timeout and expontential backoff policy
+  optional uint32 max_retries = 2;
+
+  // Configuration for the retry offload queue.
+  RetryOffloadQueue offload_queue = 3;
+}

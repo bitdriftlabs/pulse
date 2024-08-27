@@ -1,0 +1,61 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.outflow.v1;
+
+import "pulse/config/common/v1/common.proto";
+import "pulse/config/outflow/v1/queue_policy.proto";
+import "google/protobuf/duration.proto";
+import "validate/validate.proto";
+
+// Common configuration for wire clients.
+message CommonWireClientConfig {
+  // Address to send to. IP/port for TCP/UDP clients or name for unix domain sockets. Ignored for
+  // the null outflow.
+  string send_to = 1;
+
+  // Protocol type.
+  common.v1.WireProtocol protocol = 2 [(validate.rules).message.required = true];
+
+  // Queue policy for the client.
+  QueuePolicy queue_policy = 3;
+
+  // The maximum numer of bytes per batch. Defaults to 8KiB.
+  optional uint64 batch_max_bytes = 4;
+
+  // How long to wait for a write to complete before considering the socket to be failed. Defaults
+  // to no timeout.
+  google.protobuf.Duration write_timeout = 5 [(validate.rules).duration.gt = {}];
+
+  // The maximum number of inflight requests. Defaults to 16.
+  optional uint64 max_in_flight = 6;
+}
+
+// Configuration for a client using a unix domain socket.
+message UnixClientConfig {
+  // Common wire client configuration.
+  CommonWireClientConfig common = 1 [(validate.rules).message.required = true];
+}
+
+// Configuration for a client using UDP.
+message UdpClientConfig {
+  // Common wire client configuration.
+  CommonWireClientConfig common = 1 [(validate.rules).message.required = true];
+}
+
+// Configuration for a client that writes to the equivalent of /dev/null.
+message NullClientConfig {
+  // Common wire client configuration.
+  CommonWireClientConfig common = 1;
+}
+
+// Configuration for a client using a TCP socket.
+message TcpClientConfig {
+  // Common wire client configuration.
+  CommonWireClientConfig common = 1 [(validate.rules).message.required = true];
+}

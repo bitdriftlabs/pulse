@@ -1,0 +1,81 @@
+inflows:
+  k8s_prom_endpoint:
+    routes: ["processor:endpoint_mutate"]
+    k8s_prom:
+      scrape_interval: 15s
+      endpoint: {}
+
+  k8s_prom_pod:
+    routes: ["processor:pod_mutate"]
+    k8s_prom:
+      scrape_interval: 15s
+      pod: {}
+
+  k8s_prom_infra:
+    routes: ["processor:infra_mutate"]
+    k8s_prom:
+      scrape_interval: 15s
+      node:
+        path: "/metrics/cadvisor"
+
+processors:
+  endpoint_mutate:
+    routes: ["outflow:prom_remote_write"]
+    mutate:
+      vrl_program: |
+        if string!(%k8s.service.name) == "kube_state_metrics" &&
+          !match_any(.name, [
+            r'^kube_node_status_condition$',
+            r'^kube_pod_container_status_restarts_total$',
+            r'^kube_pod_container_status_last_terminated_reason$',
+            r'^kube_job_status_failed$',
+            r'^kube_job_status_succeeded$',
+          ]) {
+          abort
+        }
+        .name = join!([
+          get_env_var!("ENV_METRICS_PREFIX"), ":", string!(%k8s.service.name), ":", .name]
+        )
+        if is_null(.tags.namespace) {
+          .tags.namespace = string!(%k8s.namespace)
+        }
+        if is_null(.tags.pod) {
+          .tags.pod = string!(%k8s.pod.name)
+        }
+
+  pod_mutate:
+    routes: ["outflow:prom_remote_write"]
+    mutate:
+      vrl_program: |
+        .name = join!([get_env_var!("ENV_METRICS_PREFIX"), ":", string!(%k8s.namespace), ":", .name])
+        .tags.namespace = string!(%k8s.namespace)
+        .tags.pod = string!(%k8s.pod.name)
+
+  infra_mutate:
+    routes: ["outflow:prom_remote_write"]
+    mutate:
+      vrl_program: |
+        if !match_any(.name, [
+          r'^kube_pod_container_status_restarts_total$',
+          r'^container_cpu_usage_seconds_total$',
+          r'^container_spec_cpu_quota$',
+          r'^container_spec_cpu_period$',
+          r'^container_memory_usage_bytes$',
+          r'^container_spec_memory_limit_bytes$',
+          r'^container_cpu_cfs_throttled_periods_total$',
+          r'^container_cpu_cfs_periods_total$',
+          r'^container_network_receive_bytes_total$',
+          r'^container_network_transmit_bytes_total$',
+        ]) {
+          abort
+        }
+        .name = join!([get_env_var!("ENV_METRICS_PREFIX"), ":infra:", .name])
+
+outflows:
+  prom_remote_write:
+    prom_remote_write:
+      send_to: "http://pulse-agg.pulse.svc.cluster.local:8000/api/v1/prom/write"
+      request_headers:
+        - name: "X-Scope-OrgID"
+          value:
+            env_var: "K8S_NODE"

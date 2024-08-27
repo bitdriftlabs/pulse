@@ -1,0 +1,91 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.internode.v1;
+
+message Histogram {
+  message Bucket {
+    double count = 1;
+    double le = 2;
+  }
+
+  repeated Bucket buckets = 1;
+  double sample_count = 2;
+  double sample_sum = 3;
+}
+
+message Summary {
+  message Quantile {
+    double quantile = 1;
+    double value = 2;
+  }
+
+  repeated Quantile quantiles = 1;
+  double sample_count = 2;
+  double sample_sum = 3;
+}
+
+message DownstreamId {
+  oneof id_type {
+    bool local_origin = 1;
+    string unix_domain_socket = 2;
+    uint32 ipv4_address = 3;
+    bytes ipv6_address = 4;
+    bytes inflow_provided = 5;
+  }
+}
+
+message Metric {
+  MetricId id = 1;
+  optional double sample_rate = 2;
+  uint64 timestamp = 3;
+  oneof value_type {
+    double simple_value = 4;
+    Histogram histogram = 5;
+    Summary summary = 6;
+  }
+  MetricSource metric_source = 7;
+  uint64 received_at = 8;
+  DownstreamId downstream_id = 9;
+}
+
+enum WireProtocol {
+  WIRE_PROTOCOL_UNSPECIFIED = 0;
+  WIRE_PROTOCOL_CARBON = 1;
+  WIRE_PROTOCOL_STATSD = 2;
+  WIRE_PROTOCOL_PROM = 3;
+}
+
+message MetricSource {
+  WireProtocol wire_protocol = 1;
+  optional bytes original = 2;
+}
+
+message TagValue {
+  bytes tag = 1;
+  bytes value = 2;
+}
+
+message MetricId {
+  bytes name = 1;
+  optional MetricType metric_type = 2;
+  repeated TagValue tag_values = 3;
+}
+
+enum MetricType {
+  METRIC_TYPE_UNSPECIFIED = 0;
+  METRIC_TYPE_DELTA_COUNTER = 1;
+  METRIC_TYPE_ABSOLUTE_COUNTER = 2;
+  METRIC_TYPE_DELTA_GAUGE = 3;
+  METRIC_TYPE_DIRECT_GAUGE = 4;
+  METRIC_TYPE_GAUGE = 5;
+  METRIC_TYPE_SET = 6;
+  METRIC_TYPE_TIMER = 7;
+  METRIC_TYPE_HISTOGRAM = 8;
+  METRIC_TYPE_SUMMARY = 9;
+}

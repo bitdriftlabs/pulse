@@ -1,0 +1,14 @@
+[package]
+edition      = "2021"
+license-file = "../LICENSE"
+name         = "pulse-promcli"
+publish      = false
+version      = "1.0.0"
+
+[dependencies]
+anyhow.workspace    = true
+clap.workspace      = true
+itertools.workspace = true
+pulse-metrics       = { path = "../pulse-metrics" }
+time.workspace      = true
+tokio.workspace     = true

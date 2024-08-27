@@ -1,0 +1,101 @@
+[package]
+edition      = "2021"
+license-file = "../LICENSE"
+name         = "pulse-metrics"
+publish      = false
+version      = "1.0.0"
+
+[dependencies]
+ahash.workspace                  = true
+anyhow.workspace                 = true
+async-trait.workspace            = true
+aws-config.workspace             = true
+aws-credential-types.workspace   = true
+aws-sdk-sqs.workspace            = true
+aws-sigv4.workspace              = true
+aws-smithy-async.workspace       = true
+aws-smithy-http.workspace        = true
+aws-smithy-runtime-api.workspace = true
+aws-smithy-types.workspace       = true
+axum.workspace                   = true
+backoff.workspace                = true
+base64ct.workspace               = true
+bd-grpc.workspace                = true
+bd-log.workspace                 = true
+bd-proto-util.workspace          = true
+bd-proto.workspace               = true
+bd-server-stats.workspace        = true
+bd-shutdown.workspace            = true
+bd-time.workspace                = true
+bytes.workspace                  = true
+comfy-table.workspace            = true
+cuckoofilter.workspace           = true
+dashmap.workspace                = true
+deadpool.workspace               = true
+event-listener.workspace         = true
+fst.workspace                    = true
+futures-util.workspace           = true
+futures.workspace                = true
+gettid.workspace                 = true
+hashbrown.workspace              = true
+http-body-util.workspace         = true
+http.workspace                   = true
+hyper-rustls.workspace           = true
+hyper-util.workspace             = true
+hyper.workspace                  = true
+hyperloglogplus.workspace        = true
+intrusive-collections.workspace  = true
+itertools.workspace              = true
+log.workspace                    = true
+memchr.workspace                 = true
+mockall.workspace                = true
+nom.workspace                    = true
+notify.workspace                 = true
+parking_lot.workspace            = true
+prometheus-parser.workspace      = true
+prometheus.workspace             = true
+protobuf-json-mapping.workspace  = true
+protobuf.workspace               = true
+pulse-common                     = { path = "../pulse-common" }
+pulse-protobuf                   = { path = "../pulse-protobuf" }
+rand.workspace                   = true
+rand_xoshiro.workspace           = true
+regex.workspace                  = true
+reqwest.workspace                = true
+serde.workspace                  = true
+serde_json.workspace             = true
+serde_yaml.workspace             = true
+snap.workspace                   = true
+tempfile.workspace               = true
+thiserror.workspace              = true
+tikv-jemalloc-ctl.workspace      = true
+time.workspace                   = true
+tokio.workspace                  = true
+topk.workspace                   = true
+topological-sort.workspace       = true
+unwrap-infallible.workspace      = true
+url.workspace                    = true
+vrl.workspace                    = true
+xxhash-rust.workspace            = true
+
+[dev-dependencies]
+assert_matches.workspace    = true
+bd-test-helpers.workspace   = true
+criterion.workspace         = true
+ctor.workspace              = true
+matches.workspace           = true
+pretty_assertions.workspace = true
+quickcheck.workspace        = true
+quickcheck_macros.workspace = true
+tokio-test.workspace        = true
+
+[build-dependencies]
+cc.workspace = true
+
+[[bench]]
+harness = false
+name    = "carbon_parsing"
+
+[[bench]]
+harness = false
+name    = "elision"

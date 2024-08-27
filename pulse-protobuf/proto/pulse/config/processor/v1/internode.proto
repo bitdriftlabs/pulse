@@ -1,0 +1,60 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.processor.v1;
+
+import "pulse/config/common/v1/retry.proto";
+import "google/protobuf/duration.proto";
+import "validate/validate.proto";
+
+// Configuration for the internode processor. Internode performs consistent hashing of metrics
+// and sends them to other nodes in the cluster as necessary. This insures that processors that
+// depend on seeing the same metric consistently will see it. Currently the internode cluster
+// configuration is hard coded and not dynamically discovered. This can be accompished using
+// Kubernetes stateful sets or some other similar mechanism that provides stable DNS for cluster
+// members.
+message InternodeConfig {
+  // Configuration for an internode node.
+  message NodeConfig {
+    // The name of the node.
+    string node_id = 1 [(validate.rules).string = {min_len: 1}];
+
+    // The address of the node.
+    string address = 2 [(validate.rules).string = {min_len: 1}];
+  }
+
+  // Configuration for internode requests.
+  message RequestPolicy {
+    // Interode request timeout. Default is 100ms.
+    google.protobuf.Duration timeout = 1 [(validate.rules).duration.gt = {}];
+
+    // Retry policy. If not specified default values are used.
+    common.v1.RetryPolicy retry_policy = 2;
+
+    // Defines the maximum number of internode requests that can be made in parallel across all
+    // nodes. If not specified defaults to 4 times the number of nodes. This allows for some
+    // amount of progress if there is a slow/bad internode node.
+    optional uint32 max_concurrent_requests = 3;
+  }
+
+  // The address the processor listens on for internode connections.
+  string listen = 1 [(validate.rules).string = {min_len: 1}];
+
+  // The total nodes, including this node. This is used only for sanity checking the provided
+  // `nodes` configuration.
+  optional uint32 total_nodes = 2;
+
+  // The name of this node.
+  string this_node_id = 3 [(validate.rules).string = {min_len: 1}];
+
+  // The set of nodes the processor should internode with.
+  repeated NodeConfig nodes = 4 [(validate.rules).repeated .min_items = 1];
+
+  // Configuration for internode requests. If not specified, default values are used.
+  RequestPolicy request_policy = 5 [(validate.rules).duration.gt = {}];
+}

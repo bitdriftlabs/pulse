@@ -1,0 +1,18 @@
+[package]
+edition      = "2021"
+license-file = "../LICENSE"
+name         = "pulse-vrl-tester"
+publish      = false
+version      = "1.0.0"
+
+[dependencies]
+anyhow.workspace            = true
+bd-log.workspace            = true
+clap.workspace              = true
+ctor.workspace              = true
+log.workspace               = true
+pretty_assertions.workspace = true
+pulse-common                = { path = "../pulse-common" }
+pulse-metrics               = { path = "../pulse-metrics" }
+pulse-protobuf              = { path = "../pulse-protobuf" }
+vrl.workspace               = true

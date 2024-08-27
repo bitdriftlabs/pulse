@@ -1,0 +1,28 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.outflow.v1;
+
+import "google/protobuf/duration.proto";
+import "validate/validate.proto";
+
+// Defines the policy used for batching and queueing data within clients. In general memory
+// usage is mostly bounded (some of the byte calculations are fuzzy when dealing with proto outputs)
+// by the limits specified within this policy. Queueing is performed in a LIFO manner, with the
+// oldest data dropped.
+// TODO(mattkleni123): Add a drop policy, including queueing to disk.
+message QueuePolicy {
+  // The maximum number of bytes that can be queued for sending before dropping. Bytes beyond this
+  // are dropped. Note that this tracks only data that is queued to send. It does not include any
+  // pending batch data. Defaults to 8MiB.
+  optional uint64 queue_max_bytes = 1;
+
+  // The wait period between batch fills. Batches will be sent by this deadline if not full.
+  // Defaults to 50ms.
+  google.protobuf.Duration batch_fill_wait = 2 [(validate.rules).duration.gt = {}];
+}
