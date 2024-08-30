@@ -12,7 +12,7 @@ While [OTel Collector](https://github.com/open-telemetry/opentelemetry-collector
 metrics support, they are lacking when it comes to scaling very large metrics infrastructures,
 primarily around:
 
-  * Aggregation (e.g., dropping a pod level to derive service level aggregate metrics)
+  * Aggregation (e.g., dropping a pod label to derive service level aggregate metrics)
   * Clustering (consistent hashing and routing at the aggregation tier)
   * Automated blocking/elision based on control-plane driven configuration
 
@@ -157,7 +157,7 @@ Depending on configuration the following additional endpoints are available:
 
 We do not currently provide numbered releases. This may change in the future. We build x64/arm64
 multi-arch images for each commit which are published to [public
-ECR](https://gallery.ecr.aws/m5y3r1s8/pulse). The docker images contain both the pulse-proxy and
+ECR](https://gallery.ecr.aws/bitdrift/pulse). The docker images contain both the pulse-proxy and
 pulse-vrl-tester binaries.
 
 ## License
