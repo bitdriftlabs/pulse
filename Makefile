@@ -24,15 +24,15 @@ clippy: setup
 
 .PHONY: docker-build
 docker-build:
-	docker build --platform ${ARCH} -t public.ecr.aws/m5y3r1s8/pulse:${IMAGE_TAG}-${TAG_SUFFIX} .
+	docker build --platform ${ARCH} -t public.ecr.aws/bitdrift/pulse:${IMAGE_TAG}-${TAG_SUFFIX} .
 
 .PHONY: docker-push
 docker-push:
-	docker push public.ecr.aws/m5y3r1s8/pulse:${IMAGE_TAG}-${TAG_SUFFIX}
+	docker push public.ecr.aws/bitdrift/pulse:${IMAGE_TAG}-${TAG_SUFFIX}
 
 .PHONY: docker-multi-arch-push
 docker-multi-arch-push:
-	docker manifest create public.ecr.aws/m5y3r1s8/pulse:${IMAGE_TAG} \
-		public.ecr.aws/m5y3r1s8/pulse:${IMAGE_TAG}-amd64 \
-		public.ecr.aws/m5y3r1s8/pulse:${IMAGE_TAG}-arm64
-	docker manifest push public.ecr.aws/m5y3r1s8/pulse:${IMAGE_TAG}
+	docker manifest create public.ecr.aws/bitdrift/pulse:${IMAGE_TAG} \
+		public.ecr.aws/bitdrift/pulse:${IMAGE_TAG}-amd64 \
+		public.ecr.aws/bitdrift/pulse:${IMAGE_TAG}-arm64
+	docker manifest push public.ecr.aws/bitdrift/pulse:${IMAGE_TAG}
