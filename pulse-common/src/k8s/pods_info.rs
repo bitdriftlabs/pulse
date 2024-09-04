@@ -79,7 +79,7 @@ pub struct PodsInfoSingleton {
 
 impl PodsInfoSingleton {
   #[must_use]
-  pub fn new(rx: watch::Receiver<PodsInfo>) -> Self {
+  pub const fn new(rx: watch::Receiver<PodsInfo>) -> Self {
     Self { rx }
   }
 

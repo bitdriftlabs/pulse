@@ -11,25 +11,20 @@ pub mod metadata;
 #[cfg(test)]
 mod test;
 
-use anyhow::{anyhow, bail};
-use bd_runtime_config::loader::{self, WatchedFileLoader};
+use anyhow::bail;
 use bd_server_stats::stats::{Collector, Scope};
 use bd_shutdown::ComponentShutdownTrigger;
+use config::ConfigLoader;
 use futures::{Future, FutureExt};
 use log::info;
 use prometheus::IntCounter;
 use pulse_common::bind_resolver::BindResolver;
 use pulse_common::k8s::pods_info::PodsInfoSingleton;
-use pulse_common::proto::{
-  env_or_inline_to_string,
-  yaml_value_to_proto,
-  ProtoDurationToStdDuration,
-};
+use pulse_common::proto::{env_or_inline_to_string, ProtoDurationToStdDuration};
 use pulse_common::singleton::SingletonManager;
 use pulse_metrics::admin::server::{AdminState, MetaStatsEmitter};
 use pulse_metrics::admin::stats::StatsProvider;
 use pulse_metrics::pipeline::{MetricPipeline, RealItemFactory};
-use pulse_protobuf::protos::pulse::config::bootstrap::v1::bootstrap::config::Pipeline_type;
 use pulse_protobuf::protos::pulse::config::bootstrap::v1::bootstrap::Config;
 use regex::Regex;
 use std::sync::Arc;
@@ -101,14 +96,6 @@ pub fn build_stats_provider(config: &Config) -> anyhow::Result<StatsProvider> {
   Ok(StatsProvider::new(meta_node_id, meta_tags))
 }
 
-async fn update_config(
-  pipeline: &MetricPipeline,
-  new_config: Option<Arc<serde_yaml::Value>>,
-) -> anyhow::Result<()> {
-  let new_config = new_config.ok_or_else(|| anyhow!("configuration is not valid YAML"))?;
-  let pipeline_config = yaml_value_to_proto(&new_config)?;
-  pipeline.update_config(pipeline_config).await
-}
 
 pub async fn run_server<
   ShutdownFuture: Future<Output = ()>,
@@ -136,27 +123,13 @@ pub async fn run_server<
   scope.gauge("heartbeat").set(1);
 
   // Setup for pipeline load.
-  let (initial_pipeline, fs_loader) = match config.pipeline_type.expect("pgv") {
-    Pipeline_type::Pipeline(pipeline) => (pipeline, None),
-    Pipeline_type::FsWatchedPipeline(fs_watched_pipeline) => {
-      let stats = loader::Stats::new(&scope.scope("fs_config_loader"));
-      let loader = WatchedFileLoader::new_loader(
-        fs_watched_pipeline.dir,
-        fs_watched_pipeline.file,
-        |value: Option<serde_yaml::Value>| value.map(Arc::new),
-        stats,
-      )?;
-      let config_yaml = loader
-        .snapshot_watch()
-        .borrow()
-        .as_ref()
-        .ok_or_else(|| anyhow!("configuration is not valid YAML"))?
-        .clone();
-      (yaml_value_to_proto(config_yaml.as_ref())?, Some(loader))
-    },
-  };
-
-  let stats_shutdown_trigger = ComponentShutdownTrigger::default();
+  let shutdown_trigger = ComponentShutdownTrigger::default();
+  let mut config_rx = ConfigLoader::initialize(
+    config.pipeline_type.expect("pgv"),
+    &scope,
+    shutdown_trigger.make_shutdown(),
+  )
+  .await?;
 
   let admin_state = AdminState::new(stats_provider.collector().clone());
   let pipeline = Arc::new(
@@ -165,7 +138,7 @@ pub async fn run_server<
       scope.scope("pipeline"),
       config.kubernetes.clone().unwrap_or_default(),
       Arc::new(move || k8s_watch_factory().boxed()),
-      initial_pipeline,
+      config_rx.recv().await.unwrap().unwrap(),
       singleton_manager,
       admin_state.clone(),
       bind_resolver.clone(),
@@ -173,26 +146,22 @@ pub async fn run_server<
     .await?,
   );
 
-  if let Some(fs_loader) = &fs_loader {
-    let mut snapshot_watch = fs_loader.snapshot_watch();
-    let cloned_pipeline = pipeline.clone();
-    let config_stats = ConfigStats::new(&scope);
-    tokio::spawn(async move {
-      while matches!(snapshot_watch.changed().await, Ok(())) {
-        let new_config = snapshot_watch.borrow_and_update().as_ref().cloned();
-        match update_config(&cloned_pipeline, new_config).await {
-          Ok(()) => {
-            log::info!("reloaded configuration from filesystem");
-            config_stats.updated.inc();
-          },
-          Err(e) => {
-            log::warn!("error reloading configuration from filesystem: {e}");
-            config_stats.failed_update.inc();
-          },
-        }
+  let cloned_pipeline = pipeline.clone();
+  let config_stats = ConfigStats::new(&scope);
+  tokio::spawn(async move {
+    while let Some(new_config) = config_rx.recv().await {
+      match async { cloned_pipeline.update_config(new_config?).await }.await {
+        Ok(()) => {
+          log::info!("reloaded configuration from filesystem");
+          config_stats.updated.inc();
+        },
+        Err(e) => {
+          log::warn!("error reloading configuration from filesystem: {e}");
+          config_stats.failed_update.inc();
+        },
       }
-    });
-  }
+    }
+  });
 
   if config_check_only {
     info!("--config-check-and-exit set, exiting");
@@ -202,7 +171,7 @@ pub async fn run_server<
   let cloned_collector = stats_provider.collector().clone();
   if let Some(meta_stats) = config.meta_stats.as_ref() {
     let meta_stats_emitter = MetaStatsEmitter::new(
-      stats_shutdown_trigger.make_shutdown(),
+      shutdown_trigger.make_shutdown(),
       stats_provider,
       meta_stats.meta_protocol.clone(),
       meta_stats.flush_interval.unwrap_duration_or(1.minutes()),
@@ -233,10 +202,7 @@ pub async fn run_server<
     tokio::time::sleep(shutdown_delay).await;
   }
   pipeline.shutdown().await;
-  stats_shutdown_trigger.shutdown().await;
-  if let Some(fs_loader) = fs_loader {
-    fs_loader.shutdown().await;
-  }
+  shutdown_trigger.shutdown().await;
   info!("runtime terminated");
   Ok(())
 }

@@ -16,7 +16,6 @@
 #![allow(unused_attributes)]
 #![cfg_attr(rustfmt, rustfmt::skip)]
 
-#![allow(box_pointers)]
 #![allow(dead_code)]
 #![allow(missing_docs)]
 #![allow(non_camel_case_types)]
@@ -1276,6 +1275,148 @@ impl ::protobuf::reflect::ProtobufValue for KubernetesBootstrapConfig {
     type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
 }
 
+// @@protoc_insertion_point(message:pulse.config.bootstrap.v1.MergedConfig)
+#[derive(PartialEq,Clone,Default,Debug)]
+pub struct MergedConfig {
+    // message fields
+    // @@protoc_insertion_point(field:pulse.config.bootstrap.v1.MergedConfig.bootstrap)
+    pub bootstrap: ::protobuf::MessageField<PipelineConfig>,
+    // @@protoc_insertion_point(field:pulse.config.bootstrap.v1.MergedConfig.fs_watched_pipelines)
+    pub fs_watched_pipelines: ::std::vec::Vec<super::common::RuntimeConfig>,
+    // special fields
+    // @@protoc_insertion_point(special_field:pulse.config.bootstrap.v1.MergedConfig.special_fields)
+    pub special_fields: ::protobuf::SpecialFields,
+}
+
+impl<'a> ::std::default::Default for &'a MergedConfig {
+    fn default() -> &'a MergedConfig {
+        <MergedConfig as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl MergedConfig {
+    pub fn new() -> MergedConfig {
+        ::std::default::Default::default()
+    }
+
+    fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
+        let mut fields = ::std::vec::Vec::with_capacity(2);
+        let mut oneofs = ::std::vec::Vec::with_capacity(0);
+        fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, PipelineConfig>(
+            "bootstrap",
+            |m: &MergedConfig| { &m.bootstrap },
+            |m: &mut MergedConfig| { &mut m.bootstrap },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_vec_simpler_accessor::<_, _>(
+            "fs_watched_pipelines",
+            |m: &MergedConfig| { &m.fs_watched_pipelines },
+            |m: &mut MergedConfig| { &mut m.fs_watched_pipelines },
+        ));
+        ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<MergedConfig>(
+            "MergedConfig",
+            fields,
+            oneofs,
+        )
+    }
+}
+
+impl ::protobuf::Message for MergedConfig {
+    const NAME: &'static str = "MergedConfig";
+
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
+        while let Some(tag) = is.read_raw_tag_or_eof()? {
+            match tag {
+                10 => {
+                    ::protobuf::rt::read_singular_message_into_field(is, &mut self.bootstrap)?;
+                },
+                18 => {
+                    self.fs_watched_pipelines.push(is.read_message()?);
+                },
+                tag => {
+                    ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u64 {
+        let mut my_size = 0;
+        if let Some(v) = self.bootstrap.as_ref() {
+            let len = v.compute_size();
+            my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+        }
+        for value in &self.fs_watched_pipelines {
+            let len = value.compute_size();
+            my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+        };
+        my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
+        self.special_fields.cached_size().set(my_size as u32);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
+        if let Some(v) = self.bootstrap.as_ref() {
+            ::protobuf::rt::write_message_field_with_cached_size(1, v, os)?;
+        }
+        for v in &self.fs_watched_pipelines {
+            ::protobuf::rt::write_message_field_with_cached_size(2, v, os)?;
+        };
+        os.write_unknown_fields(self.special_fields.unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn special_fields(&self) -> &::protobuf::SpecialFields {
+        &self.special_fields
+    }
+
+    fn mut_special_fields(&mut self) -> &mut ::protobuf::SpecialFields {
+        &mut self.special_fields
+    }
+
+    fn new() -> MergedConfig {
+        MergedConfig::new()
+    }
+
+    fn clear(&mut self) {
+        self.bootstrap.clear();
+        self.fs_watched_pipelines.clear();
+        self.special_fields.clear();
+    }
+
+    fn default_instance() -> &'static MergedConfig {
+        static instance: MergedConfig = MergedConfig {
+            bootstrap: ::protobuf::MessageField::none(),
+            fs_watched_pipelines: ::std::vec::Vec::new(),
+            special_fields: ::protobuf::SpecialFields::new(),
+        };
+        &instance
+    }
+}
+
+impl ::protobuf::MessageFull for MergedConfig {
+    fn descriptor() -> ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::Lazy::new();
+        descriptor.get(|| file_descriptor().message_by_package_relative_name("MergedConfig").unwrap()).clone()
+    }
+}
+
+impl ::std::fmt::Display for MergedConfig {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for MergedConfig {
+    type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
+}
+
 // @@protoc_insertion_point(message:pulse.config.bootstrap.v1.Config)
 #[derive(PartialEq,Clone,Default,Debug)]
 pub struct Config {
@@ -1402,8 +1543,57 @@ impl Config {
         }
     }
 
+    // .pulse.config.bootstrap.v1.MergedConfig merged_pipeline = 6;
+
+    pub fn merged_pipeline(&self) -> &MergedConfig {
+        match self.pipeline_type {
+            ::std::option::Option::Some(config::Pipeline_type::MergedPipeline(ref v)) => v,
+            _ => <MergedConfig as ::protobuf::Message>::default_instance(),
+        }
+    }
+
+    pub fn clear_merged_pipeline(&mut self) {
+        self.pipeline_type = ::std::option::Option::None;
+    }
+
+    pub fn has_merged_pipeline(&self) -> bool {
+        match self.pipeline_type {
+            ::std::option::Option::Some(config::Pipeline_type::MergedPipeline(..)) => true,
+            _ => false,
+        }
+    }
+
+    // Param is passed by value, moved
+    pub fn set_merged_pipeline(&mut self, v: MergedConfig) {
+        self.pipeline_type = ::std::option::Option::Some(config::Pipeline_type::MergedPipeline(v))
+    }
+
+    // Mutable pointer to the field.
+    pub fn mut_merged_pipeline(&mut self) -> &mut MergedConfig {
+        if let ::std::option::Option::Some(config::Pipeline_type::MergedPipeline(_)) = self.pipeline_type {
+        } else {
+            self.pipeline_type = ::std::option::Option::Some(config::Pipeline_type::MergedPipeline(MergedConfig::new()));
+        }
+        match self.pipeline_type {
+            ::std::option::Option::Some(config::Pipeline_type::MergedPipeline(ref mut v)) => v,
+            _ => panic!(),
+        }
+    }
+
+    // Take field
+    pub fn take_merged_pipeline(&mut self) -> MergedConfig {
+        if self.has_merged_pipeline() {
+            match self.pipeline_type.take() {
+                ::std::option::Option::Some(config::Pipeline_type::MergedPipeline(v)) => v,
+                _ => panic!(),
+            }
+        } else {
+            MergedConfig::new()
+        }
+    }
+
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(5);
+        let mut fields = ::std::vec::Vec::with_capacity(6);
         let mut oneofs = ::std::vec::Vec::with_capacity(1);
         fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, AdminConfig>(
             "admin",
@@ -1433,6 +1623,13 @@ impl Config {
             Config::fs_watched_pipeline,
             Config::mut_fs_watched_pipeline,
             Config::set_fs_watched_pipeline,
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_oneof_message_has_get_mut_set_accessor::<_, MergedConfig>(
+            "merged_pipeline",
+            Config::has_merged_pipeline,
+            Config::merged_pipeline,
+            Config::mut_merged_pipeline,
+            Config::set_merged_pipeline,
         ));
         oneofs.push(config::Pipeline_type::generated_oneof_descriptor_data());
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<Config>(
@@ -1468,6 +1665,9 @@ impl ::protobuf::Message for Config {
                 42 => {
                     self.pipeline_type = ::std::option::Option::Some(config::Pipeline_type::FsWatchedPipeline(is.read_message()?));
                 },
+                50 => {
+                    self.pipeline_type = ::std::option::Option::Some(config::Pipeline_type::MergedPipeline(is.read_message()?));
+                },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                 },
@@ -1502,6 +1702,10 @@ impl ::protobuf::Message for Config {
                     let len = v.compute_size();
                     my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
                 },
+                &config::Pipeline_type::MergedPipeline(ref v) => {
+                    let len = v.compute_size();
+                    my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+                },
             };
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
@@ -1527,6 +1731,9 @@ impl ::protobuf::Message for Config {
                 &config::Pipeline_type::FsWatchedPipeline(ref v) => {
                     ::protobuf::rt::write_message_field_with_cached_size(5, v, os)?;
                 },
+                &config::Pipeline_type::MergedPipeline(ref v) => {
+                    ::protobuf::rt::write_message_field_with_cached_size(6, v, os)?;
+                },
             };
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
@@ -1549,6 +1756,7 @@ impl ::protobuf::Message for Config {
         self.admin.clear();
         self.meta_stats.clear();
         self.kubernetes.clear();
+        self.pipeline_type = ::std::option::Option::None;
         self.pipeline_type = ::std::option::Option::None;
         self.pipeline_type = ::std::option::Option::None;
         self.special_fields.clear();
@@ -1593,6 +1801,8 @@ pub mod config {
         Pipeline(super::PipelineConfig),
         // @@protoc_insertion_point(oneof_field:pulse.config.bootstrap.v1.Config.fs_watched_pipeline)
         FsWatchedPipeline(super::super::common::RuntimeConfig),
+        // @@protoc_insertion_point(oneof_field:pulse.config.bootstrap.v1.Config.merged_pipeline)
+        MergedPipeline(super::MergedConfig),
     }
 
     impl ::protobuf::Oneof for Pipeline_type {
@@ -1653,14 +1863,19 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     apConfig\x12@\n\tnode_name\x18\x01\x20\x01(\x0b2#.pulse.config.common.v1\
     .EnvOrInlineR\x08nodeName\x120\n\x11evaluate_services\x18\x02\x20\x01(\
     \x08H\0R\x10evaluateServices\x88\x01\x01B\x14\n\x12_evaluate_services\"\
-    \x99\x03\n\x06Config\x12<\n\x05admin\x18\x01\x20\x01(\x0b2&.pulse.config\
-    .bootstrap.v1.AdminConfigR\x05admin\x12C\n\nmeta_stats\x18\x02\x20\x01(\
-    \x0b2$.pulse.config.bootstrap.v1.MetaStatsR\tmetaStats\x12T\n\nkubernete\
-    s\x18\x03\x20\x01(\x0b24.pulse.config.bootstrap.v1.KubernetesBootstrapCo\
-    nfigR\nkubernetes\x12G\n\x08pipeline\x18\x04\x20\x01(\x0b2).pulse.config\
-    .bootstrap.v1.PipelineConfigH\0R\x08pipeline\x12W\n\x13fs_watched_pipeli\
-    ne\x18\x05\x20\x01(\x0b2%.pulse.config.common.v1.RuntimeConfigH\0R\x11fs\
-    WatchedPipelineB\x14\n\rpipeline_type\x12\x03\xf8B\x01b\x06proto3\
+    \xb0\x01\n\x0cMergedConfig\x12G\n\tbootstrap\x18\x01\x20\x01(\x0b2).puls\
+    e.config.bootstrap.v1.PipelineConfigR\tbootstrap\x12W\n\x14fs_watched_pi\
+    pelines\x18\x02\x20\x03(\x0b2%.pulse.config.common.v1.RuntimeConfigR\x12\
+    fsWatchedPipelines\"\xed\x03\n\x06Config\x12<\n\x05admin\x18\x01\x20\x01\
+    (\x0b2&.pulse.config.bootstrap.v1.AdminConfigR\x05admin\x12C\n\nmeta_sta\
+    ts\x18\x02\x20\x01(\x0b2$.pulse.config.bootstrap.v1.MetaStatsR\tmetaStat\
+    s\x12T\n\nkubernetes\x18\x03\x20\x01(\x0b24.pulse.config.bootstrap.v1.Ku\
+    bernetesBootstrapConfigR\nkubernetes\x12G\n\x08pipeline\x18\x04\x20\x01(\
+    \x0b2).pulse.config.bootstrap.v1.PipelineConfigH\0R\x08pipeline\x12W\n\
+    \x13fs_watched_pipeline\x18\x05\x20\x01(\x0b2%.pulse.config.common.v1.Ru\
+    ntimeConfigH\0R\x11fsWatchedPipeline\x12R\n\x0fmerged_pipeline\x18\x06\
+    \x20\x01(\x0b2'.pulse.config.bootstrap.v1.MergedConfigH\0R\x0emergedPipe\
+    lineB\x14\n\rpipeline_type\x12\x03\xf8B\x01b\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
@@ -1686,12 +1901,13 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
             deps.push(super::wire::file_descriptor().clone());
             deps.push(::protobuf::well_known_types::duration::file_descriptor().clone());
             deps.push(super::validate::file_descriptor().clone());
-            let mut messages = ::std::vec::Vec::with_capacity(8);
+            let mut messages = ::std::vec::Vec::with_capacity(9);
             messages.push(AdvancedPipelineConfig::generated_message_descriptor_data());
             messages.push(PipelineConfig::generated_message_descriptor_data());
             messages.push(MetaStats::generated_message_descriptor_data());
             messages.push(AdminConfig::generated_message_descriptor_data());
             messages.push(KubernetesBootstrapConfig::generated_message_descriptor_data());
+            messages.push(MergedConfig::generated_message_descriptor_data());
             messages.push(Config::generated_message_descriptor_data());
             messages.push(meta_stats::MetaProtocol::generated_message_descriptor_data());
             messages.push(meta_stats::MetaTag::generated_message_descriptor_data());
