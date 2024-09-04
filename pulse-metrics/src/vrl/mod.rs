@@ -134,11 +134,27 @@ impl Target for EditableMetricVrlTarget<'_> {
 
   fn target_remove(
     &mut self,
-    _path: &vrl::path::OwnedTargetPath,
+    path: &vrl::path::OwnedTargetPath,
     _compact: bool,
   ) -> Result<Option<vrl::prelude::Value>, String> {
-    // TODO(mattklein123): Support removal.
-    Ok(None)
+    // TODO(mattklein123): The runtime ignores errors from this function.
+    match path.prefix {
+      PathPrefix::Event => {
+        log::trace!("removing: path={path}");
+        let removed = match path.path.to_alternative_components(3)[0].as_slice() {
+          [tags, tag_name] if tags == "tags" => self
+            .metric
+            .delete_tag(tag_name.as_bytes())
+            .map(Value::Bytes),
+          // TODO(mattklein123): Per above figure out some way of indicating an error for anything
+          // that is not a tag removal.
+          _ => None,
+        };
+
+        Ok(removed)
+      },
+      PathPrefix::Metadata => Ok(None),
+    }
   }
 }
 

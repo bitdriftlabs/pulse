@@ -17,7 +17,7 @@ assert_matches         = "1.5.0"
 async-trait            = "0.1"
 aws-config             = "1.5.5"
 aws-credential-types   = "1.2.1"
-aws-sdk-sqs            = "1.40.0"
+aws-sdk-sqs            = "1.41.0"
 aws-sigv4              = "1.2.3"
 aws-smithy-async       = "1.2.1"
 aws-smithy-http        = "0.60.10"
@@ -40,8 +40,8 @@ bd-test-helpers        = { git = "https://github.com/bitdriftlabs/shared-core.gi
 bd-time                = { git = "https://github.com/bitdriftlabs/shared-core.git" }
 built                  = { version = "0.7", features = ["git2"] }
 bytes                  = "1"
-cc                     = "1.1.15"
-clap                   = { version = "4.5.16", features = ["derive", "env"] }
+cc                     = "1.1.16"
+clap                   = { version = "4.5.17", features = ["derive", "env"] }
 comfy-table            = "7.1.1"
 console-subscriber     = "0.4.0"
 criterion              = { version = "0.5", features = ["html_reports"] }
@@ -60,7 +60,7 @@ http-body-util         = "0.1.2"
 humantime-serde        = "1.1"
 hyper                  = "1.4.1"
 
-hyper-rustls = { version = "0.27.2", default-features = false, features = [
+hyper-rustls = { version = "0.27.3", default-features = false, features = [
   "http1",
   "http2",
   "webpki-tokio",

@@ -264,6 +264,35 @@ async fn test_transformation_kubernetes_namespace() {
     .await;
 }
 
+#[tokio::test]
+async fn test_deletion() {
+  let mut helper = Helper::new(
+    r"
+del(.tags.key1)
+.tags.key3 = del(.tags.key2)
+    ",
+  );
+
+  helper
+    .expect_send_and_receive(
+      make_abs_counter_with_metadata(
+        "test:foo",
+        &[("key1", "value1"), ("key2", "value2")],
+        0,
+        1.0,
+        Metadata::new("default", "podA", &btreemap!(), &btreemap!(), None),
+      ),
+      make_abs_counter_with_metadata(
+        "test:foo",
+        &[("key3", "value2")],
+        0,
+        1.0,
+        Metadata::new("default", "podA", &btreemap!(), &btreemap!(), None),
+      ),
+    )
+    .await;
+}
+
 #[test]
 fn editable_parsed_metric() {
   {
@@ -373,4 +402,81 @@ fn test_mutate_metrics_existing_tag() {
     metric,
     make_abs_counter("prod:some_service:test:name", &[("pod", "podB")], 0, 1.0)
   );
+}
+
+#[test]
+fn test_mutate_metrics_deletion() {
+  {
+    let mut metric = make_abs_counter("prod:some_service:test:name", &[], 0, 1.0);
+    let mut editable_metric = EditableParsedMetric::new(&mut metric);
+    assert!(editable_metric.delete_tag(b"pod").is_none());
+    drop(editable_metric);
+    assert_eq!(
+      metric,
+      make_abs_counter("prod:some_service:test:name", &[], 0, 1.0)
+    );
+  }
+
+  {
+    let mut metric = make_abs_counter("prod:some_service:test:name", &[("pod", "podA")], 0, 1.0);
+    let mut editable_metric = EditableParsedMetric::new(&mut metric);
+    assert_eq!("podA", editable_metric.delete_tag(b"pod").unwrap());
+    assert!(editable_metric.find_tag(b"pod").is_none());
+    drop(editable_metric);
+    assert_eq!(
+      metric,
+      make_abs_counter("prod:some_service:test:name", &[], 0, 1.0)
+    );
+  }
+
+  {
+    let mut metric = make_abs_counter("prod:some_service:test:name", &[("pod", "podA")], 0, 1.0);
+    let mut editable_metric = EditableParsedMetric::new(&mut metric);
+    assert_eq!("podA", editable_metric.delete_tag(b"pod").unwrap());
+    editable_metric.add_or_change_tag(TagValue {
+      tag: "pod".into(),
+      value: "podB".into(),
+    });
+    assert_eq!("podB", editable_metric.find_tag(b"pod").unwrap().value);
+    drop(editable_metric);
+    assert_eq!(
+      metric,
+      make_abs_counter("prod:some_service:test:name", &[("pod", "podB")], 0, 1.0)
+    );
+  }
+
+  {
+    let mut metric = make_abs_counter(
+      "prod:some_service:test:name",
+      &[("key1", "value1"), ("key2", "value2"), ("key3", "value3")],
+      0,
+      1.0,
+    );
+    let mut editable_metric = EditableParsedMetric::new(&mut metric);
+    assert_eq!("value2", editable_metric.delete_tag(b"key2").unwrap());
+    editable_metric.add_or_change_tag(TagValue {
+      tag: "pod".into(),
+      value: "podA".into(),
+    });
+    editable_metric.add_or_change_tag(TagValue {
+      tag: "namespace".into(),
+      value: "namespaceA".into(),
+    });
+    assert_eq!("podA", editable_metric.delete_tag(b"pod").unwrap());
+    assert!(editable_metric.find_tag(b"pod").is_none());
+    drop(editable_metric);
+    assert_eq!(
+      metric,
+      make_abs_counter(
+        "prod:some_service:test:name",
+        &[
+          ("key1", "value1"),
+          ("key3", "value3"),
+          ("namespace", "namespaceA")
+        ],
+        0,
+        1.0
+      )
+    );
+  }
 }
