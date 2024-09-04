@@ -15,9 +15,16 @@ use reusable_fmt::{fmt, fmt_reuse};
 
 fmt_reuse! {
 DYNAMIC_FS_BOOTSTRAP = r#"
-fs_watched_pipeline:
-  dir: "{config_dir}"
-  file: "{config_dir}/config.yaml"
+merged_pipeline:
+  bootstrap:
+    processors:
+      populate_cache:
+        routes: ["processor:elision"]
+        populate_cache: {{}}
+
+  fs_watched_pipelines:
+  - dir: "{config_dir}"
+    file: "{config_dir}/config.yaml"
   "#;
 }
 
@@ -35,10 +42,6 @@ processors:
     buffer:
       max_buffered_metrics: 100000
       num_consumers: 1
-
-  populate_cache:
-    routes: ["processor:elision"]
-    populate_cache: {{}}
 
   elision:
     routes: ["outflow:prom_remote_write"]
@@ -68,10 +71,6 @@ processors:
     buffer:
       max_buffered_metrics: 100000
       num_consumers: 1
-
-  populate_cache:
-    routes: ["processor:elision"]
-    populate_cache: {{}}
 
   elision:
     routes: ["outflow:prom_remote_write"]

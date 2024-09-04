@@ -8,7 +8,7 @@
 use crate::test::integration::{FakePromUpstream, FakeWireUpstream, Helper, HelperBindResolver};
 use pretty_assertions::assert_eq;
 use prom_remote_write::prom_remote_write_server_config::ParseConfig;
-use pulse_metrics::test::{clean_timestamps, make_gauge, make_tag};
+use pulse_metrics::test::{clean_timestamps, make_abs_counter, make_tag};
 use pulse_protobuf::protos::pulse::config::inflow::v1::prom_remote_write;
 use reusable_fmt::{fmt, fmt_reuse};
 
@@ -171,11 +171,11 @@ async fn prom() {
   let (_, metrics) = upstream.wait_for_metrics().await;
   assert_eq!(
     clean_timestamps(metrics)[0],
-    make_gauge(
-      "production:app:pulse:heartbeat",
+    make_abs_counter(
+      "production:app:pulse:config:failed_update",
       &[("source", "node-1")],
       0,
-      1.0
+      0.0
     )
   );
 

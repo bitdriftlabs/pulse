@@ -69,7 +69,7 @@ hyper-rustls = { version = "0.27.3", default-features = false, features = [
 
 hyper-util            = { version = "0.1.7", features = ["client", "client-legacy"] }
 hyperloglogplus       = "0.4.1"
-intrusive-collections = "0.9.6"
+intrusive-collections = "0.9.7"
 itertools             = "0.13.0"
 k8s-openapi           = { version = "0.22.0", features = ["v1_26"] }
 
@@ -118,7 +118,7 @@ tikv-jemallocator.features = ["profiling", "stats", "unprefixed_malloc_on_suppor
 tikv-jemallocator.version  = "0.6.0"
 time                       = { version = "0.3.36", features = ["formatting"] }
 tokio                      = { version = "1", features = ["full", "parking_lot", "tracing", "test-util"] }
-tokio-stream               = "0.1.15"
+tokio-stream               = "0.1.16"
 tokio-test                 = "0.4"
 topk                       = "0.5.0"
 topological-sort           = "0.2.2"

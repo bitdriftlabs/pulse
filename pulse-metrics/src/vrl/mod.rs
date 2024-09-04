@@ -35,7 +35,7 @@ struct EditableMetricVrlTarget<'a> {
 }
 
 impl<'a> EditableMetricVrlTarget<'a> {
-  fn new(metric: EditableParsedMetric<'a>) -> Self {
+  const fn new(metric: EditableParsedMetric<'a>) -> Self {
     Self { metric }
   }
 }
