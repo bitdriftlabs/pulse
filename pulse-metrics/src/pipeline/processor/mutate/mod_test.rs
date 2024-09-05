@@ -5,6 +5,7 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
+use crate::pipeline::metric_cache::{CachedMetric, MetricCache};
 use crate::pipeline::processor::mutate::MutateProcessor;
 use crate::pipeline::processor::PipelineProcessor;
 use crate::protos::metric::{EditableParsedMetric, ParsedMetric, TagValue};
@@ -14,6 +15,8 @@ use crate::test::{
   processor_factory_context_for_test,
   ProcessorFactoryContextHelper,
 };
+use assert_matches::assert_matches;
+use bd_server_stats::stats::Collector;
 use bd_test_helpers::make_mut;
 use pretty_assertions::assert_eq;
 use prometheus::labels;
@@ -295,8 +298,11 @@ del(.tags.key1)
 
 #[test]
 fn editable_parsed_metric() {
+  let metric_cache = MetricCache::new(&Collector::default().scope("test"), None);
+
   {
     let mut metric = make_abs_counter("prod:some_service:test:name", &[], 0, 1.0);
+    metric.initialize_cache(&metric_cache);
     let mut editable_metric = EditableParsedMetric::new(&mut metric);
     assert!(editable_metric.find_tag(b"hello").is_none());
     editable_metric.add_or_change_tag(TagValue {
@@ -325,6 +331,17 @@ fn editable_parsed_metric() {
         1.0
       )
     );
+    assert_matches!(metric.cached_metric(), CachedMetric::NotInitialized);
+  }
+
+  {
+    let mut metric = make_abs_counter("prod:some_service:test:name", &[], 0, 1.0);
+    metric.initialize_cache(&metric_cache);
+    let mut editable_metric = EditableParsedMetric::new(&mut metric);
+    editable_metric.change_name("foo".into());
+    drop(editable_metric);
+    assert_eq!(metric, make_abs_counter("foo", &[], 0, 1.0));
+    assert_matches!(metric.cached_metric(), CachedMetric::NotInitialized);
   }
 
   {
@@ -406,8 +423,11 @@ fn test_mutate_metrics_existing_tag() {
 
 #[test]
 fn test_mutate_metrics_deletion() {
+  let metric_cache = MetricCache::new(&Collector::default().scope("test"), None);
+
   {
     let mut metric = make_abs_counter("prod:some_service:test:name", &[], 0, 1.0);
+    metric.initialize_cache(&metric_cache);
     let mut editable_metric = EditableParsedMetric::new(&mut metric);
     assert!(editable_metric.delete_tag(b"pod").is_none());
     drop(editable_metric);
@@ -415,10 +435,12 @@ fn test_mutate_metrics_deletion() {
       metric,
       make_abs_counter("prod:some_service:test:name", &[], 0, 1.0)
     );
+    assert_matches!(metric.cached_metric(), CachedMetric::Loaded(_, _));
   }
 
   {
     let mut metric = make_abs_counter("prod:some_service:test:name", &[("pod", "podA")], 0, 1.0);
+    metric.initialize_cache(&metric_cache);
     let mut editable_metric = EditableParsedMetric::new(&mut metric);
     assert_eq!("podA", editable_metric.delete_tag(b"pod").unwrap());
     assert!(editable_metric.find_tag(b"pod").is_none());
@@ -427,6 +449,7 @@ fn test_mutate_metrics_deletion() {
       metric,
       make_abs_counter("prod:some_service:test:name", &[], 0, 1.0)
     );
+    assert_matches!(metric.cached_metric(), CachedMetric::NotInitialized);
   }
 
   {

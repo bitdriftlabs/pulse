@@ -671,7 +671,7 @@ impl Drop for EditableParsedMetric<'_> {
       self.metric.metric.id.tags.sort_unstable();
     }
 
-    if self.tag_insertion_index.is_some() || self.name_changed {
+    if self.tag_insertion_index.is_some() || self.name_changed || self.deleted_tags.is_some() {
       self.metric.cached_metric = CachedMetric::NotInitialized;
     }
   }
