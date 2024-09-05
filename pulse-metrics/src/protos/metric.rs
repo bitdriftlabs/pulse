@@ -533,6 +533,7 @@ pub struct EditableParsedMetric<'a> {
   metric: &'a mut ParsedMetric,
   tag_insertion_index: Option<usize>,
   name_changed: bool,
+  deleted_tags: Option<Vec<bool>>,
 }
 
 impl<'a> EditableParsedMetric<'a> {
@@ -541,32 +542,87 @@ impl<'a> EditableParsedMetric<'a> {
       metric,
       tag_insertion_index: None,
       name_changed: false,
+      deleted_tags: None,
     }
   }
 
   pub fn add_or_change_tag(&mut self, tag: TagValue) {
     log::trace!("adding or changing tag: {tag}");
-    if let Some(existing_tag) = self.find_tag(&tag.tag) {
+    if let Some(existing_tag) = self
+      .find_tag_inner(&tag.tag, true)
+      .map(|index| &mut self.metric.metric.id.tags[index])
+    {
       existing_tag.value = tag.value;
     } else {
       self.metric.metric.id.tags.push(tag);
       if self.tag_insertion_index.is_none() {
         self.tag_insertion_index = Some(self.metric.metric.id.tags.len() - 1);
       }
+      if let Some(deleted_tags) = &mut self.deleted_tags {
+        deleted_tags.push(false);
+      }
     }
   }
 
   pub fn find_tag(&mut self, tag_name: &[u8]) -> Option<&mut TagValue> {
-    let tags = &mut self.metric.metric.id.tags;
+    self
+      .find_tag_inner(tag_name, false)
+      .map(|index| &mut self.metric.metric.id.tags[index])
+  }
+
+  pub fn delete_tag(&mut self, tag_name: &[u8]) -> Option<Bytes> {
+    if let Some(index) = self.find_tag_inner(tag_name, false) {
+      let deleted_tags = self
+        .deleted_tags
+        .get_or_insert_with(|| vec![false; self.metric.metric.id.tags.len()]);
+      deleted_tags[index] = true;
+      log::trace!(
+        "tag '{}' marked for deletion",
+        self.metric.metric.id.tags[index]
+      );
+      Some(self.metric.metric.id.tags[index].value.clone())
+    } else {
+      None
+    }
+  }
+
+  fn tag_deleted(
+    tags: &[TagValue],
+    deleted_tags: &mut Option<Vec<bool>>,
+    index: usize,
+    undelete: bool,
+  ) -> bool {
+    let deleted = deleted_tags.as_mut().map_or(false, |deleted_tags| {
+      if undelete {
+        log::trace!("tag '{}' was undeleted", tags[index]);
+        deleted_tags[index] = false;
+      }
+
+      deleted_tags[index]
+    });
+
+    if deleted {
+      log::trace!("tag '{}' was deleted", tags[index]);
+    }
+
+    deleted
+  }
+
+  fn find_tag_inner(&mut self, tag_name: &[u8], undelete: bool) -> Option<usize> {
+    let tags = &self.metric.metric.id.tags;
     let tag_insertion_index = self.tag_insertion_index.unwrap_or(tags.len());
 
     // Anything that we had before we started should already be sorted, so we can binary
     // search to find the tag.
     let sorted_tags = &tags[0 .. tag_insertion_index];
     debug_assert!(tags_sorted(sorted_tags));
-    if let Ok(index) = sorted_tags.binary_search_by(|t| t.tag.as_ref().cmp(tag_name)) {
-      log::trace!("found tag '{}' via binary search", tags[index]);
-      return Some(&mut tags[index]);
+    if let Some(index) = sorted_tags
+      .binary_search_by(|t| t.tag.as_ref().cmp(tag_name))
+      .ok()
+      .inspect(|index| log::trace!("found tag '{}' via binary search", tags[*index]))
+      .filter(|index| !Self::tag_deleted(tags, &mut self.deleted_tags, *index, undelete))
+    {
+      return Some(index);
     }
 
     // If we have added any tags, they will be unsorted at the end of the vector. We do a linear
@@ -574,9 +630,11 @@ impl<'a> EditableParsedMetric<'a> {
     // do add them we are not looking them up again. Everything will get sorted when this wrapper
     // is dropped.
     tags[tag_insertion_index ..]
-      .iter_mut()
-      .find(|t| t.tag == tag_name)
-      .inspect(|t| log::trace!("found tag '{t}' via linear search"))
+      .iter()
+      .position(|t| t.tag == tag_name)
+      .map(|index| index + tag_insertion_index)
+      .inspect(|index| log::trace!("found tag '{}' via linear search", tags[*index]))
+      .filter(|index| !Self::tag_deleted(tags, &mut self.deleted_tags, *index, undelete))
   }
 
   pub fn change_name(&mut self, name: Bytes) {
@@ -592,7 +650,24 @@ impl<'a> EditableParsedMetric<'a> {
 
 impl Drop for EditableParsedMetric<'_> {
   fn drop(&mut self) {
-    if self.tag_insertion_index.is_some() {
+    // If we have done deletion we have to actually go through and do the deletion given the deleted
+    // indexes. This is tricky as we do this in place before resorting.
+    if let Some(deleted_tags) = &self.deleted_tags {
+      debug_assert_eq!(deleted_tags.len(), self.metric.metric.id.tags.len());
+
+      // Swap remove deletion must be handled in reverse order to avoid invalidating indexes.
+      for (index, deleted) in deleted_tags.iter().enumerate().rev() {
+        if *deleted {
+          log::trace!(
+            "tag {index}/'{}' deleted",
+            self.metric.metric.id.tags[index]
+          );
+          self.metric.metric.id.tags.swap_remove(index);
+        }
+      }
+    }
+
+    if self.tag_insertion_index.is_some() || self.deleted_tags.is_some() {
       self.metric.metric.id.tags.sort_unstable();
     }
 
