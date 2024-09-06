@@ -132,6 +132,8 @@ moving forward. The best documentation sources are:
 * The high level [configuration README](CONFIGURATION.md)
 * The [configuration Protobufs](pulse-protobuf/proto/pulse/config/)
 * The [examples/](examples/)
+* In a worst case scenario the proxy integration tests cover most features and show various
+  configuration examples. They can be found [here](pulse-proxy/src/test/integration/).
 
 ## VRL tester
 

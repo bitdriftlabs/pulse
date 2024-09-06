@@ -104,6 +104,16 @@ message KubernetesBootstrapConfig {
   optional bool evaluate_services = 2;
 }
 
+// Configuration composed of layers.
+message MergedConfig {
+  // Optional inline bootstrap configuration.
+  PipelineConfig bootstrap = 1;
+
+  // Any number of configuration layers. Later layers in the list will override earlier layers if
+  // any names are shared.
+  repeated common.v1.RuntimeConfig fs_watched_pipelines = 2;
+}
+
 // Main bootstrap config for the proxy.
 message Config {
   // Admin configuration.
@@ -125,5 +135,14 @@ message Config {
     // Pipeline that will be read and watched from the filesystem (e.g., K8s config maps). Reloads
     // are meant to occur on atomic symbolic link swaps.
     common.v1.RuntimeConfig fs_watched_pipeline = 5;
+
+    // This configuration option combines the previous two options and allows for the most
+    // flexibility. It allows for a bootstrap pipeline to be merged with any number of FS watched
+    // pipelines. During merging, if a pipeline component with the same name is found later in
+    // the merging process it will override anything found previously to form the final pipeline.
+    // After merging the final configuration checks will take place to make sure that routes are
+    // valid and so on. Technically the previous options can be expressed as this option but they
+    // are split out for clarity.
+    MergedConfig merged_pipeline = 6;
   }
 }

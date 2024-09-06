@@ -17,6 +17,7 @@ futures.workspace           = true
 http-body-util.workspace    = true
 http.workspace              = true
 hyper-util.workspace        = true
+itertools.workspace         = true
 log.workspace               = true
 parking_lot.workspace       = true
 prometheus.workspace        = true

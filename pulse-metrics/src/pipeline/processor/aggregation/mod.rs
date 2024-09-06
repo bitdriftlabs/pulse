@@ -919,7 +919,7 @@ struct PerMetricAggregationState {
 }
 
 impl PerMetricAggregationState {
-  fn new(metric_key: Arc<MetricKey>, generation: u64) -> Self {
+  const fn new(metric_key: Arc<MetricKey>, generation: u64) -> Self {
     Self {
       metric_key,
       locked_state: Mutex::new(LockedPerMetricAggregationState {

@@ -190,13 +190,11 @@ impl PollFilter {
 
     let (file_watcher, file) = get_file_watcher(source.clone(), shutdown.clone())
       .await
-      .map_err(|e| {
+      .inspect_err(|_| {
         stats.load_fail.inc();
-        e
       })?;
-    let provider = provider_factory(file).await.map_err(|e| {
+    let provider = provider_factory(file).await.inspect_err(|_| {
       stats.load_fail.inc();
-      e
     })?;
     info!("successfully loaded file");
     stats.set_size.set(provider.set_size().try_into().unwrap());
