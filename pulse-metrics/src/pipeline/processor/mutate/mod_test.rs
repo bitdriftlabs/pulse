@@ -296,6 +296,37 @@ del(.tags.key1)
     .await;
 }
 
+#[tokio::test]
+async fn vrl_return() {
+  let mut helper = Helper::new(
+    r#"
+if exists(.tags.key1) {
+  return true
+}
+.tags.key2 = "hello"
+    "#,
+  );
+
+  helper
+    .expect_send_and_receive(
+      make_abs_counter_with_metadata(
+        "test:foo",
+        &[("key1", "value1")],
+        0,
+        1.0,
+        Metadata::new("default", "podA", &btreemap!(), &btreemap!(), None),
+      ),
+      make_abs_counter_with_metadata(
+        "test:foo",
+        &[("key1", "value1")],
+        0,
+        1.0,
+        Metadata::new("default", "podA", &btreemap!(), &btreemap!(), None),
+      ),
+    )
+    .await;
+}
+
 #[test]
 fn editable_parsed_metric() {
   let metric_cache = MetricCache::new(&Collector::default().scope("test"), None);

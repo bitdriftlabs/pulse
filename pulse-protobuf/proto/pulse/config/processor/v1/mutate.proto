@@ -28,6 +28,9 @@ import "validate/validate.proto";
 // Errors and abort() are handled differently. Errors will emit a periodic warnings and are
 // assumed to be real operator errors. Aborts via abort() are assumed to be intentional with the
 // desire to drop the metric.
+//
+// Early return is possible using the return statement. The expression passed to return will be
+// ignored so it can be anything, such as "return true".
 message MutateConfig {
   string vrl_program = 1 [(validate.rules).string = {min_len: 1}];
 }
