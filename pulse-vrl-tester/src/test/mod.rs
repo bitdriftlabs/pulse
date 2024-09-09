@@ -13,6 +13,7 @@ fn basic_case() {
 test_cases:
 - program: |
     .tags.namespace = %k8s.namespace
+    return true
   kubernetes_metadata:
     namespace: foo_namespace
     pod_name: foo_pod

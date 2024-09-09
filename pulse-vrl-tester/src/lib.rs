@@ -129,7 +129,7 @@ fn run_test_case(test_case: VrlTestCase, proxy_config: Option<&Config>) -> anyho
         };
 
         match (program.run_with_metric(&mut parsed_input), output) {
-          (Ok(_), OutputType::Metric(output)) => {
+          (Ok(_) | Err(ExpressionError::Return { .. }), OutputType::Metric(output)) => {
             if &output != parsed_input.metric() {
               bail!(
                 "VRL program '{}' failed to transform '{}' into '{}': {}",
@@ -140,7 +140,7 @@ fn run_test_case(test_case: VrlTestCase, proxy_config: Option<&Config>) -> anyho
               );
             }
           },
-          (Ok(_), OutputType::Abort) => {
+          (Ok(_) | Err(ExpressionError::Return { .. }), OutputType::Abort) => {
             bail!(
               "VRL program '{}' failed to transform '{}' into abort/drop, got '{}'",
               program_source,

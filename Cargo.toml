@@ -20,9 +20,9 @@ aws-credential-types   = "1.2.1"
 aws-sdk-sqs            = "1.41.0"
 aws-sigv4              = "1.2.3"
 aws-smithy-async       = "1.2.1"
-aws-smithy-http        = "0.60.10"
+aws-smithy-http        = "0.60.11"
 aws-smithy-runtime-api = { version = "1.7.2", features = ["test-util"] }
-aws-smithy-types       = "1.2.4"
+aws-smithy-types       = "1.2.6"
 axum                   = "0.7.5"
 backoff                = { version = "0.4.0", features = ["tokio"] }
 base64ct               = "1.6.0"
@@ -40,7 +40,7 @@ bd-test-helpers        = { git = "https://github.com/bitdriftlabs/shared-core.gi
 bd-time                = { git = "https://github.com/bitdriftlabs/shared-core.git" }
 built                  = { version = "0.7", features = ["git2"] }
 bytes                  = "1"
-cc                     = "1.1.16"
+cc                     = "1.1.18"
 clap                   = { version = "4.5.17", features = ["derive", "env"] }
 comfy-table            = "7.1.1"
 console-subscriber     = "0.4.0"
@@ -67,13 +67,13 @@ hyper-rustls = { version = "0.27.3", default-features = false, features = [
   "aws-lc-rs",
 ] }
 
-hyper-util            = { version = "0.1.7", features = ["client", "client-legacy"] }
+hyper-util            = { version = "0.1.8", features = ["client", "client-legacy"] }
 hyperloglogplus       = "0.4.1"
 intrusive-collections = "0.9.7"
 itertools             = "0.13.0"
 k8s-openapi           = { version = "0.22.0", features = ["v1_26"] }
 
-kube = { version = "0.93.1", features = [
+kube = { version = "0.94.0", features = [
   "runtime",
   "derive",
   "rustls-tls",

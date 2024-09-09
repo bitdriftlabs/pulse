@@ -68,7 +68,7 @@ impl PipelineProcessor for MutateProcessor {
       .into_iter()
       .filter_map(|mut sample| {
         match self.program.run_with_metric(&mut sample) {
-          Ok(_) => Some(sample),
+          Ok(_) | Err(ExpressionError::Return { .. }) => Some(sample),
           Err(ExpressionError::Abort { .. }) => {
             // We assume that explicit aborts are intentional.
             self.stats.drop_abort.inc();
