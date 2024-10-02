@@ -38,19 +38,14 @@ impl Metadata {
     fn btree_to_value(values: &BTreeMap<String, String>) -> Value {
       values
         .iter()
-        .map(|(key, value)| (key.clone(), value.replace('-', "_").into()))
+        .map(|(key, value)| (key.clone(), value.clone().into()))
         .collect::<Value>()
     }
 
     let k8s_namespace_and_pod_name = make_namespace_and_name(namespace, pod_name);
-    let namespace = namespace.replace('-', "_");
-    let pod_name = pod_name.replace('-', "_");
     let pod_labels = btree_to_value(pod_labels);
     let pod_annotations = btree_to_value(pod_annotations);
-    let service = service.map(|s| {
-      let s = s.replace('-', "_");
-      value!({"name": s})
-    });
+    let service = service.map(|s| value!({"name": s}));
     let value = value!({
       "k8s": {
         "namespace": namespace,

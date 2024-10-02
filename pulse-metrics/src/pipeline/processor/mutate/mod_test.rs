@@ -187,7 +187,7 @@ if is_null(.tags.namespace) {
 async fn test_transformation_kubernetes_service_name() {
   let mut helper = Helper::new(
     r#"
-.name = join!([get_env_var!("TEST"), ":", %k8s.service.name, ":", .name])
+.name = join!([get_env_var!("TEST"), ":", replace!(%k8s.service.name, "-", "_"), ":", .name])
 .tags.pod = %k8s.pod.name
 .tags.namespace = %k8s.namespace
 .tags.foo_key = %k8s.pod.labels.label_a
