@@ -71,7 +71,7 @@ async fn test_kube_pod_target_endpoint() {
       .unwrap()
       .as_str()
       .unwrap(),
-    "some_namespace"
+    "some-namespace"
   );
   assert_eq!(
     endpoints["some-namespace/my-awesome-pod"]
@@ -83,7 +83,7 @@ async fn test_kube_pod_target_endpoint() {
       .unwrap()
       .as_str()
       .unwrap(),
-    "my_awesome_pod"
+    "my-awesome-pod"
   );
   assert_eq!(
     endpoints["some-namespace/my-awesome-pod"]
@@ -95,7 +95,7 @@ async fn test_kube_pod_target_endpoint() {
       .unwrap()
       .as_str()
       .unwrap(),
-    "some_service"
+    "some-service"
   );
 }
 
