@@ -19,7 +19,7 @@ use super::metric::{
   ParseError,
   TagValue,
 };
-use memchr::{memchr, memmem, memrchr};
+use memchr::{memchr, memchr2, memmem, memrchr};
 use std::vec;
 
 fn parse_tags(input: bytes::Bytes) -> Result<Vec<TagValue>, ParseError> {
@@ -126,17 +126,56 @@ pub fn parse(input: &bytes::Bytes, parse_lyft_tags: bool) -> Result<Metric, Pars
         return Err(ParseError::InvalidTag);
       }
 
-      if let Some(equal_index) = memchr(b'=', &name[tag_index ..]) {
-        let tag = name.slice(tag_index .. tag_index + equal_index);
-        let value = name.slice(tag_index + equal_index + 1 ..);
-        tags.push(TagValue { tag, value });
+      let tag_slice = name.slice(tag_index ..);
+      let mut need_name_truncate = true;
+
+      // Unfortunately there are degenerate cases where the .__ tag is getting inserted in the
+      // middle of the dot delimited name. The callers should be fixed but this is not possible.
+      // So we need to handle this case. Thus, we need to check for both = and . in the tag.
+      if let Some(equal_or_dot_index) = memchr2(b'=', b'.', &tag_slice) {
+        if tag_slice[equal_or_dot_index] == b'=' {
+          // Look for an embedded '.' index, otherwise default to the end of the tag.
+          let extra_index = memchr(b'.', &tag_slice[equal_or_dot_index ..])
+            .map_or(tag_slice.len(), |i| i + equal_or_dot_index);
+
+          let tag = tag_slice.slice(.. equal_or_dot_index);
+          let value = tag_slice.slice(equal_or_dot_index + 1 .. extra_index);
+          tags.push(TagValue { tag, value });
+
+          // In this case we need to reallocate name and copy the extra part after the extraction.
+          if extra_index != tag_slice.len() {
+            let new_size = name.len() - extra_index - 3;
+            let mut new_name = Vec::with_capacity(new_size);
+            new_name.extend_from_slice(&name[.. tag_index - 3]);
+            new_name.extend_from_slice(&tag_slice[extra_index ..]);
+            debug_assert_eq!(new_name.len(), new_size);
+            name = new_name.into();
+            need_name_truncate = false;
+          }
+        } else {
+          // In this case the tag has an empty value but we still need to handle copying the
+          // extra part after extracting the name.
+          tags.push(TagValue {
+            tag: tag_slice.slice(.. equal_or_dot_index),
+            value: "".into(),
+          });
+          let new_size = name.len() - equal_or_dot_index - 3;
+          let mut new_name = Vec::with_capacity(new_size);
+          new_name.extend_from_slice(&name[.. tag_index - 3]);
+          new_name.extend_from_slice(&tag_slice[equal_or_dot_index ..]);
+          debug_assert_eq!(new_name.len(), new_size);
+          name = new_name.into();
+          need_name_truncate = false;
+        }
       } else {
         tags.push(TagValue {
-          tag: name.slice(tag_index ..),
+          tag: tag_slice,
           value: "".into(),
         });
       }
-      name.truncate(tag_index - 3);
+      if need_name_truncate {
+        name.truncate(tag_index - 3);
+      }
     }
   }
 

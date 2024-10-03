@@ -31,6 +31,78 @@ fn parse_statsd() {
 
 #[test]
 fn lyft_tags() {
+  let parsed = clean(
+    parse(
+      &"tests.service.Users.GetUser.__downstream_cluster=XYZ.stream.send.ms:3.0|c".into(),
+      true,
+    )
+    .unwrap(),
+  );
+  assert_eq!(
+    &parsed,
+    make_counter(
+      "tests.service.Users.GetUser.stream.send.ms",
+      &[("downstream_cluster", "XYZ")],
+      0,
+      3.0
+    )
+    .metric()
+  );
+
+  let parsed = clean(
+    parse(
+      &"tests.service.Users.GetUser.__downstream_cluster=XYZ.codes.__hello=world.OK:3.0|c".into(),
+      true,
+    )
+    .unwrap(),
+  );
+  assert_eq!(
+    &parsed,
+    make_counter(
+      "tests.service.Users.GetUser.codes.OK",
+      &[("downstream_cluster", "XYZ"), ("hello", "world")],
+      0,
+      3.0
+    )
+    .metric()
+  );
+
+  let parsed = clean(
+    parse(
+      &"tests.service.Users.GetUser.__downstream_cluster.stream.send.ms:3.0|c".into(),
+      true,
+    )
+    .unwrap(),
+  );
+  assert_eq!(
+    &parsed,
+    make_counter(
+      "tests.service.Users.GetUser.stream.send.ms",
+      &[("downstream_cluster", "")],
+      0,
+      3.0
+    )
+    .metric()
+  );
+
+  let parsed = clean(
+    parse(
+      &"tests.service.Users.GetUser.__downstream_cluster=.stream.send.ms:3.0|c".into(),
+      true,
+    )
+    .unwrap(),
+  );
+  assert_eq!(
+    &parsed,
+    make_counter(
+      "tests.service.Users.GetUser.stream.send.ms",
+      &[("downstream_cluster", "")],
+      0,
+      3.0
+    )
+    .metric()
+  );
+
   let parsed = clean(parse(&"foo.car:bar.__hello=world:3.0|c".into(), true).unwrap());
   assert_eq!(
     &parsed,
