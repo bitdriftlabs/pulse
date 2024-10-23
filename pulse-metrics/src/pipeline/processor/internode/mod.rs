@@ -217,7 +217,7 @@ impl InternodeProcessor {
           trace!("determined client {:?}", index);
           let (_, entry) = outbound_map
             .entry(index)
-            .or_insert((client.clone(), Vec::default()));
+            .or_insert_with(|| (client.clone(), Vec::default()));
           entry.push(parsed_metric);
         } else {
           trace!("determined self as shard");

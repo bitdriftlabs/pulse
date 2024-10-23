@@ -406,6 +406,10 @@ impl Metric {
     }
   }
 
+  pub fn into_parts(self) -> (MetricId, Option<f64>, u64, MetricValue) {
+    (self.id, self.sample_rate, self.timestamp, self.value)
+  }
+
   pub const fn get_id(&self) -> &MetricId {
     &self.id
   }

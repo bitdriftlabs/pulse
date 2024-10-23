@@ -50,6 +50,7 @@ rustflags = [
     "-Aclippy::missing-panics-doc",
     "-Aclippy::similar-names",
     "-Aclippy::struct-field-names",
+    "-Aclippy::too-long-first-doc-paragraph",
     "-Aclippy::too-many-arguments",
     "-Aclippy::too-many-lines",
     "-Aclippy::unnecessary-wraps",

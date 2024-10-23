@@ -9,6 +9,7 @@
 #[path = "./util_test.rs"]
 mod util_test;
 
+use crate::pipeline::inflow::wire::pre_buffer::PreBuffer;
 use crate::pipeline::time::{DurationJitter, RealDurationJitter};
 use crate::pipeline::PipelineDispatch;
 use crate::protos::metric::{DownstreamId, ParsedMetric};
@@ -16,7 +17,7 @@ use bd_log::warn_every;
 use bd_server_stats::stats::{AutoGauge, Scope};
 use bd_shutdown::ComponentShutdown;
 use bd_time::{ProtoDurationExt, TimeDurationExt};
-use bytes::{BufMut, BytesMut};
+use bytes::{BufMut, Bytes, BytesMut};
 use log::debug;
 use memchr::memchr;
 use prometheus::{IntCounter, IntGauge};
@@ -24,7 +25,9 @@ use pulse_common::k8s::pods_info::OwnedPodsInfoSingleton;
 use pulse_common::proto::ProtoDurationToStdDuration;
 use pulse_protobuf::protos::pulse::config::common::v1::common::WireProtocol;
 use pulse_protobuf::protos::pulse::config::inflow::v1::wire::AdvancedSocketServerConfig;
+use std::future::Future;
 use std::io::ErrorKind;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Instant;
 use time::ext::{NumericalDuration, NumericalStdDuration};
@@ -52,6 +55,10 @@ pub(super) struct SocketServerStats {
   pub no_k8s_pod_metadata: IntCounter,
   pub active: IntGauge,
 }
+
+//
+// SocketServerStats
+//
 
 impl SocketServerStats {
   pub fn new(stats: &Scope) -> Self {
@@ -98,35 +105,36 @@ pub(super) fn process_buffer_newlines(
   ret
 }
 
-pub(super) fn parse_lines(
-  lines: Vec<bytes::Bytes>,
-  wire_protocol: &WireProtocol,
-  received_at: Instant,
+pub(super) fn bind_k8s_metadata(
+  metrics: &mut Vec<ParsedMetric>,
   downstream_id: &DownstreamId,
-  unparsable: &IntCounter,
   no_k8s_pod_metadata: &IntCounter,
   k8s_pods_info: Option<&OwnedPodsInfoSingleton>,
-) -> Vec<ParsedMetric> {
-  // TODO(mattklein123): Technically, for TCP we should be able to get away with looking up the
-  // metadata once and then continuing to use it for the entire connection. However, there are
-  // edge cases where it's possible that we get a connection before we know about the pod from
-  // the API server. In this case we would have to allow for late load. For now just look it up
-  // every time. We can relax this later.
-  let mut metadata = None;
+) {
   if let (Some(k8s_pods_info), DownstreamId::IpAddress(ip_addr)) = (k8s_pods_info, downstream_id) {
     if let Some(remote_pod) = k8s_pods_info.borrow().by_ip(ip_addr) {
-      metadata = Some(remote_pod.metadata.clone());
+      for metric in metrics {
+        metric.set_metadata(Some(remote_pod.metadata.clone()));
+      }
     } else {
       warn_every!(
         1.minutes(),
         "dropping metrics from '{}' due to missing Kubernetes pod metadata",
         ip_addr
       );
-      no_k8s_pod_metadata.inc_by(lines.len().try_into().unwrap());
-      return vec![];
+      no_k8s_pod_metadata.inc_by(metrics.len().try_into().unwrap());
+      metrics.clear();
     }
   }
+}
 
+pub(super) fn parse_lines(
+  lines: Vec<bytes::Bytes>,
+  wire_protocol: &WireProtocol,
+  received_at: Instant,
+  downstream_id: &DownstreamId,
+  unparsable: &IntCounter,
+) -> Vec<ParsedMetric> {
   let mut parsed = Vec::<ParsedMetric>::new();
   for line in lines {
     match ParsedMetric::try_from_wire_protocol(
@@ -135,8 +143,7 @@ pub(super) fn parse_lines(
       received_at,
       downstream_id.clone(),
     ) {
-      Ok(mut p) => {
-        p.set_metadata(metadata.clone());
+      Ok(p) => {
         log::trace!("parsed metric '{}'", p.metric().get_id());
         parsed.push(p);
       },
@@ -156,144 +163,211 @@ pub(super) fn parse_lines(
   parsed
 }
 
+//
+// SocketHandlerConfig
+//
+
 #[derive(Clone)]
 pub(super) struct SocketHandlerConfig {
   pub wire_protocol: WireProtocol,
   pub advanced: AdvancedSocketServerConfig,
 }
 
-pub(super) async fn socket_handler<T>(
+//
+// SocketHandler
+//
+
+pub(super) struct SocketHandler {
   stats: SocketServerStats,
   config: SocketHandlerConfig,
-  mut socket: T,
   downstream_id: DownstreamId,
   dispatcher: Arc<dyn PipelineDispatch>,
   k8s_pods_info: Option<OwnedPodsInfoSingleton>,
-  mut shutdown: ComponentShutdown,
-) where
-  T: AsyncRead + AsyncWrite + Unpin,
-{
-  // TODO(mattklein123): Add bounds on max active connections.
-  let _active_auto_gauge = AutoGauge::new(stats.active);
-  let buffer_size = config
-    .advanced
-    .buffer_size
-    .unwrap_or(default_buffer_size())
-    .try_into()
-    .unwrap();
-  let mut buf = BytesMut::with_capacity(buffer_size);
-  let mut max_duration_sleep =
-    config
-      .advanced
-      .max_connection_duration
-      .into_option()
-      .map(|max_connection_duration| {
-        Box::pin(
-          RealDurationJitter::half_jitter_duration(max_connection_duration.to_time_duration())
-            .sleep(),
-        )
-      });
-  let mut shutdown_wait = None;
+  pre_buffer: Option<PreBufferWrapper>,
+}
+struct PreBufferWrapper {
+  buffer: PreBuffer,
+  sleep: Pin<Box<dyn Future<Output = ()> + Send>>,
+}
 
-  loop {
-    if buf.remaining_mut() < buffer_size {
-      buf.reserve(buffer_size);
-    }
-
-    let idle_timeout = config
-      .advanced
-      .idle_timeout
-      .unwrap_duration_or(default_idle_timeout())
-      .sleep();
-    pin!(idle_timeout);
-    let result = select! {
-      r = socket.read_buf(&mut buf) => r,
-      () = &mut idle_timeout => {
-        Err(std::io::Error::new(ErrorKind::TimedOut, "read timeout"))
-      }
-      () = shutdown.cancelled() => {
-        Err(std::io::Error::new(ErrorKind::Other, "shutting down"))
-      }
-      () = async {
-        max_duration_sleep.as_mut().unwrap().await;
-      }, if max_duration_sleep.is_some() => {
-        // Shutdown and begin the wait process. This assumes the other side is correctly
-        // monitoring for shutdown (typically waiting on recv() so it sees the TCP FIN that is
-        // sent).
-        log::debug!("max connection duration reached. Shutting down and beginning wait");
-        stats.max_connection_duration.inc();
-        let _ignored = socket.shutdown().await;
-        shutdown_wait = Some(Box::pin(5.seconds().sleep()));
-        max_duration_sleep = None;
-        continue;
-      }
-      () = async { shutdown_wait.as_mut().unwrap().await }, if shutdown_wait.is_some() => {
-        log::debug!("shutdown wait complete");
-        Err(std::io::Error::new(ErrorKind::TimedOut, "max connection duration"))
-      }
-    };
-
-    let received_at = Instant::now();
-    match result {
-      Ok(bytes) if buf.is_empty() && bytes == 0 => {
-        debug!("closing reader (empty buffer, eof) {:?}", downstream_id);
-        break;
-      },
-      Ok(0) => {
-        // Socket shutdown, process what's remaining
-        let mut lines = process_buffer_newlines(&mut buf, true);
-        let remaining = buf.clone().freeze();
-        lines.push(remaining);
-
-        let parsed_lines = parse_lines(
-          lines,
-          &config.wire_protocol,
-          received_at,
-          &downstream_id,
-          &stats.unparsable,
-          &stats.no_k8s_pod_metadata,
-          k8s_pods_info.as_ref(),
-        );
-        dispatcher.send(parsed_lines).await;
-
-        debug!("remaining {:?}", buf);
-        debug!("closing reader {:?}", downstream_id);
-        break;
-      },
-      Ok(bytes) => {
-        stats.incoming_bytes.inc_by(bytes.try_into().unwrap());
-        let lines = process_buffer_newlines(&mut buf, true);
-
-        let parsed_lines = parse_lines(
-          lines,
-          &config.wire_protocol,
-          received_at,
-          &downstream_id,
-          &stats.unparsable,
-          &stats.no_k8s_pod_metadata,
-          k8s_pods_info.as_ref(),
-        );
-        dispatcher.send(parsed_lines).await;
-      },
-      Err(e) if e.kind() == ErrorKind::Other => {
-        // Ignoring the results of the write call here
-        let _ignored = timeout(
-          1.std_seconds(),
-          socket.write_all(b"server closing due to shutdown, goodbye\n"),
-        )
-        .await;
-        break;
-      },
-      Err(e) if e.kind() == ErrorKind::TimedOut => {
-        debug!("read timeout, closing {:?}", downstream_id);
-        break;
-      },
-      Err(e) => {
-        debug!("socket error {:?} {:?}", e, downstream_id);
-        break;
-      },
+impl SocketHandler {
+  pub(super) fn new(
+    stats: SocketServerStats,
+    config: SocketHandlerConfig,
+    downstream_id: DownstreamId,
+    dispatcher: Arc<dyn PipelineDispatch>,
+    k8s_pods_info: Option<OwnedPodsInfoSingleton>,
+    pre_buffer_duration: Option<Duration>,
+  ) -> Self {
+    Self {
+      stats,
+      config,
+      downstream_id,
+      dispatcher,
+      k8s_pods_info,
+      pre_buffer: pre_buffer_duration.map(|d| PreBufferWrapper {
+        buffer: PreBuffer::default(),
+        sleep: Box::pin(d.sleep()),
+      }),
     }
   }
-  stats.disconnects.inc();
-  drop(shutdown);
+
+  async fn flush_pre_buffer(&mut self) {
+    let pre_buffer = self.pre_buffer.take().unwrap();
+    let mut metrics = pre_buffer.buffer.flush(&self.downstream_id);
+    log::debug!("flushed prebuffer with {} metrics", metrics.len());
+    bind_k8s_metadata(
+      &mut metrics,
+      &self.downstream_id,
+      &self.stats.no_k8s_pod_metadata,
+      self.k8s_pods_info.as_ref(),
+    );
+    self.dispatcher.send(metrics).await;
+  }
+
+  async fn process(&mut self, lines: Vec<Bytes>) {
+    let mut parsed_lines = parse_lines(
+      lines,
+      &self.config.wire_protocol,
+      Instant::now(),
+      &self.downstream_id,
+      &self.stats.unparsable,
+    );
+    if let Some(pre_buffer) = &mut self.pre_buffer {
+      pre_buffer.buffer.buffer(parsed_lines);
+    } else {
+      bind_k8s_metadata(
+        &mut parsed_lines,
+        &self.downstream_id,
+        &self.stats.no_k8s_pod_metadata,
+        self.k8s_pods_info.as_ref(),
+      );
+      self.dispatcher.send(parsed_lines).await;
+    }
+  }
+
+  pub(super) async fn run<T>(mut self, mut socket: T, mut shutdown: ComponentShutdown)
+  where
+    T: AsyncRead + AsyncWrite + Unpin,
+  {
+    // TODO(mattklein123): Add bounds on max active connections.
+    let _active_auto_gauge = AutoGauge::new(self.stats.active.clone());
+    let buffer_size = self
+      .config
+      .advanced
+      .buffer_size
+      .unwrap_or(default_buffer_size())
+      .try_into()
+      .unwrap();
+    let mut buf = BytesMut::with_capacity(buffer_size);
+    let mut max_duration_sleep =
+      self
+        .config
+        .advanced
+        .max_connection_duration
+        .as_ref()
+        .map(|max_connection_duration| {
+          Box::pin(
+            RealDurationJitter::half_jitter_duration(max_connection_duration.to_time_duration())
+              .sleep(),
+          )
+        });
+    let mut shutdown_wait = None;
+
+    loop {
+      if buf.remaining_mut() < buffer_size {
+        buf.reserve(buffer_size);
+      }
+
+      let idle_timeout = self
+        .config
+        .advanced
+        .idle_timeout
+        .unwrap_duration_or(default_idle_timeout())
+        .sleep();
+      pin!(idle_timeout);
+      let result = select! {
+        r = socket.read_buf(&mut buf) => r,
+        () = &mut idle_timeout => {
+          Err(std::io::Error::new(ErrorKind::TimedOut, "read timeout"))
+        }
+        () = shutdown.cancelled() => {
+          Err(std::io::Error::new(ErrorKind::Other, "shutting down"))
+        }
+        () = async {
+          self.pre_buffer.as_mut().unwrap().sleep.as_mut().await;
+        }, if self.pre_buffer.is_some() => {
+          self.flush_pre_buffer().await;
+          continue;
+        }
+        () = async {
+          max_duration_sleep.as_mut().unwrap().await;
+        }, if max_duration_sleep.is_some() => {
+          // Shutdown and begin the wait process. This assumes the other side is correctly
+          // monitoring for shutdown (typically waiting on recv() so it sees the TCP FIN that is
+          // sent).
+          log::debug!("max connection duration reached. Shutting down and beginning wait");
+          self.stats.max_connection_duration.inc();
+          let _ignored = socket.shutdown().await;
+          shutdown_wait = Some(Box::pin(5.seconds().sleep()));
+          max_duration_sleep = None;
+          continue;
+        }
+        () = async { shutdown_wait.as_mut().unwrap().await }, if shutdown_wait.is_some() => {
+          log::debug!("shutdown wait complete");
+          Err(std::io::Error::new(ErrorKind::TimedOut, "max connection duration"))
+        }
+      };
+
+      match result {
+        Ok(bytes) if buf.is_empty() && bytes == 0 => {
+          debug!(
+            "closing reader (empty buffer, eof) {:?}",
+            self.downstream_id
+          );
+          break;
+        },
+        Ok(0) => {
+          // Socket shutdown, process what's remaining
+          let mut lines = process_buffer_newlines(&mut buf, true);
+          let remaining = buf.clone().freeze();
+          lines.push(remaining);
+          self.process(lines).await;
+          debug!("remaining {:?}", buf);
+          debug!("closing reader {:?}", self.downstream_id);
+          break;
+        },
+        Ok(bytes) => {
+          self.stats.incoming_bytes.inc_by(bytes.try_into().unwrap());
+          let lines = process_buffer_newlines(&mut buf, true);
+          self.process(lines).await;
+        },
+        Err(e) if e.kind() == ErrorKind::Other => {
+          // Ignoring the results of the write call here
+          let _ignored = timeout(
+            1.std_seconds(),
+            socket.write_all(b"server closing due to shutdown, goodbye\n"),
+          )
+          .await;
+          break;
+        },
+        Err(e) if e.kind() == ErrorKind::TimedOut => {
+          debug!("read timeout, closing {:?}", self.downstream_id);
+          break;
+        },
+        Err(e) => {
+          debug!("socket error {:?} {:?}", e, self.downstream_id);
+          break;
+        },
+      }
+    }
+
+    // If we lost the connection prior to the pre-buffer timeout, try to flush what we have.
+    if self.pre_buffer.is_some() {
+      self.flush_pre_buffer().await;
+    }
+
+    self.stats.disconnects.inc();
+    drop(shutdown);
+  }
 }

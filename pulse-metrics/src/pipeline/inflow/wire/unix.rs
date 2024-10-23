@@ -6,7 +6,7 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
 use super::util::SocketServerStats;
-use crate::pipeline::inflow::wire::util::{socket_handler, SocketHandlerConfig};
+use crate::pipeline::inflow::wire::util::{SocketHandler, SocketHandlerConfig};
 use crate::pipeline::inflow::{InflowFactoryContext, PipelineInflow};
 use crate::pipeline::{ComponentShutdown, PipelineDispatch};
 use crate::protos::metric::DownstreamId;
@@ -75,18 +75,17 @@ async fn accept_unix_connections(
           Ok((socket, peer_addr)) => {
             debug!("accepted unix connection from {:?}", peer_addr);
             stats.accepts.inc();
-            tokio::spawn(socket_handler(
+            tokio::spawn(SocketHandler::new(
               stats.clone(),
               handler_config.clone(),
-              socket,
               DownstreamId::UnixDomainSocket(peer_addr
                 .as_pathname()
                 .map(|p| p.display().to_string())
                 .unwrap_or_default().into()),
               dispatcher.clone(),
               None,
-              shutdown.clone(),
-            ));
+              None,
+            ).run(socket, shutdown.clone()));
           },
           Err(e) => {
             info!("unix accept error: {}", e);
