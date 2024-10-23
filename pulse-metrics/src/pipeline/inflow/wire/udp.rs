@@ -6,6 +6,7 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
 use super::util::{parse_lines, process_buffer_newlines};
+use crate::pipeline::inflow::wire::util::bind_k8s_metadata;
 use crate::pipeline::inflow::PipelineInflow;
 use crate::pipeline::{ComponentShutdown, InflowFactoryContext, PipelineDispatch};
 use crate::protos::metric::DownstreamId;
@@ -110,12 +111,17 @@ async fn udp_reader(
             stats.incoming_bytes.inc_by(bytes.try_into().unwrap());
             buf.truncate(bytes);
             let lines = process_buffer_newlines(&mut buf, false);
-            let parsed_lines = parse_lines(
+            let downstream_id = DownstreamId::IpAddress(peer_addr.ip());
+            let mut parsed_lines = parse_lines(
               lines,
               &config.protocol,
               received_at,
-              &DownstreamId::IpAddress(peer_addr.ip()),
+              &downstream_id,
               &stats.unparsable,
+            );
+            bind_k8s_metadata(
+              &mut parsed_lines,
+              &downstream_id,
               &stats.no_k8s_pod_metadata,
               k8s_pods_info.as_ref(),
             );

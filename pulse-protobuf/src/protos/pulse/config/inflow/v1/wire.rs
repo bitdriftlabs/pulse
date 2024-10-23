@@ -203,6 +203,8 @@ pub struct TcpServerConfig {
     pub advanced: ::protobuf::MessageField<AdvancedSocketServerConfig>,
     // @@protoc_insertion_point(field:pulse.config.inflow.v1.TcpServerConfig.bind_k8s_pod_metadata_by_remote_ip)
     pub bind_k8s_pod_metadata_by_remote_ip: bool,
+    // @@protoc_insertion_point(field:pulse.config.inflow.v1.TcpServerConfig.pre_buffer_window)
+    pub pre_buffer_window: ::protobuf::MessageField<::protobuf::well_known_types::duration::Duration>,
     // special fields
     // @@protoc_insertion_point(special_field:pulse.config.inflow.v1.TcpServerConfig.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -220,7 +222,7 @@ impl TcpServerConfig {
     }
 
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(4);
+        let mut fields = ::std::vec::Vec::with_capacity(5);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "bind",
@@ -241,6 +243,11 @@ impl TcpServerConfig {
             "bind_k8s_pod_metadata_by_remote_ip",
             |m: &TcpServerConfig| { &m.bind_k8s_pod_metadata_by_remote_ip },
             |m: &mut TcpServerConfig| { &mut m.bind_k8s_pod_metadata_by_remote_ip },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, ::protobuf::well_known_types::duration::Duration>(
+            "pre_buffer_window",
+            |m: &TcpServerConfig| { &m.pre_buffer_window },
+            |m: &mut TcpServerConfig| { &mut m.pre_buffer_window },
         ));
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<TcpServerConfig>(
             "TcpServerConfig",
@@ -272,6 +279,9 @@ impl ::protobuf::Message for TcpServerConfig {
                 32 => {
                     self.bind_k8s_pod_metadata_by_remote_ip = is.read_bool()?;
                 },
+                42 => {
+                    ::protobuf::rt::read_singular_message_into_field(is, &mut self.pre_buffer_window)?;
+                },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                 },
@@ -298,6 +308,10 @@ impl ::protobuf::Message for TcpServerConfig {
         if self.bind_k8s_pod_metadata_by_remote_ip != false {
             my_size += 1 + 1;
         }
+        if let Some(v) = self.pre_buffer_window.as_ref() {
+            let len = v.compute_size();
+            my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
         my_size
@@ -315,6 +329,9 @@ impl ::protobuf::Message for TcpServerConfig {
         }
         if self.bind_k8s_pod_metadata_by_remote_ip != false {
             os.write_bool(4, self.bind_k8s_pod_metadata_by_remote_ip)?;
+        }
+        if let Some(v) = self.pre_buffer_window.as_ref() {
+            ::protobuf::rt::write_message_field_with_cached_size(5, v, os)?;
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -337,6 +354,7 @@ impl ::protobuf::Message for TcpServerConfig {
         self.protocol.clear();
         self.advanced.clear();
         self.bind_k8s_pod_metadata_by_remote_ip = false;
+        self.pre_buffer_window.clear();
         self.special_fields.clear();
     }
 
@@ -346,6 +364,7 @@ impl ::protobuf::Message for TcpServerConfig {
             protocol: ::protobuf::MessageField::none(),
             advanced: ::protobuf::MessageField::none(),
             bind_k8s_pod_metadata_by_remote_ip: false,
+            pre_buffer_window: ::protobuf::MessageField::none(),
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -697,22 +716,23 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x18\x02\x20\x01(\x04H\0R\nbufferSize\x88\x01\x01\x12[\n\x17max_connecti\
     on_duration\x18\x03\x20\x01(\x0b2\x19.google.protobuf.DurationR\x15maxCo\
     nnectionDurationB\x08\xfaB\x05\xaa\x01\x02*\0B\x0e\n\x0c_buffer_size\"\
-    \x94\x02\n\x0fTcpServerConfig\x12\x1b\n\x04bind\x18\x01\x20\x01(\tR\x04b\
+    \xdb\x02\n\x0fTcpServerConfig\x12\x1b\n\x04bind\x18\x01\x20\x01(\tR\x04b\
     indB\x07\xfaB\x04r\x02\x10\x01\x12J\n\x08protocol\x18\x02\x20\x01(\x0b2$\
     .pulse.config.common.v1.WireProtocolR\x08protocolB\x08\xfaB\x05\x8a\x01\
     \x02\x10\x01\x12N\n\x08advanced\x18\x03\x20\x01(\x0b22.pulse.config.infl\
     ow.v1.AdvancedSocketServerConfigR\x08advanced\x12H\n\"bind_k8s_pod_metad\
-    ata_by_remote_ip\x18\x04\x20\x01(\x08R\x1cbindK8sPodMetadataByRemoteIp\"\
-    \xc4\x01\n\x0fUdpServerConfig\x12\x1b\n\x04bind\x18\x01\x20\x01(\tR\x04b\
-    indB\x07\xfaB\x04r\x02\x10\x01\x12J\n\x08protocol\x18\x02\x20\x01(\x0b2$\
-    .pulse.config.common.v1.WireProtocolR\x08protocolB\x08\xfaB\x05\x8a\x01\
-    \x02\x10\x01\x12H\n\"bind_k8s_pod_metadata_by_remote_ip\x18\x03\x20\x01(\
-    \x08R\x1cbindK8sPodMetadataByRemoteIp\"\xcb\x01\n\x10UnixServerConfig\
-    \x12\x1b\n\x04path\x18\x01\x20\x01(\tR\x04pathB\x07\xfaB\x04r\x02\x10\
-    \x01\x12J\n\x08protocol\x18\x02\x20\x01(\x0b2$.pulse.config.common.v1.Wi\
-    reProtocolR\x08protocolB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12N\n\x08adva\
-    nced\x18\x03\x20\x01(\x0b22.pulse.config.inflow.v1.AdvancedSocketServerC\
-    onfigR\x08advancedb\x06proto3\
+    ata_by_remote_ip\x18\x04\x20\x01(\x08R\x1cbindK8sPodMetadataByRemoteIp\
+    \x12E\n\x11pre_buffer_window\x18\x05\x20\x01(\x0b2\x19.google.protobuf.D\
+    urationR\x0fpreBufferWindow\"\xc4\x01\n\x0fUdpServerConfig\x12\x1b\n\x04\
+    bind\x18\x01\x20\x01(\tR\x04bindB\x07\xfaB\x04r\x02\x10\x01\x12J\n\x08pr\
+    otocol\x18\x02\x20\x01(\x0b2$.pulse.config.common.v1.WireProtocolR\x08pr\
+    otocolB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12H\n\"bind_k8s_pod_metadata_b\
+    y_remote_ip\x18\x03\x20\x01(\x08R\x1cbindK8sPodMetadataByRemoteIp\"\xcb\
+    \x01\n\x10UnixServerConfig\x12\x1b\n\x04path\x18\x01\x20\x01(\tR\x04path\
+    B\x07\xfaB\x04r\x02\x10\x01\x12J\n\x08protocol\x18\x02\x20\x01(\x0b2$.pu\
+    lse.config.common.v1.WireProtocolR\x08protocolB\x08\xfaB\x05\x8a\x01\x02\
+    \x10\x01\x12N\n\x08advanced\x18\x03\x20\x01(\x0b22.pulse.config.inflow.v\
+    1.AdvancedSocketServerConfigR\x08advancedb\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file

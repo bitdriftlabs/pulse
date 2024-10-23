@@ -5,7 +5,7 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
-use crate::pipeline::inflow::wire::util::{socket_handler, SocketHandlerConfig, SocketServerStats};
+use crate::pipeline::inflow::wire::util::{SocketHandler, SocketHandlerConfig, SocketServerStats};
 use crate::pipeline::inflow::PipelineInflow;
 use crate::pipeline::{ComponentShutdown, InflowFactoryContext, PipelineDispatch};
 use crate::protos::metric::DownstreamId;
@@ -86,15 +86,14 @@ async fn accept_tcp_connections(
           Ok((socket, peer_addr)) => {
             debug!("accepted tcp connection from {:?}", peer_addr);
             stats.accepts.inc();
-            tokio::spawn(socket_handler(
+            tokio::spawn(SocketHandler::new(
               stats.clone(),
               handler_config.clone(),
-              socket,
               DownstreamId::IpAddress(peer_addr.ip()),
               dispatcher.clone(),
               k8s_pods_info.clone(),
-              shutdown.clone(),
-            ));
+              config.pre_buffer_window.as_ref().map(bd_time::ProtoDurationExt::to_time_duration),
+            ).run(socket, shutdown.clone()));
           }
           Err(e) => {
             info!("tcp accept error: {}", e);

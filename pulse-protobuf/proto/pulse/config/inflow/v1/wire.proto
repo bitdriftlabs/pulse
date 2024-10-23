@@ -42,6 +42,15 @@ message TcpServerConfig {
   // metrics will be looked up by remote IP to match the origin pod and its metadata to the
   // metrics.
   bool bind_k8s_pod_metadata_by_remote_ip = 4;
+
+  // An optional amount of time that metrics will be buffered by the inflow before being further
+  // dispatched. Practically, this is useful when relying on Kubernetes informer metadata and there
+  // is no external mechanism to synchronize pods fully starting (e.g., an init container) such that
+  // there is a potential race condition between pods sending statsd metrics prior to the informer
+  // being aware of the pod's existence. Defaults to disabled. 5s is a reasonable setting in most
+  // environments where the above conditions apply. Note that counters, gauges, and timers will
+  // be aggregated to avoid unbounded memory growth of the application sends a lot of metrics.
+  google.protobuf.Duration pre_buffer_window = 5;
 }
 
 // Configuration for a UDP based inflow.

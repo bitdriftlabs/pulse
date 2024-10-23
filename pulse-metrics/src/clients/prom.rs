@@ -81,7 +81,7 @@ struct AwsAuthInner {
 
 enum Auth {
   Bearer(String),
-  Aws(AwsAuthInner),
+  Aws(Box<AwsAuthInner>),
 }
 
 /// A thin client wrapper used for mocking in tests
@@ -147,13 +147,13 @@ impl HyperPromRemoteWriteClient {
             .build()
             .unwrap();
 
-          Auth::Aws(AwsAuthInner {
+          Auth::Aws(Box::new(AwsAuthInner {
             sdk_config,
             identity_resolver: SharedIdentityResolver::new(credentials_provider),
             identity_cache,
             runtime_components,
             config_bag: ConfigBag::base(),
-          })
+          }))
         },
       },
     }))

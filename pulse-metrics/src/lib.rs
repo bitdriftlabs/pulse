@@ -14,6 +14,7 @@ pub mod lru_map;
 pub mod metric_generator;
 pub mod pipeline;
 pub mod protos;
+pub mod reservoir_timer;
 pub mod test;
 pub mod vrl;
 
