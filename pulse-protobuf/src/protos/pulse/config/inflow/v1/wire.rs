@@ -398,6 +398,8 @@ pub struct UdpServerConfig {
     pub protocol: ::protobuf::MessageField<super::common::WireProtocol>,
     // @@protoc_insertion_point(field:pulse.config.inflow.v1.UdpServerConfig.bind_k8s_pod_metadata_by_remote_ip)
     pub bind_k8s_pod_metadata_by_remote_ip: bool,
+    // @@protoc_insertion_point(field:pulse.config.inflow.v1.UdpServerConfig.pre_buffer)
+    pub pre_buffer: ::protobuf::MessageField<udp_server_config::PreBufferConfig>,
     // special fields
     // @@protoc_insertion_point(special_field:pulse.config.inflow.v1.UdpServerConfig.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -415,7 +417,7 @@ impl UdpServerConfig {
     }
 
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(3);
+        let mut fields = ::std::vec::Vec::with_capacity(4);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "bind",
@@ -431,6 +433,11 @@ impl UdpServerConfig {
             "bind_k8s_pod_metadata_by_remote_ip",
             |m: &UdpServerConfig| { &m.bind_k8s_pod_metadata_by_remote_ip },
             |m: &mut UdpServerConfig| { &mut m.bind_k8s_pod_metadata_by_remote_ip },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, udp_server_config::PreBufferConfig>(
+            "pre_buffer",
+            |m: &UdpServerConfig| { &m.pre_buffer },
+            |m: &mut UdpServerConfig| { &mut m.pre_buffer },
         ));
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<UdpServerConfig>(
             "UdpServerConfig",
@@ -459,6 +466,9 @@ impl ::protobuf::Message for UdpServerConfig {
                 24 => {
                     self.bind_k8s_pod_metadata_by_remote_ip = is.read_bool()?;
                 },
+                34 => {
+                    ::protobuf::rt::read_singular_message_into_field(is, &mut self.pre_buffer)?;
+                },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                 },
@@ -481,6 +491,10 @@ impl ::protobuf::Message for UdpServerConfig {
         if self.bind_k8s_pod_metadata_by_remote_ip != false {
             my_size += 1 + 1;
         }
+        if let Some(v) = self.pre_buffer.as_ref() {
+            let len = v.compute_size();
+            my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
         my_size
@@ -495,6 +509,9 @@ impl ::protobuf::Message for UdpServerConfig {
         }
         if self.bind_k8s_pod_metadata_by_remote_ip != false {
             os.write_bool(3, self.bind_k8s_pod_metadata_by_remote_ip)?;
+        }
+        if let Some(v) = self.pre_buffer.as_ref() {
+            ::protobuf::rt::write_message_field_with_cached_size(4, v, os)?;
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -516,6 +533,7 @@ impl ::protobuf::Message for UdpServerConfig {
         self.bind.clear();
         self.protocol.clear();
         self.bind_k8s_pod_metadata_by_remote_ip = false;
+        self.pre_buffer.clear();
         self.special_fields.clear();
     }
 
@@ -524,6 +542,7 @@ impl ::protobuf::Message for UdpServerConfig {
             bind: ::protobuf::Chars::new(),
             protocol: ::protobuf::MessageField::none(),
             bind_k8s_pod_metadata_by_remote_ip: false,
+            pre_buffer: ::protobuf::MessageField::none(),
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -545,6 +564,151 @@ impl ::std::fmt::Display for UdpServerConfig {
 
 impl ::protobuf::reflect::ProtobufValue for UdpServerConfig {
     type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
+}
+
+/// Nested message and enums of message `UdpServerConfig`
+pub mod udp_server_config {
+    // @@protoc_insertion_point(message:pulse.config.inflow.v1.UdpServerConfig.PreBufferConfig)
+    #[derive(PartialEq,Clone,Default,Debug)]
+    pub struct PreBufferConfig {
+        // message fields
+        // @@protoc_insertion_point(field:pulse.config.inflow.v1.UdpServerConfig.PreBufferConfig.pre_buffer_window)
+        pub pre_buffer_window: ::protobuf::MessageField<::protobuf::well_known_types::duration::Duration>,
+        // @@protoc_insertion_point(field:pulse.config.inflow.v1.UdpServerConfig.PreBufferConfig.session_idle_timeout)
+        pub session_idle_timeout: ::protobuf::MessageField<::protobuf::well_known_types::duration::Duration>,
+        // special fields
+        // @@protoc_insertion_point(special_field:pulse.config.inflow.v1.UdpServerConfig.PreBufferConfig.special_fields)
+        pub special_fields: ::protobuf::SpecialFields,
+    }
+
+    impl<'a> ::std::default::Default for &'a PreBufferConfig {
+        fn default() -> &'a PreBufferConfig {
+            <PreBufferConfig as ::protobuf::Message>::default_instance()
+        }
+    }
+
+    impl PreBufferConfig {
+        pub fn new() -> PreBufferConfig {
+            ::std::default::Default::default()
+        }
+
+        pub(in super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
+            let mut fields = ::std::vec::Vec::with_capacity(2);
+            let mut oneofs = ::std::vec::Vec::with_capacity(0);
+            fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, ::protobuf::well_known_types::duration::Duration>(
+                "pre_buffer_window",
+                |m: &PreBufferConfig| { &m.pre_buffer_window },
+                |m: &mut PreBufferConfig| { &mut m.pre_buffer_window },
+            ));
+            fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, ::protobuf::well_known_types::duration::Duration>(
+                "session_idle_timeout",
+                |m: &PreBufferConfig| { &m.session_idle_timeout },
+                |m: &mut PreBufferConfig| { &mut m.session_idle_timeout },
+            ));
+            ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<PreBufferConfig>(
+                "UdpServerConfig.PreBufferConfig",
+                fields,
+                oneofs,
+            )
+        }
+    }
+
+    impl ::protobuf::Message for PreBufferConfig {
+        const NAME: &'static str = "PreBufferConfig";
+
+        fn is_initialized(&self) -> bool {
+            true
+        }
+
+        fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
+            while let Some(tag) = is.read_raw_tag_or_eof()? {
+                match tag {
+                    10 => {
+                        ::protobuf::rt::read_singular_message_into_field(is, &mut self.pre_buffer_window)?;
+                    },
+                    18 => {
+                        ::protobuf::rt::read_singular_message_into_field(is, &mut self.session_idle_timeout)?;
+                    },
+                    tag => {
+                        ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
+                    },
+                };
+            }
+            ::std::result::Result::Ok(())
+        }
+
+        // Compute sizes of nested messages
+        #[allow(unused_variables)]
+        fn compute_size(&self) -> u64 {
+            let mut my_size = 0;
+            if let Some(v) = self.pre_buffer_window.as_ref() {
+                let len = v.compute_size();
+                my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+            }
+            if let Some(v) = self.session_idle_timeout.as_ref() {
+                let len = v.compute_size();
+                my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+            }
+            my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
+            self.special_fields.cached_size().set(my_size as u32);
+            my_size
+        }
+
+        fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
+            if let Some(v) = self.pre_buffer_window.as_ref() {
+                ::protobuf::rt::write_message_field_with_cached_size(1, v, os)?;
+            }
+            if let Some(v) = self.session_idle_timeout.as_ref() {
+                ::protobuf::rt::write_message_field_with_cached_size(2, v, os)?;
+            }
+            os.write_unknown_fields(self.special_fields.unknown_fields())?;
+            ::std::result::Result::Ok(())
+        }
+
+        fn special_fields(&self) -> &::protobuf::SpecialFields {
+            &self.special_fields
+        }
+
+        fn mut_special_fields(&mut self) -> &mut ::protobuf::SpecialFields {
+            &mut self.special_fields
+        }
+
+        fn new() -> PreBufferConfig {
+            PreBufferConfig::new()
+        }
+
+        fn clear(&mut self) {
+            self.pre_buffer_window.clear();
+            self.session_idle_timeout.clear();
+            self.special_fields.clear();
+        }
+
+        fn default_instance() -> &'static PreBufferConfig {
+            static instance: PreBufferConfig = PreBufferConfig {
+                pre_buffer_window: ::protobuf::MessageField::none(),
+                session_idle_timeout: ::protobuf::MessageField::none(),
+                special_fields: ::protobuf::SpecialFields::new(),
+            };
+            &instance
+        }
+    }
+
+    impl ::protobuf::MessageFull for PreBufferConfig {
+        fn descriptor() -> ::protobuf::reflect::MessageDescriptor {
+            static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::Lazy::new();
+            descriptor.get(|| super::file_descriptor().message_by_package_relative_name("UdpServerConfig.PreBufferConfig").unwrap()).clone()
+        }
+    }
+
+    impl ::std::fmt::Display for PreBufferConfig {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            ::protobuf::text_format::fmt(self, f)
+        }
+    }
+
+    impl ::protobuf::reflect::ProtobufValue for PreBufferConfig {
+        type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
+    }
 }
 
 // @@protoc_insertion_point(message:pulse.config.inflow.v1.UnixServerConfig)
@@ -723,16 +887,22 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     ow.v1.AdvancedSocketServerConfigR\x08advanced\x12H\n\"bind_k8s_pod_metad\
     ata_by_remote_ip\x18\x04\x20\x01(\x08R\x1cbindK8sPodMetadataByRemoteIp\
     \x12E\n\x11pre_buffer_window\x18\x05\x20\x01(\x0b2\x19.google.protobuf.D\
-    urationR\x0fpreBufferWindow\"\xc4\x01\n\x0fUdpServerConfig\x12\x1b\n\x04\
+    urationR\x0fpreBufferWindow\"\xd8\x03\n\x0fUdpServerConfig\x12\x1b\n\x04\
     bind\x18\x01\x20\x01(\tR\x04bindB\x07\xfaB\x04r\x02\x10\x01\x12J\n\x08pr\
     otocol\x18\x02\x20\x01(\x0b2$.pulse.config.common.v1.WireProtocolR\x08pr\
     otocolB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12H\n\"bind_k8s_pod_metadata_b\
-    y_remote_ip\x18\x03\x20\x01(\x08R\x1cbindK8sPodMetadataByRemoteIp\"\xcb\
-    \x01\n\x10UnixServerConfig\x12\x1b\n\x04path\x18\x01\x20\x01(\tR\x04path\
-    B\x07\xfaB\x04r\x02\x10\x01\x12J\n\x08protocol\x18\x02\x20\x01(\x0b2$.pu\
-    lse.config.common.v1.WireProtocolR\x08protocolB\x08\xfaB\x05\x8a\x01\x02\
-    \x10\x01\x12N\n\x08advanced\x18\x03\x20\x01(\x0b22.pulse.config.inflow.v\
-    1.AdvancedSocketServerConfigR\x08advancedb\x06proto3\
+    y_remote_ip\x18\x03\x20\x01(\x08R\x1cbindK8sPodMetadataByRemoteIp\x12V\n\
+    \npre_buffer\x18\x04\x20\x01(\x0b27.pulse.config.inflow.v1.UdpServerConf\
+    ig.PreBufferConfigR\tpreBuffer\x1a\xb9\x01\n\x0fPreBufferConfig\x12O\n\
+    \x11pre_buffer_window\x18\x01\x20\x01(\x0b2\x19.google.protobuf.Duration\
+    R\x0fpreBufferWindowB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12U\n\x14session\
+    _idle_timeout\x18\x02\x20\x01(\x0b2\x19.google.protobuf.DurationR\x12ses\
+    sionIdleTimeoutB\x08\xfaB\x05\x8a\x01\x02\x10\x01\"\xcb\x01\n\x10UnixSer\
+    verConfig\x12\x1b\n\x04path\x18\x01\x20\x01(\tR\x04pathB\x07\xfaB\x04r\
+    \x02\x10\x01\x12J\n\x08protocol\x18\x02\x20\x01(\x0b2$.pulse.config.comm\
+    on.v1.WireProtocolR\x08protocolB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12N\n\
+    \x08advanced\x18\x03\x20\x01(\x0b22.pulse.config.inflow.v1.AdvancedSocke\
+    tServerConfigR\x08advancedb\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
@@ -753,11 +923,12 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
             deps.push(super::common::file_descriptor().clone());
             deps.push(::protobuf::well_known_types::duration::file_descriptor().clone());
             deps.push(super::validate::file_descriptor().clone());
-            let mut messages = ::std::vec::Vec::with_capacity(4);
+            let mut messages = ::std::vec::Vec::with_capacity(5);
             messages.push(AdvancedSocketServerConfig::generated_message_descriptor_data());
             messages.push(TcpServerConfig::generated_message_descriptor_data());
             messages.push(UdpServerConfig::generated_message_descriptor_data());
             messages.push(UnixServerConfig::generated_message_descriptor_data());
+            messages.push(udp_server_config::PreBufferConfig::generated_message_descriptor_data());
             let mut enums = ::std::vec::Vec::with_capacity(0);
             ::protobuf::reflect::GeneratedFileDescriptor::new_generated(
                 file_descriptor_proto(),

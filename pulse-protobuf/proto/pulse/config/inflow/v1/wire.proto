@@ -55,6 +55,24 @@ message TcpServerConfig {
 
 // Configuration for a UDP based inflow.
 message UdpServerConfig {
+  message PreBufferConfig {
+    // An optional amount of time that metrics will be buffered by the inflow before being further
+    // dispatched. Practically, this is useful when relying on Kubernetes informer metadata and
+    // there is no external mechanism to synchronize pods fully starting (e.g., an init container)
+    // such that there is a potential race condition between pods sending statsd metrics prior to
+    // the informer being aware of the pod's existence. 5s is a reasonable setting in most
+    // environments where the above conditions apply. Note that counters, gauges, and timers will be
+    // aggregated to avoid unbounded memory growth of the application sends a lot of metrics.
+    google.protobuf.Duration pre_buffer_window = 1 [(validate.rules).message.required = true];
+
+    // Because UDP is a datagram protocol, there is no actual stream to key off of like there is
+    // for TCP. Every incoming IP is bound to a "session" which will timeout after the configured
+    // session idle timeout. This should be set as large as possible but less than any potential
+    // window for IP recycling. For example if pod IP addresses have a recycle cooldown of 30s, a
+    // reasonable setting for this might be 20s.
+    google.protobuf.Duration session_idle_timeout = 2 [(validate.rules).message.required = true];
+  }
+
   // Which address to bind to.
   string bind = 1 [(validate.rules).string = {min_len: 1}];
 
@@ -65,6 +83,10 @@ message UdpServerConfig {
   // metrics will be looked up by remote IP to match the origin pod and its metadata to the
   // metrics.
   bool bind_k8s_pod_metadata_by_remote_ip = 3;
+
+  // Configuration for UDP session pre-buffering. See above for more information. Defaults to
+  // disabled.
+  PreBufferConfig pre_buffer = 4;
 }
 
 // Configuration for a unix domain docket based inflow.

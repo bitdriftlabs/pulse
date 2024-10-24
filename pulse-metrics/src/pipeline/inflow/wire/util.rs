@@ -174,6 +174,24 @@ pub(super) struct SocketHandlerConfig {
 }
 
 //
+// PreBufferWrapper
+//
+
+pub(super) struct PreBufferWrapper {
+  pub(super) buffer: PreBuffer,
+  pub(super) sleep: Pin<Box<dyn Future<Output = ()> + Send + Sync>>,
+}
+
+impl PreBufferWrapper {
+  pub(super) fn new(timeout: Duration) -> Self {
+    Self {
+      buffer: PreBuffer::default(),
+      sleep: Box::pin(timeout.sleep()),
+    }
+  }
+}
+
+//
 // SocketHandler
 //
 
@@ -184,10 +202,6 @@ pub(super) struct SocketHandler {
   dispatcher: Arc<dyn PipelineDispatch>,
   k8s_pods_info: Option<OwnedPodsInfoSingleton>,
   pre_buffer: Option<PreBufferWrapper>,
-}
-struct PreBufferWrapper {
-  buffer: PreBuffer,
-  sleep: Pin<Box<dyn Future<Output = ()> + Send>>,
 }
 
 impl SocketHandler {
@@ -205,10 +219,7 @@ impl SocketHandler {
       downstream_id,
       dispatcher,
       k8s_pods_info,
-      pre_buffer: pre_buffer_duration.map(|d| PreBufferWrapper {
-        buffer: PreBuffer::default(),
-        sleep: Box::pin(d.sleep()),
-      }),
+      pre_buffer: pre_buffer_duration.map(PreBufferWrapper::new),
     }
   }
 
