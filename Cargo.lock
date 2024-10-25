@@ -4513,6 +4513,7 @@ dependencies = [
  "bd-server-stats",
  "bd-shutdown",
  "bd-test-helpers",
+ "bd-time",
  "built",
  "bytes",
  "clap",

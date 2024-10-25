@@ -41,6 +41,7 @@ axum.workspace              = true
 bd-grpc.workspace           = true
 bd-proto.workspace          = true
 bd-test-helpers.workspace   = true
+bd-time.workspace           = true
 criterion.workspace         = true
 ctor.workspace              = true
 fst.workspace               = true
