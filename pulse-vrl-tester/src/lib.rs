@@ -9,6 +9,8 @@
 mod test;
 
 use anyhow::{anyhow, bail};
+use cardinality_limiter::cardinality_limiter_config::per_pod_limit::Override_limit_location;
+use cardinality_limiter::cardinality_limiter_config::Limit_type;
 use config::bootstrap::v1::bootstrap::Config;
 use config::processor::v1::processor::processor_config::Processor_type;
 use pretty_assertions::Comparison;
@@ -18,12 +20,15 @@ use pulse_metrics::protos::metric::{DownstreamId, Metric, MetricSource, ParsedMe
 use pulse_metrics::protos::statsd;
 use pulse_metrics::vrl::ProgramWrapper;
 use pulse_protobuf::protos::pulse::config;
+use pulse_protobuf::protos::pulse::config::processor::v1::cardinality_limiter;
+use pulse_protobuf::protos::pulse::config::processor::v1::processor::ProcessorConfig;
 use pulse_protobuf::protos::pulse::vrl_tester::v1::vrl_tester::transform::Transform_type;
 use pulse_protobuf::protos::pulse::vrl_tester::v1::vrl_tester::vrl_test_case::Program_type;
 use pulse_protobuf::protos::pulse::vrl_tester::v1::vrl_tester::{VrlTestCase, VrlTesterConfig};
 use std::sync::Arc;
 use std::time::Instant;
 use vrl::compiler::ExpressionError;
+use vrl::core::Value;
 
 enum OutputType {
   Abort,
@@ -36,28 +41,61 @@ fn global_init() {
 }
 
 fn run_test_case(test_case: VrlTestCase, proxy_config: Option<&Config>) -> anyhow::Result<usize> {
+  fn extract_from_config(
+    field_name: &str,
+    proxy_config: Option<&Config>,
+    processor_name: &str,
+    extract: impl Fn(&ProcessorConfig) -> Option<String>,
+  ) -> anyhow::Result<String> {
+    let Some(config) = proxy_config else {
+      bail!("{field_name} requires passing a proxy config via --proxy-config");
+    };
+    config
+      .pipeline()
+      .processors
+      .iter()
+      .find_map(|(name, value)| {
+        if name.as_str() == processor_name {
+          return extract(value);
+        }
+        None
+      })
+      .ok_or_else(|| anyhow!("no processor named '{processor_name} found in proxy config"))
+  }
+
   let mut program_source: String = match test_case.program_type.as_ref().expect("pgv") {
-    Program_type::Program(program) => Ok(program.as_str()),
-    Program_type::MutateProcessorName(processor_name) => {
-      let Some(config) = proxy_config else {
-        bail!("mutate_processor_name requires passing a proxy config via --proxy-config");
-      };
-      config
-        .pipeline()
-        .processors
-        .iter()
-        .find_map(|(name, value)| {
-          if name.as_str() == processor_name.as_str() {
-            if let Some(Processor_type::Mutate(mutate)) = &value.processor_type {
-              return Some(mutate.vrl_program.as_str());
+    Program_type::Program(program) => Ok(program.as_str().to_string()),
+    Program_type::MutateProcessorName(processor_name) => extract_from_config(
+      "mutate_processor_name",
+      proxy_config,
+      processor_name,
+      |value| {
+        if let Some(Processor_type::Mutate(mutate)) = &value.processor_type {
+          return Some(mutate.vrl_program.as_str().to_string());
+        }
+
+        None
+      },
+    ),
+    Program_type::CardinalityLimitProcessorName(processor_name) => extract_from_config(
+      "cardinality_limit_processor_name",
+      proxy_config,
+      processor_name,
+      |value| {
+        if let Some(Processor_type::CardinalityLimiter(cardinality)) = &value.processor_type {
+          if let Some(Limit_type::PerPodLimit(per_pod_limit)) = &cardinality.limit_type {
+            if let Some(Override_limit_location::VrlProgram(vrl_program)) =
+              &per_pod_limit.override_limit_location
+            {
+              return Some(vrl_program.as_str().to_string());
             }
           }
-          None
-        })
-        .ok_or_else(|| anyhow!("no mutate processor named '{processor_name} found in proxy config"))
-    },
-  }?
-  .to_string();
+        }
+
+        None
+      },
+    ),
+  }?;
 
   for (key, value) in test_case.program_replacements {
     program_source = program_source.replace(key.as_str(), &value);
@@ -93,8 +131,20 @@ fn run_test_case(test_case: VrlTestCase, proxy_config: Option<&Config>) -> anyho
 
   for transform in test_case.transforms {
     num_transforms += 1;
-    match transform.transform_type {
-      Some(Transform_type::Metric(metric_transform)) => {
+    match transform.transform_type.expect("pgv") {
+      Transform_type::Integer(integer) => {
+        let result = program.run_with_metadata(metadata.as_deref());
+        match result {
+          Ok(Value::Integer(result)) if result == integer => {},
+          _ => bail!(
+            "VRL program '{}' failed to transform into '{}', got '{:?}'",
+            program_source,
+            integer,
+            result
+          ),
+        }
+      },
+      Transform_type::Metric(metric_transform) => {
         // TODO(mattklein123): Support parsing other formats. Probably a limited PromQL query of the
         // metric?
         let mut input = statsd::parse(&metric_transform.input.clone().into_bytes(), false)
@@ -165,7 +215,6 @@ fn run_test_case(test_case: VrlTestCase, proxy_config: Option<&Config>) -> anyho
           },
         }
       },
-      None => unreachable!("pgv"),
     }
   }
 

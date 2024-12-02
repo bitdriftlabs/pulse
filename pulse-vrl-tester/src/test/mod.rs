@@ -76,3 +76,62 @@ test_cases:
 
   assert_eq!(run(config, None).unwrap_err().to_string(), "VRL program '.tags.namespace = %k8s.namespace\n.tags.pod = %k8s.pod.name\n.tags.a = %k8s.pod.labels.label_a\n.tags.b = %k8s.pod.annotations.annotation_a\n' failed to transform 'foo:1|c' into 'foo:1|c|#namespace:foo_namespace': \u{1b}[1mDiff\u{1b}[0m \u{1b}[31m< left\u{1b}[0m / \u{1b}[32mright >\u{1b}[0m :\n Metric {\n     id: MetricId {\n         name: b\"foo\",\n         mtype: Some(\n             Counter(\n                 Delta,\n             ),\n         ),\n         tags: [\n             TagValue {\n\u{1b}[32m>                tag: b\"a\",\u{1b}[0m\n\u{1b}[32m>                value: b\"label_a_value\",\u{1b}[0m\n\u{1b}[32m>            },\u{1b}[0m\n\u{1b}[32m>            TagValue {\u{1b}[0m\n\u{1b}[32m>                tag: b\"b\",\u{1b}[0m\n\u{1b}[32m>                value: b\"annotation_a_value\",\u{1b}[0m\n\u{1b}[32m>            },\u{1b}[0m\n\u{1b}[32m>            TagValue {\u{1b}[0m\n                 tag: b\"namespace\",\n                 value: b\"foo_namespace\",\n\u{1b}[32m>            },\u{1b}[0m\n\u{1b}[32m>            TagValue {\u{1b}[0m\n\u{1b}[32m>                tag: b\"pod\",\u{1b}[0m\n\u{1b}[32m>                value: b\"foo_pod\",\u{1b}[0m\n             },\n         ],\n     },\n     sample_rate: None,\n     timestamp: 0,\n     value: Simple(\n         1.0,\n     ),\n }\n");
 }
+
+#[test]
+fn integer_transform() {
+  let config = r"
+test_cases:
+- program: |
+    42
+  transforms:
+  - integer: 42
+  ";
+
+  run(config, None).unwrap();
+
+  let config = r#"
+  test_cases:
+  - program: |
+      if %k8s.namespace == "foo_namespace" {
+        42
+      } else {
+        0
+      }
+    kubernetes_metadata:
+      namespace: foo_namespace
+      pod_name: foo_pod
+      pod_labels:
+        label_a: label_a_value
+      pod_annotations:
+        annotation_a: annotation_a_value
+    transforms:
+    - integer: 42
+    "#;
+
+  run(config, None).unwrap();
+
+  let config = r#"
+  test_cases:
+  - program: |
+      if %k8s.namespace == "foo_namespace" {
+        "hello"
+      } else {
+        0
+      }
+    kubernetes_metadata:
+      namespace: foo_namespace
+      pod_name: foo_pod
+      pod_labels:
+        label_a: label_a_value
+      pod_annotations:
+        annotation_a: annotation_a_value
+    transforms:
+    - integer: 42
+    "#;
+
+  assert_eq!(
+    run(config, None).unwrap_err().to_string(),
+    "VRL program 'if %k8s.namespace == \"foo_namespace\" {\n  \"hello\"\n} else {\n  0\n}\n' \
+     failed to transform into '42', got 'Ok(Bytes(b\"hello\"))'"
+  );
+}
