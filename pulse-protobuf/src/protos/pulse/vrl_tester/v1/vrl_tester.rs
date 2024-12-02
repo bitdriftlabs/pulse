@@ -241,8 +241,33 @@ impl Transform {
         }
     }
 
+    // int64 integer = 2;
+
+    pub fn integer(&self) -> i64 {
+        match self.transform_type {
+            ::std::option::Option::Some(transform::Transform_type::Integer(v)) => v,
+            _ => 0,
+        }
+    }
+
+    pub fn clear_integer(&mut self) {
+        self.transform_type = ::std::option::Option::None;
+    }
+
+    pub fn has_integer(&self) -> bool {
+        match self.transform_type {
+            ::std::option::Option::Some(transform::Transform_type::Integer(..)) => true,
+            _ => false,
+        }
+    }
+
+    // Param is passed by value, moved
+    pub fn set_integer(&mut self, v: i64) {
+        self.transform_type = ::std::option::Option::Some(transform::Transform_type::Integer(v))
+    }
+
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(1);
+        let mut fields = ::std::vec::Vec::with_capacity(2);
         let mut oneofs = ::std::vec::Vec::with_capacity(1);
         fields.push(::protobuf::reflect::rt::v2::make_oneof_message_has_get_mut_set_accessor::<_, MetricTransform>(
             "metric",
@@ -250,6 +275,12 @@ impl Transform {
             Transform::metric,
             Transform::mut_metric,
             Transform::set_metric,
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_oneof_copy_has_get_set_simpler_accessors::<_, _>(
+            "integer",
+            Transform::has_integer,
+            Transform::integer,
+            Transform::set_integer,
         ));
         oneofs.push(transform::Transform_type::generated_oneof_descriptor_data());
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<Transform>(
@@ -273,6 +304,9 @@ impl ::protobuf::Message for Transform {
                 10 => {
                     self.transform_type = ::std::option::Option::Some(transform::Transform_type::Metric(is.read_message()?));
                 },
+                16 => {
+                    self.transform_type = ::std::option::Option::Some(transform::Transform_type::Integer(is.read_int64()?));
+                },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                 },
@@ -291,6 +325,9 @@ impl ::protobuf::Message for Transform {
                     let len = v.compute_size();
                     my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
                 },
+                &transform::Transform_type::Integer(v) => {
+                    my_size += ::protobuf::rt::int64_size(2, v);
+                },
             };
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
@@ -303,6 +340,9 @@ impl ::protobuf::Message for Transform {
             match v {
                 &transform::Transform_type::Metric(ref v) => {
                     ::protobuf::rt::write_message_field_with_cached_size(1, v, os)?;
+                },
+                &transform::Transform_type::Integer(v) => {
+                    os.write_int64(2, v)?;
                 },
             };
         }
@@ -323,6 +363,7 @@ impl ::protobuf::Message for Transform {
     }
 
     fn clear(&mut self) {
+        self.transform_type = ::std::option::Option::None;
         self.transform_type = ::std::option::Option::None;
         self.special_fields.clear();
     }
@@ -361,6 +402,8 @@ pub mod transform {
     pub enum Transform_type {
         // @@protoc_insertion_point(oneof_field:pulse.vrl_tester.v1.Transform.metric)
         Metric(super::MetricTransform),
+        // @@protoc_insertion_point(oneof_field:pulse.vrl_tester.v1.Transform.integer)
+        Integer(i64),
     }
 
     impl ::protobuf::Oneof for Transform_type {
@@ -737,8 +780,57 @@ impl VrlTestCase {
         }
     }
 
+    // string cardinality_limit_processor_name = 7;
+
+    pub fn cardinality_limit_processor_name(&self) -> &str {
+        match self.program_type {
+            ::std::option::Option::Some(vrl_test_case::Program_type::CardinalityLimitProcessorName(ref v)) => v,
+            _ => "",
+        }
+    }
+
+    pub fn clear_cardinality_limit_processor_name(&mut self) {
+        self.program_type = ::std::option::Option::None;
+    }
+
+    pub fn has_cardinality_limit_processor_name(&self) -> bool {
+        match self.program_type {
+            ::std::option::Option::Some(vrl_test_case::Program_type::CardinalityLimitProcessorName(..)) => true,
+            _ => false,
+        }
+    }
+
+    // Param is passed by value, moved
+    pub fn set_cardinality_limit_processor_name(&mut self, v: ::protobuf::Chars) {
+        self.program_type = ::std::option::Option::Some(vrl_test_case::Program_type::CardinalityLimitProcessorName(v))
+    }
+
+    // Mutable pointer to the field.
+    pub fn mut_cardinality_limit_processor_name(&mut self) -> &mut ::protobuf::Chars {
+        if let ::std::option::Option::Some(vrl_test_case::Program_type::CardinalityLimitProcessorName(_)) = self.program_type {
+        } else {
+            self.program_type = ::std::option::Option::Some(vrl_test_case::Program_type::CardinalityLimitProcessorName(::protobuf::Chars::new()));
+        }
+        match self.program_type {
+            ::std::option::Option::Some(vrl_test_case::Program_type::CardinalityLimitProcessorName(ref mut v)) => v,
+            _ => panic!(),
+        }
+    }
+
+    // Take field
+    pub fn take_cardinality_limit_processor_name(&mut self) -> ::protobuf::Chars {
+        if self.has_cardinality_limit_processor_name() {
+            match self.program_type.take() {
+                ::std::option::Option::Some(vrl_test_case::Program_type::CardinalityLimitProcessorName(v)) => v,
+                _ => panic!(),
+            }
+        } else {
+            ::protobuf::Chars::new()
+        }
+    }
+
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(6);
+        let mut fields = ::std::vec::Vec::with_capacity(7);
         let mut oneofs = ::std::vec::Vec::with_capacity(1);
         fields.push(::protobuf::reflect::rt::v2::make_oneof_deref_has_get_set_simpler_accessor::<_, _>(
             "program",
@@ -751,6 +843,12 @@ impl VrlTestCase {
             VrlTestCase::has_mutate_processor_name,
             VrlTestCase::mutate_processor_name,
             VrlTestCase::set_mutate_processor_name,
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_oneof_deref_has_get_set_simpler_accessor::<_, _>(
+            "cardinality_limit_processor_name",
+            VrlTestCase::has_cardinality_limit_processor_name,
+            VrlTestCase::cardinality_limit_processor_name,
+            VrlTestCase::set_cardinality_limit_processor_name,
         ));
         fields.push(::protobuf::reflect::rt::v2::make_map_simpler_accessor_new::<_, _>(
             "program_replacements",
@@ -796,6 +894,9 @@ impl ::protobuf::Message for VrlTestCase {
                 },
                 18 => {
                     self.program_type = ::std::option::Option::Some(vrl_test_case::Program_type::MutateProcessorName(is.read_tokio_chars()?));
+                },
+                58 => {
+                    self.program_type = ::std::option::Option::Some(vrl_test_case::Program_type::CardinalityLimitProcessorName(is.read_tokio_chars()?));
                 },
                 26 => {
                     let len = is.read_raw_varint32()?;
@@ -873,6 +974,9 @@ impl ::protobuf::Message for VrlTestCase {
                 &vrl_test_case::Program_type::MutateProcessorName(ref v) => {
                     my_size += ::protobuf::rt::string_size(2, &v);
                 },
+                &vrl_test_case::Program_type::CardinalityLimitProcessorName(ref v) => {
+                    my_size += ::protobuf::rt::string_size(7, &v);
+                },
             };
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
@@ -913,6 +1017,9 @@ impl ::protobuf::Message for VrlTestCase {
                 &vrl_test_case::Program_type::MutateProcessorName(ref v) => {
                     os.write_string(2, v)?;
                 },
+                &vrl_test_case::Program_type::CardinalityLimitProcessorName(ref v) => {
+                    os.write_string(7, v)?;
+                },
             };
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
@@ -932,6 +1039,7 @@ impl ::protobuf::Message for VrlTestCase {
     }
 
     fn clear(&mut self) {
+        self.program_type = ::std::option::Option::None;
         self.program_type = ::std::option::Option::None;
         self.program_type = ::std::option::Option::None;
         self.program_replacements.clear();
@@ -974,6 +1082,8 @@ pub mod vrl_test_case {
         Program(::protobuf::Chars),
         // @@protoc_insertion_point(oneof_field:pulse.vrl_tester.v1.VrlTestCase.mutate_processor_name)
         MutateProcessorName(::protobuf::Chars),
+        // @@protoc_insertion_point(oneof_field:pulse.vrl_tester.v1.VrlTestCase.cardinality_limit_processor_name)
+        CardinalityLimitProcessorName(::protobuf::Chars),
     }
 
     impl ::protobuf::Oneof for Program_type {
@@ -1120,37 +1230,39 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \n$pulse/vrl_tester/v1/vrl_tester.proto\x12\x13pulse.vrl_tester.v1\x1a\
     \x17validate/validate.proto\"Q\n\x0fMetricTransform\x12\x1d\n\x05input\
     \x18\x01\x20\x01(\tR\x05inputB\x07\xfaB\x04r\x02\x10\x01\x12\x1f\n\x06ou\
-    tput\x18\x02\x20\x01(\tR\x06outputB\x07\xfaB\x04r\x02\x10\x01\"b\n\tTran\
+    tput\x18\x02\x20\x01(\tR\x06outputB\x07\xfaB\x04r\x02\x10\x01\"~\n\tTran\
     sform\x12>\n\x06metric\x18\x01\x20\x01(\x0b2$.pulse.vrl_tester.v1.Metric\
-    TransformH\0R\x06metricB\x15\n\x0etransform_type\x12\x03\xf8B\x01\"\xd6\
-    \x03\n\x12KubernetesMetadata\x12%\n\tnamespace\x18\x01\x20\x01(\tR\tname\
-    spaceB\x07\xfaB\x04r\x02\x10\x01\x12\"\n\x08pod_name\x18\x02\x20\x01(\tR\
-    \x07podNameB\x07\xfaB\x04r\x02\x10\x01\x12U\n\npod_labels\x18\x03\x20\
-    \x03(\x0b26.pulse.vrl_tester.v1.KubernetesMetadata.PodLabelsEntryR\tpodL\
-    abels\x12d\n\x0fpod_annotations\x18\x04\x20\x03(\x0b2;.pulse.vrl_tester.\
-    v1.KubernetesMetadata.PodAnnotationsEntryR\x0epodAnnotations\x12&\n\x0cs\
-    ervice_name\x18\x05\x20\x01(\tH\0R\x0bserviceName\x88\x01\x01\x1a<\n\x0e\
-    PodLabelsEntry\x12\x10\n\x03key\x18\x01\x20\x01(\tR\x03key\x12\x14\n\x05\
-    value\x18\x02\x20\x01(\tR\x05value:\x028\x01\x1aA\n\x13PodAnnotationsEnt\
-    ry\x12\x10\n\x03key\x18\x01\x20\x01(\tR\x03key\x12\x14\n\x05value\x18\
-    \x02\x20\x01(\tR\x05value:\x028\x01B\x0f\n\r_service_name\"\xf5\x04\n\
-    \x0bVrlTestCase\x12#\n\x07program\x18\x01\x20\x01(\tH\0R\x07programB\x07\
-    \xfaB\x04r\x02\x10\x01\x12=\n\x15mutate_processor_name\x18\x02\x20\x01(\
-    \tH\0R\x13mutateProcessorNameB\x07\xfaB\x04r\x02\x10\x01\x12l\n\x14progr\
-    am_replacements\x18\x03\x20\x03(\x0b29.pulse.vrl_tester.v1.VrlTestCase.P\
-    rogramReplacementsEntryR\x13programReplacements\x12X\n\x13kubernetes_met\
-    adata\x18\x04\x20\x01(\x0b2'.pulse.vrl_tester.v1.KubernetesMetadataR\x12\
-    kubernetesMetadata\x12S\n\x0benvironment\x18\x05\x20\x03(\x0b21.pulse.vr\
-    l_tester.v1.VrlTestCase.EnvironmentEntryR\x0benvironment\x12H\n\ntransfo\
-    rms\x18\x06\x20\x03(\x0b2\x1e.pulse.vrl_tester.v1.TransformR\ntransforms\
-    B\x08\xfaB\x05\x92\x01\x02\x08\x01\x1aF\n\x18ProgramReplacementsEntry\
-    \x12\x10\n\x03key\x18\x01\x20\x01(\tR\x03key\x12\x14\n\x05value\x18\x02\
-    \x20\x01(\tR\x05value:\x028\x01\x1a>\n\x10EnvironmentEntry\x12\x10\n\x03\
-    key\x18\x01\x20\x01(\tR\x03key\x12\x14\n\x05value\x18\x02\x20\x01(\tR\
-    \x05value:\x028\x01B\x13\n\x0cprogram_type\x12\x03\xf8B\x01\"\\\n\x0fVrl\
-    TesterConfig\x12I\n\ntest_cases\x18\x01\x20\x03(\x0b2\x20.pulse.vrl_test\
-    er.v1.VrlTestCaseR\ttestCasesB\x08\xfaB\x05\x92\x01\x02\x08\x01b\x06prot\
-    o3\
+    TransformH\0R\x06metric\x12\x1a\n\x07integer\x18\x02\x20\x01(\x03H\0R\
+    \x07integerB\x15\n\x0etransform_type\x12\x03\xf8B\x01\"\xd6\x03\n\x12Kub\
+    ernetesMetadata\x12%\n\tnamespace\x18\x01\x20\x01(\tR\tnamespaceB\x07\
+    \xfaB\x04r\x02\x10\x01\x12\"\n\x08pod_name\x18\x02\x20\x01(\tR\x07podNam\
+    eB\x07\xfaB\x04r\x02\x10\x01\x12U\n\npod_labels\x18\x03\x20\x03(\x0b26.p\
+    ulse.vrl_tester.v1.KubernetesMetadata.PodLabelsEntryR\tpodLabels\x12d\n\
+    \x0fpod_annotations\x18\x04\x20\x03(\x0b2;.pulse.vrl_tester.v1.Kubernete\
+    sMetadata.PodAnnotationsEntryR\x0epodAnnotations\x12&\n\x0cservice_name\
+    \x18\x05\x20\x01(\tH\0R\x0bserviceName\x88\x01\x01\x1a<\n\x0ePodLabelsEn\
+    try\x12\x10\n\x03key\x18\x01\x20\x01(\tR\x03key\x12\x14\n\x05value\x18\
+    \x02\x20\x01(\tR\x05value:\x028\x01\x1aA\n\x13PodAnnotationsEntry\x12\
+    \x10\n\x03key\x18\x01\x20\x01(\tR\x03key\x12\x14\n\x05value\x18\x02\x20\
+    \x01(\tR\x05value:\x028\x01B\x0f\n\r_service_name\"\xc9\x05\n\x0bVrlTest\
+    Case\x12#\n\x07program\x18\x01\x20\x01(\tH\0R\x07programB\x07\xfaB\x04r\
+    \x02\x10\x01\x12=\n\x15mutate_processor_name\x18\x02\x20\x01(\tH\0R\x13m\
+    utateProcessorNameB\x07\xfaB\x04r\x02\x10\x01\x12R\n\x20cardinality_limi\
+    t_processor_name\x18\x07\x20\x01(\tH\0R\x1dcardinalityLimitProcessorName\
+    B\x07\xfaB\x04r\x02\x10\x01\x12l\n\x14program_replacements\x18\x03\x20\
+    \x03(\x0b29.pulse.vrl_tester.v1.VrlTestCase.ProgramReplacementsEntryR\
+    \x13programReplacements\x12X\n\x13kubernetes_metadata\x18\x04\x20\x01(\
+    \x0b2'.pulse.vrl_tester.v1.KubernetesMetadataR\x12kubernetesMetadata\x12\
+    S\n\x0benvironment\x18\x05\x20\x03(\x0b21.pulse.vrl_tester.v1.VrlTestCas\
+    e.EnvironmentEntryR\x0benvironment\x12H\n\ntransforms\x18\x06\x20\x03(\
+    \x0b2\x1e.pulse.vrl_tester.v1.TransformR\ntransformsB\x08\xfaB\x05\x92\
+    \x01\x02\x08\x01\x1aF\n\x18ProgramReplacementsEntry\x12\x10\n\x03key\x18\
+    \x01\x20\x01(\tR\x03key\x12\x14\n\x05value\x18\x02\x20\x01(\tR\x05value:\
+    \x028\x01\x1a>\n\x10EnvironmentEntry\x12\x10\n\x03key\x18\x01\x20\x01(\t\
+    R\x03key\x12\x14\n\x05value\x18\x02\x20\x01(\tR\x05value:\x028\x01B\x13\
+    \n\x0cprogram_type\x12\x03\xf8B\x01\"\\\n\x0fVrlTesterConfig\x12I\n\ntes\
+    t_cases\x18\x01\x20\x03(\x0b2\x20.pulse.vrl_tester.v1.VrlTestCaseR\ttest\
+    CasesB\x08\xfaB\x05\x92\x01\x02\x08\x01b\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file

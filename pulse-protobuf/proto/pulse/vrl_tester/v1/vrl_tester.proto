@@ -29,6 +29,9 @@ message Transform {
 
     // A metric transform.
     MetricTransform metric = 1;
+
+    // The result should be an integer.
+    int64 integer = 2;
   }
 }
 
@@ -52,6 +55,10 @@ message VrlTestCase {
 
     // The name of the mutate processor in the supplied proxy config to load the program from.
     string mutate_processor_name = 2 [(validate.rules).string = {min_len: 1}];
+
+    // The name of the cardinality limit processor in the supplied proxy config to load the program
+    // from. The processor must contain a VRL program in a per-pod limit configuration.
+    string cardinality_limit_processor_name = 7 [(validate.rules).string = {min_len: 1}];
   }
 
   // Optional fixed string replacements to perform in the program before compiling it. Meant to
@@ -61,7 +68,7 @@ message VrlTestCase {
   // The optional K8s metadata to make available to the VRL program at runtime.
   KubernetesMetadata kubernetes_metadata = 4;
 
-  // Optional envionment variables to make available to the VRL program at runtime.
+  // Optional environment variables to make available to the VRL program at runtime.
   map<string, string> environment = 5;
 
   // 1 or more test transforms that will be tested against the above parameters.

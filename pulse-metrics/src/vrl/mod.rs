@@ -165,7 +165,7 @@ impl Target for EditableMetricVrlTarget<'_> {
 
 #[derive(Debug)]
 struct MetadataTargetWrapper<'a> {
-  metadata: &'a Metadata,
+  metadata: Option<&'a Metadata>,
 }
 
 impl SecretTarget for MetadataTargetWrapper<'_> {
@@ -189,8 +189,7 @@ impl Target for MetadataTargetWrapper<'_> {
       PathPrefix::Metadata => Ok(
         self
           .metadata
-          .value()
-          .get(&path.path)
+          .and_then(|m| m.value().get(&path.path))
           .map(OwnedValueOrRef::Ref),
       ),
     }
@@ -251,7 +250,7 @@ impl ProgramWrapper {
     self.program.resolve(&mut ctx)
   }
 
-  pub fn run_with_metadata(&self, metadata: &Metadata) -> Resolved {
+  pub fn run_with_metadata(&self, metadata: Option<&Metadata>) -> Resolved {
     let mut state = RuntimeState::default();
     let timezone = TimeZone::default();
     let mut target = MetadataTargetWrapper { metadata };
