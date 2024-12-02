@@ -17,7 +17,6 @@ allow = [
     "MIT",
     "MPL-2.0",
     "OpenSSL",
-    "Unicode-DFS-2016",
     "Zlib",
 ]
 confidence-threshold = 0.8
