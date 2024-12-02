@@ -31,7 +31,7 @@ use thiserror;
 /// literal \' (or \") character inside the string.
 fn escaped_string<'a, E: ParseError<&'a [u8]>>(
   double_quoted: bool,
-) -> impl FnMut(&'a [u8]) -> IResult<&[u8], &[u8], E> {
+) -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], &'a [u8], E> {
   let (quote, not_chars) = if double_quoted {
     (b"\"", "\\\"")
   } else {
@@ -45,7 +45,7 @@ fn escaped_string<'a, E: ParseError<&'a [u8]>>(
 }
 
 fn non_escaped_string<'a, E: ParseError<&'a [u8]>>(
-) -> impl FnMut(&'a [u8]) -> IResult<&[u8], &[u8], E> {
+) -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], &'a [u8], E> {
   take_while1(|c: u8| {
     c.is_ascii_lowercase()
       || c.is_ascii_uppercase()
@@ -56,7 +56,7 @@ fn non_escaped_string<'a, E: ParseError<&'a [u8]>>(
   })
 }
 
-fn string<'a, E: ParseError<&'a [u8]>>() -> impl FnMut(&'a [u8]) -> IResult<&[u8], &[u8], E> {
+fn string<'a, E: ParseError<&'a [u8]>>() -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], &'a [u8], E> {
   alt((
     escaped_string(false),
     escaped_string(true),
@@ -70,7 +70,7 @@ fn named_tag<
   E: ParseError<&'a [u8]> + nom::error::FromExternalError<&'a [u8], std::convert::Infallible>,
 >(
   input: &'a bytes::Bytes,
-) -> impl FnMut(&'a [u8]) -> IResult<&[u8], TagValue, E> {
+) -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], TagValue, E> {
   map_res(
     tuple((string(), tag(b"="), string(), opt(take_while1(is_space)))),
     #[allow(clippy::type_complexity)]

@@ -112,7 +112,7 @@ pub struct Ref<'a, K, V, S> {
   value: *const V,
 }
 
-impl<'a, K, V, S> Ref<'a, K, V, S> {
+impl<K, V, S> Ref<'_, K, V, S> {
   #[must_use]
   pub const fn key(&self) -> &K {
     unsafe {

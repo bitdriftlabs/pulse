@@ -211,7 +211,8 @@ impl<H: Hasher + Default + Send + 'static> K8sPodLimiter<H> {
               result => {
                 warn_every!(
                   1.minutes(),
-                  "cardinality VRL program did not return an integer: {:?}",
+                  "cardinality VRL program did not return an integer for '{namespace_and_name}': \
+                   {:?}",
                   result
                 );
                 None
