@@ -47,7 +47,7 @@ const STALE_MARKER_BITS: u64 = 0x7ff0_0000_0000_0002;
 // Convert stale marker bits to an f64. Note, this produces NaN which will never compare equal in
 // Rust.
 #[must_use]
-pub fn prom_stale_marker() -> f64 {
+pub const fn prom_stale_marker() -> f64 {
   f64::from_bits(STALE_MARKER_BITS)
 }
 
