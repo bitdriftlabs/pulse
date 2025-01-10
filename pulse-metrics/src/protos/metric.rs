@@ -596,7 +596,7 @@ impl<'a> EditableParsedMetric<'a> {
     index: usize,
     undelete: bool,
   ) -> bool {
-    let deleted = deleted_tags.as_mut().map_or(false, |deleted_tags| {
+    let deleted = deleted_tags.as_mut().is_some_and(|deleted_tags| {
       if undelete {
         log::trace!("tag '{}' was undeleted", tags[index]);
         deleted_tags[index] = false;

@@ -57,7 +57,7 @@ impl Retry {
     if self
       .config
       .max_retries
-      .map_or(false, |max_retries| *retry_count > max_retries)
+      .is_some_and(|max_retries| *retry_count > max_retries)
     {
       log::debug!("no further retries available (max retries)");
       return false;

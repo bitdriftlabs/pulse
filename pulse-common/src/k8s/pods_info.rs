@@ -501,7 +501,7 @@ pub async fn service_watch_stream() -> anyhow::Result<
 
 /// Performs a lookup of all eligible prom endpoints for the given k8s node and watches for
 /// changes to this set. The initial state and updates are provided via the watch channel.
-pub async fn watch_pods<'a>(
+pub async fn watch_pods(
   node: String,
   update_tx: tokio::sync::watch::Sender<PodsInfo>,
   watch_service_stream: Option<

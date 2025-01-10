@@ -5,6 +5,9 @@ name         = "pulse-metrics"
 publish      = false
 version      = "1.0.0"
 
+[lib]
+doctest = false
+
 [dependencies]
 ahash.workspace                  = true
 anyhow.workspace                 = true

@@ -5,13 +5,19 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
-use crate::pipeline::inflow::wire::util::{SocketHandler, SocketHandlerConfig, SocketServerStats};
+use crate::pipeline::inflow::wire::util::{
+  PreBufferConfig,
+  SocketHandler,
+  SocketHandlerConfig,
+  SocketServerStats,
+};
 use crate::pipeline::inflow::PipelineInflow;
 use crate::pipeline::{ComponentShutdown, InflowFactoryContext, PipelineDispatch};
 use crate::protos::metric::DownstreamId;
 use async_trait::async_trait;
 use bd_server_stats::stats::Scope;
 use bd_shutdown::ComponentShutdownTriggerHandle;
+use bd_time::ProtoDurationExt;
 use log::{debug, info};
 use parking_lot::Mutex;
 use pulse_common::bind_resolver::BoundTcpSocket;
@@ -92,7 +98,10 @@ async fn accept_tcp_connections(
               DownstreamId::IpAddress(peer_addr.ip()),
               dispatcher.clone(),
               k8s_pods_info.clone(),
-              config.pre_buffer_window.as_ref().map(bd_time::ProtoDurationExt::to_time_duration),
+              config.pre_buffer_window.as_ref().map(|w| PreBufferConfig {
+                timeout: w.to_time_duration(),
+                always_pre_buffer: config.always_pre_buffer,
+              }),
             ).run(socket, shutdown.clone()));
           }
           Err(e) => {

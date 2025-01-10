@@ -51,6 +51,11 @@ message TcpServerConfig {
   // environments where the above conditions apply. Note that counters, gauges, and timers will
   // be aggregated to avoid unbounded memory growth of the application sends a lot of metrics.
   google.protobuf.Duration pre_buffer_window = 5;
+
+  // If this is true and a pre-buffer window is set, all incoming metrics will be pre-buffered
+  // continuously. This is useful if for example applications are sending larger numbers of timers
+  // and we would like to do as little processing as possible on initial ingestion.
+  bool always_pre_buffer = 6;
 }
 
 // Configuration for a UDP based inflow.
@@ -71,6 +76,11 @@ message UdpServerConfig {
     // window for IP recycling. For example if pod IP addresses have a recycle cooldown of 30s, a
     // reasonable setting for this might be 20s.
     google.protobuf.Duration session_idle_timeout = 2 [(validate.rules).message.required = true];
+
+    // If this is true and a pre-buffer window is set, all incoming metrics will be pre-buffered
+    // continuously. This is useful if for example applications are sending larger numbers of timers
+    // and we would like to do as little processing as possible on initial ingestion.
+    bool always_pre_buffer = 3;
   }
 
   // Which address to bind to.

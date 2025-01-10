@@ -5,7 +5,7 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
-use super::util::{parse_lines, process_buffer_newlines, PreBufferWrapper};
+use super::util::{parse_lines, process_buffer_newlines, PreBufferConfig, PreBufferWrapper};
 use crate::pipeline::inflow::wire::util::bind_k8s_metadata;
 use crate::pipeline::inflow::PipelineInflow;
 use crate::pipeline::{ComponentShutdown, InflowFactoryContext, PipelineDispatch};
@@ -87,7 +87,7 @@ impl SessionManager for DefaultSessionManager {
 struct PreBufferSessionManager {
   shared: Arc<Shared>,
   sessions: Arc<Mutex<AHashMap<IpAddr, mpsc::Sender<Vec<Bytes>>>>>,
-  pre_buffer_window: Duration,
+  pre_buffer_config: PreBufferConfig,
   session_idle_timeout: Duration,
 }
 
@@ -106,7 +106,7 @@ impl SessionManager for PreBufferSessionManager {
             self.shared.clone(),
             self.sessions.clone(),
             peer_ip,
-            self.pre_buffer_window,
+            self.pre_buffer_config.clone(),
           )
           .run(
             rx,
@@ -139,13 +139,13 @@ impl PreBufferSession {
     shared: Arc<Shared>,
     sessions: Arc<Mutex<AHashMap<IpAddr, mpsc::Sender<Vec<Bytes>>>>>,
     peer_ip: IpAddr,
-    pre_buffer_window: Duration,
+    pre_buffer_config: PreBufferConfig,
   ) -> Self {
     Self {
       shared,
       sessions,
       peer_ip,
-      pre_buffer: Some(PreBufferWrapper::new(pre_buffer_window)),
+      pre_buffer: Some(PreBufferWrapper::new(pre_buffer_config)),
     }
   }
 
@@ -235,16 +235,14 @@ impl PreBufferSession {
 
   async fn flush_pre_buffer(&mut self) {
     let downstream_id = DownstreamId::IpAddress(self.peer_ip);
-    let pre_buffer = self.pre_buffer.take().unwrap();
-    let mut metrics = pre_buffer.buffer.flush(&downstream_id);
-    log::debug!("flushed prebuffer with {} metrics", metrics.len());
-    bind_k8s_metadata(
-      &mut metrics,
+    PreBufferWrapper::flush_pre_buffer(
+      &mut self.pre_buffer,
       &downstream_id,
       &self.shared.stats.no_k8s_pod_metadata,
       self.shared.k8s_pods_info.as_ref(),
-    );
-    self.shared.dispatcher.send(metrics).await;
+      &*self.shared.dispatcher,
+    )
+    .await;
   }
 }
 
@@ -320,7 +318,10 @@ impl PipelineInflow for UdpInflow {
         Box::new(PreBufferSessionManager {
           shared: self.shared.clone(),
           sessions: Arc::default(),
-          pre_buffer_window: pre_buffer.pre_buffer_window.to_time_duration(),
+          pre_buffer_config: PreBufferConfig {
+            timeout: pre_buffer.pre_buffer_window.to_time_duration(),
+            always_pre_buffer: pre_buffer.always_pre_buffer,
+          },
           session_idle_timeout: pre_buffer.session_idle_timeout.to_time_duration(),
         }) as Box<dyn SessionManager>
       },

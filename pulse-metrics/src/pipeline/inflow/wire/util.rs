@@ -25,7 +25,6 @@ use pulse_common::k8s::pods_info::OwnedPodsInfoSingleton;
 use pulse_common::proto::ProtoDurationToStdDuration;
 use pulse_protobuf::protos::pulse::config::common::v1::common::WireProtocol;
 use pulse_protobuf::protos::pulse::config::inflow::v1::wire::AdvancedSocketServerConfig;
-use std::future::Future;
 use std::io::ErrorKind;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -33,7 +32,7 @@ use std::time::Instant;
 use time::ext::{NumericalDuration, NumericalStdDuration};
 use time::Duration;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
-use tokio::time::timeout;
+use tokio::time::{timeout, Sleep};
 use tokio::{pin, select};
 
 const fn default_idle_timeout() -> Duration {
@@ -178,17 +177,64 @@ pub(super) struct SocketHandlerConfig {
 //
 
 pub(super) struct PreBufferWrapper {
+  pub(super) config: PreBufferConfig,
   pub(super) buffer: PreBuffer,
-  pub(super) sleep: Pin<Box<dyn Future<Output = ()> + Send + Sync>>,
+  pub(super) sleep: Pin<Box<Sleep>>,
 }
 
 impl PreBufferWrapper {
-  pub(super) fn new(timeout: Duration) -> Self {
+  pub(super) fn new(config: PreBufferConfig) -> Self {
+    let sleep = Box::pin(config.timeout.sleep());
     Self {
+      config,
       buffer: PreBuffer::default(),
-      sleep: Box::pin(timeout.sleep()),
+      sleep,
     }
   }
+
+  pub(super) fn reset(&mut self) -> PreBuffer {
+    let old_buffer = std::mem::take(&mut self.buffer);
+    self
+      .sleep
+      .as_mut()
+      .reset(tokio::time::Instant::now() + self.config.timeout.unsigned_abs());
+    old_buffer
+  }
+
+  pub(super) async fn flush_pre_buffer(
+    pre_buffer: &mut Option<Self>,
+    downstream_id: &DownstreamId,
+    no_k8s_pod_metadata: &IntCounter,
+    k8s_pods_info: Option<&OwnedPodsInfoSingleton>,
+    dispatcher: &dyn PipelineDispatch,
+  ) {
+    let pre_buffer = {
+      if pre_buffer.as_ref().unwrap().config.always_pre_buffer {
+        pre_buffer.as_mut().unwrap().reset()
+      } else {
+        pre_buffer.take().unwrap().buffer
+      }
+    };
+    let mut metrics = pre_buffer.flush(downstream_id);
+    log::debug!("flushed prebuffer with {} metrics", metrics.len());
+    bind_k8s_metadata(
+      &mut metrics,
+      downstream_id,
+      no_k8s_pod_metadata,
+      k8s_pods_info,
+    );
+    dispatcher.send(metrics).await;
+  }
+}
+
+//
+// PreBufferConfig
+//
+
+#[derive(Clone)]
+pub(super) struct PreBufferConfig {
+  pub timeout: Duration,
+  pub always_pre_buffer: bool,
 }
 
 //
@@ -211,7 +257,7 @@ impl SocketHandler {
     downstream_id: DownstreamId,
     dispatcher: Arc<dyn PipelineDispatch>,
     k8s_pods_info: Option<OwnedPodsInfoSingleton>,
-    pre_buffer_duration: Option<Duration>,
+    pre_buffer_config: Option<PreBufferConfig>,
   ) -> Self {
     Self {
       stats,
@@ -219,21 +265,8 @@ impl SocketHandler {
       downstream_id,
       dispatcher,
       k8s_pods_info,
-      pre_buffer: pre_buffer_duration.map(PreBufferWrapper::new),
+      pre_buffer: pre_buffer_config.map(PreBufferWrapper::new),
     }
-  }
-
-  async fn flush_pre_buffer(&mut self) {
-    let pre_buffer = self.pre_buffer.take().unwrap();
-    let mut metrics = pre_buffer.buffer.flush(&self.downstream_id);
-    log::debug!("flushed prebuffer with {} metrics", metrics.len());
-    bind_k8s_metadata(
-      &mut metrics,
-      &self.downstream_id,
-      &self.stats.no_k8s_pod_metadata,
-      self.k8s_pods_info.as_ref(),
-    );
-    self.dispatcher.send(metrics).await;
   }
 
   async fn process(&mut self, lines: Vec<Bytes>) {
@@ -308,7 +341,13 @@ impl SocketHandler {
         () = async {
           self.pre_buffer.as_mut().unwrap().sleep.as_mut().await;
         }, if self.pre_buffer.is_some() => {
-          self.flush_pre_buffer().await;
+          PreBufferWrapper::flush_pre_buffer(
+            &mut self.pre_buffer,
+            &self.downstream_id,
+            &self.stats.no_k8s_pod_metadata,
+            self.k8s_pods_info.as_ref(),
+            &*self.dispatcher,
+          ).await;
           continue;
         }
         () = async {
@@ -375,7 +414,14 @@ impl SocketHandler {
 
     // If we lost the connection prior to the pre-buffer timeout, try to flush what we have.
     if self.pre_buffer.is_some() {
-      self.flush_pre_buffer().await;
+      PreBufferWrapper::flush_pre_buffer(
+        &mut self.pre_buffer,
+        &self.downstream_id,
+        &self.stats.no_k8s_pod_metadata,
+        self.k8s_pods_info.as_ref(),
+        &*self.dispatcher,
+      )
+      .await;
     }
 
     self.stats.disconnects.inc();

@@ -74,7 +74,7 @@ impl LastAggregated {
     let mut response = String::new();
 
     state.lock().retain(|(name, metrics)| {
-      metrics.upgrade().map_or(false, |metrics| {
+      metrics.upgrade().is_some_and(|metrics| {
         if let Some(metrics) = &*metrics.lock() {
           response.push_str(&format!("dumping filter: {name}\n"));
           response.push_str(&metrics.iter().map(|m| m.to_metric_id()).join("\n"));

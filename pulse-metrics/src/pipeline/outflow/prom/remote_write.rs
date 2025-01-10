@@ -570,10 +570,10 @@ impl LyftBatchRouter {
     if name_tokens.next().is_none() {
       return false;
     }
-    if !name_tokens.next().map_or(false, |t| t == b"infra") {
+    if name_tokens.next().is_none_or(|t| t != b"infra") {
       return false;
     }
-    if !(name_tokens.next().map_or(false, |t| t == b"aws")) {
+    if name_tokens.next().is_none_or(|t| t != b"aws") {
       return false;
     }
 
@@ -589,7 +589,7 @@ impl BatchRouter for LyftBatchRouter {
         .metric()
         .get_id()
         .tag("source")
-        .map_or(false, |v| !v.value.starts_with(b"statsd"))
+        .is_some_and(|v| !v.value.starts_with(b"statsd"))
       && Self::is_cloudwatch(sample.metric().get_id().name())
     {
       self.cloudwatch.as_ref().unwrap().send(sample);

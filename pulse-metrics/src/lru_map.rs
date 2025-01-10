@@ -335,7 +335,7 @@ impl<K: Eq + Hash, V, S: BuildHasher + Clone> LruMap<K, V, S> {
           len.fetch_sub(1, Ordering::SeqCst);
           num_evictions += 1;
 
-          if max_evictions.map_or(false, |max_evictions| num_evictions >= max_evictions) {
+          if max_evictions.is_some_and(|max_evictions| num_evictions >= max_evictions) {
             break;
           }
         } else {
