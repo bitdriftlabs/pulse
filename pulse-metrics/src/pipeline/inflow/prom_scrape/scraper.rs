@@ -14,7 +14,7 @@ use crate::pipeline::inflow::{DynamicPipelineInflow, InflowFactoryContext, Pipel
 use crate::pipeline::time::{DurationJitter, RealDurationJitter};
 use crate::pipeline::PipelineDispatch;
 use crate::protos::metric::default_timestamp;
-use axum::async_trait;
+use async_trait::async_trait;
 use bd_log::warn_every;
 use bd_server_stats::stats::Scope;
 use bd_shutdown::{ComponentShutdown, ComponentShutdownTrigger, ComponentShutdownTriggerHandle};
@@ -37,6 +37,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use time::ext::NumericalDuration;
 use time::Duration;
+use tokio::time::MissedTickBehavior;
 
 //
 // Stats
@@ -342,7 +343,9 @@ pub async fn make(
     .to_time_duration();
 
   let stats = Stats::new(&context.scope);
-  let ticker_factory = Box::new(move || Box::new(scrape_interval.interval()) as Box<dyn Ticker>);
+  let ticker_factory = Box::new(move || {
+    Box::new(scrape_interval.interval(MissedTickBehavior::Delay)) as Box<dyn Ticker>
+  });
   match config.target.expect("pgv") {
     Target::Pod(_) => Scraper::<_, RealDurationJitter>::create(
       context.name,

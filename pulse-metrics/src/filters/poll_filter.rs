@@ -121,7 +121,7 @@ impl PollFilterAdminHandler {
     // TODO(mattklein123): The use of weak/retain here could cause unbound growth if there is a lot
     // of change without calling. We can figure out an inline delete but seems not worth it now.
     filters.lock().retain(|filter| {
-      filter.upgrade().map_or(false, |filter| {
+      filter.upgrade().is_some_and(|filter| {
         output.extend(format!("filter name: {}\n", filter.name).as_bytes());
         output.extend(filter.provider.dump());
         output.push(b'\n');

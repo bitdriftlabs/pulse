@@ -475,7 +475,7 @@ impl MetricPipeline {
       if old_state
         .outflows
         .get(name.as_str())
-        .map_or(false, |o| o.config_hash == new_config_hash)
+        .is_some_and(|o| o.config_hash == new_config_hash)
       {
         log::debug!("using existing outflow '{name}' with config hash '{new_config_hash}'");
         outflows_to_move.insert(name);
@@ -495,7 +495,7 @@ impl MetricPipeline {
       if old_state
         .processors
         .get(name.as_str())
-        .map_or(false, |p| p.config_hash == new_config_hash)
+        .is_some_and(|p| p.config_hash == new_config_hash)
       {
         log::debug!("using existing processor '{name}' with config hash '{new_config_hash}'");
         processors_to_move.insert(name);
@@ -520,7 +520,7 @@ impl MetricPipeline {
       if old_state
         .inflows
         .get(name.as_str())
-        .map_or(false, |p| p.config_hash == new_config_hash)
+        .is_some_and(|p| p.config_hash == new_config_hash)
       {
         log::debug!("using existing inflow '{name}' with config hash '{new_config_hash}'");
         inflows_to_move.insert(name);

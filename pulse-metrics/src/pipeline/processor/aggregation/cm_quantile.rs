@@ -212,9 +212,9 @@ impl Quantile {
         sample.delta = insert_sample.width + insert_sample.delta - 1;
 
         // Check if we need to update the compress cursor.
-        if Self::ptr_to_ref(&mut self.compress_cursor).map_or(false, |compress_sample| {
-          compress_sample.value >= sample.value
-        }) {
+        if Self::ptr_to_ref(&mut self.compress_cursor)
+          .is_some_and(|compress_sample| compress_sample.value >= sample.value)
+        {
           self.compress_min_rank += 1;
         }
 

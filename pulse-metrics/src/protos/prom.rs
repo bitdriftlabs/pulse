@@ -364,9 +364,10 @@ fn process_in_progress_histogram(
           data.saw_count = true;
         }
 
-        if data.sample_count.map_or(false, |current_sample_count| {
-          current_sample_count != sample.value
-        }) {
+        if data
+          .sample_count
+          .is_some_and(|current_sample_count| current_sample_count != sample.value)
+        {
           return Err(ParseError::PromRemoteWrite("mismatch +Inf and _count"));
         }
 

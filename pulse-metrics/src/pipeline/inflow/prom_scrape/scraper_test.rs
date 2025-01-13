@@ -9,7 +9,7 @@ use super::{Scraper, Stats, Ticker};
 use crate::pipeline::inflow::prom_scrape::scraper::{EndpointProvider, KubePodTarget};
 use crate::pipeline::time::TestDurationJitter;
 use crate::pipeline::MockPipelineDispatch;
-use axum::async_trait;
+use async_trait::async_trait;
 use axum::body::Body;
 use axum::extract::State;
 use axum::response::Response;

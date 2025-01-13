@@ -14,7 +14,7 @@ use crate::admin::server::AdminHandlerHandle;
 use crate::pipeline::PipelineDispatch;
 use crate::protos::metric::{MetricId, ParsedMetric};
 use ahash::RandomState;
-use axum::async_trait;
+use async_trait::async_trait;
 use axum::response::Response;
 use bd_time::TimeDurationExt;
 use bytes::{BufMut, Bytes, BytesMut};
@@ -35,6 +35,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use time::ext::NumericalDuration;
 use time::Duration;
+use tokio::time::MissedTickBehavior;
 use topk::FilteredSpaceSaving;
 
 //
@@ -338,7 +339,7 @@ impl CardinalityTrackerProcessor {
   }
 
   async fn rotation_loop(&self, duration: Duration) {
-    let mut interval = duration.interval_at();
+    let mut interval = duration.interval_at(MissedTickBehavior::Delay);
     loop {
       interval.tick().await;
       log::debug!("doing tracker rotation");

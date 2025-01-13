@@ -5,6 +5,9 @@ name         = "pulse-common"
 publish      = false
 version      = "1.0.0"
 
+[lib]
+doctest = false
+
 [dependencies]
 anyhow.workspace                = true
 async-trait.workspace           = true

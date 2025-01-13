@@ -36,6 +36,7 @@ use std::hash::Hasher;
 use std::sync::Arc;
 use time::ext::NumericalDuration;
 use time::Duration;
+use tokio::time::MissedTickBehavior;
 use vrl::core::Value;
 
 //
@@ -346,7 +347,7 @@ impl PipelineProcessor for CardinalityLimiterProcessor {
     tokio::spawn(async move {
       let mut shutdown = self.shutdown.make_shutdown();
 
-      let mut interval = self.rotate_after.interval_at();
+      let mut interval = self.rotate_after.interval_at(MissedTickBehavior::Delay);
       loop {
         tokio::select! {
           _ = interval.tick() => (),

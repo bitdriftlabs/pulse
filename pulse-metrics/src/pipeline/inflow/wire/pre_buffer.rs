@@ -59,7 +59,8 @@ impl PreBuffer {
             Some(MetricType::Gauge | MetricType::DeltaGauge | MetricType::DirectGauge) => {
               PreBufferMetric::Gauge(0.0)
             },
-            Some(MetricType::Timer) => PreBufferMetric::Timer(ReservoirTimer::new(100)),
+            // TODO(mattklein123): Potentially make the reservoir size configurable.
+            Some(MetricType::Timer) => PreBufferMetric::Timer(ReservoirTimer::new(10)),
             _ => {
               warn_every!(
                 15.seconds(),

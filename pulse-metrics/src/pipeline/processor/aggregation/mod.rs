@@ -71,7 +71,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use time::ext::NumericalDuration;
 use time::Duration;
-use tokio::time::Instant;
+use tokio::time::{Instant, MissedTickBehavior};
 
 const fn default_aggregation_timer_eps() -> f64 {
   0.01
@@ -282,7 +282,7 @@ impl AggregationProcessor {
           None
         } else {
           log::debug!("using local process interval");
-          Some(flush_interval.interval_at())
+          Some(flush_interval.interval_at(MissedTickBehavior::Delay))
         }
       });
     loop {

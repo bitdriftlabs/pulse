@@ -5,6 +5,9 @@ name         = "pulse-protobuf"
 publish      = false
 version      = "1.0.0"
 
+[lib]
+doctest = false
+
 [dependencies]
 bd-pgv.workspace   = true
 bytes.workspace    = true

@@ -19,7 +19,9 @@ use async_trait::async_trait;
 use axum::http::Extensions;
 use axum::Router;
 use backoff::ExponentialBackoffBuilder;
-use bd_grpc::{make_unary_router, Compression, Handler, ServiceMethod};
+use bd_grpc::compression::Compression;
+use bd_grpc::service::ServiceMethod;
+use bd_grpc::{make_unary_router, Handler};
 use bd_log::warn_every;
 use bd_server_stats::stats::{AutoGauge, Scope};
 use bd_shutdown::{ComponentShutdown, ComponentShutdownTriggerHandle};
@@ -104,7 +106,7 @@ impl Stats {
 
 #[derive(Debug)]
 struct Client {
-  client: bd_grpc::Client<HttpConnector>,
+  client: bd_grpc::client::Client<HttpConnector>,
   request_timeout: Duration,
 }
 
@@ -112,7 +114,7 @@ impl Client {
   fn new(addr: &str, request_timeout: Duration) -> Arc<Self> {
     Arc::new(Self {
       // TODO(mattklein123): Make all of this configurable.
-      client: bd_grpc::Client::new_http(addr, 100.milliseconds(), 1024).unwrap(),
+      client: bd_grpc::client::Client::new_http(addr, 100.milliseconds(), 1024).unwrap(),
       request_timeout,
     })
   }
@@ -288,8 +290,8 @@ impl InternodeProcessor {
         },
         Err(e) => {
           match e {
-            bd_grpc::Error::ConnectionTimeout => self.stats.internode_connect_timeout.inc(),
-            bd_grpc::Error::RequestTimeout => self.stats.internode_request_timeout.inc(),
+            bd_grpc::error::Error::ConnectionTimeout => self.stats.internode_connect_timeout.inc(),
+            bd_grpc::error::Error::RequestTimeout => self.stats.internode_request_timeout.inc(),
             _ => (),
           }
 
@@ -531,7 +533,7 @@ impl Handler<InternodeMetricsRequest, InternodeMetricsResponse> for InternodeHan
     _headers: HeaderMap,
     _extensions: Extensions,
     request: InternodeMetricsRequest,
-  ) -> bd_grpc::Result<InternodeMetricsResponse> {
+  ) -> bd_grpc::error::Result<InternodeMetricsResponse> {
     self.stats.internode_received.inc();
     let metrics: Vec<ParsedMetric> = request
       .metrics
@@ -561,7 +563,7 @@ impl Handler<PeersComparisonRequest, PeersComparisonResponse> for InternodeHandl
     _headers: HeaderMap,
     _extensions: Extensions,
     _request: PeersComparisonRequest,
-  ) -> bd_grpc::Result<PeersComparisonResponse> {
+  ) -> bd_grpc::error::Result<PeersComparisonResponse> {
     Ok(PeersComparisonResponse {
       peer: self.peer_list.clone(),
       ..Default::default()
@@ -576,16 +578,16 @@ impl Handler<LastElidedTimestampRequest, LastElidedTimestampResponse> for Intern
     _headers: HeaderMap,
     _extensions: Extensions,
     request: LastElidedTimestampRequest,
-  ) -> bd_grpc::Result<LastElidedTimestampResponse> {
+  ) -> bd_grpc::error::Result<LastElidedTimestampResponse> {
     let name = request.metric;
     match self.get_last_elided.get_last_elided(&name, false).await {
       Ok(last_elided) => Ok(LastElidedTimestampResponse {
         timestamp: last_elided.unwrap_or_default(),
         ..Default::default()
       }),
-      Err(e) => Err(bd_grpc::Error::Grpc(bd_grpc::Status::new(
-        bd_grpc::Code::Internal,
-        &e.to_string(),
+      Err(e) => Err(bd_grpc::error::Error::Grpc(bd_grpc::status::Status::new(
+        bd_grpc::status::Code::Internal,
+        e.to_string(),
       ))),
     }
   }

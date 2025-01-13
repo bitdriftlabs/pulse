@@ -293,7 +293,7 @@ impl FakeRemoteFileSource {
         if request
           .headers()
           .get("if-none-match")
-          .map_or(false, |v| v.as_bytes() == etag.as_bytes())
+          .is_some_and(|v| v.as_bytes() == etag.as_bytes())
         {
           return Ok(
             Response::builder()
