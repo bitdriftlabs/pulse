@@ -5,12 +5,12 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
+use crate::pipeline::metric_cache::MetricKey;
 use crate::protos::metric::{
   default_timestamp,
   CounterType,
   DownstreamId,
   Metric,
-  MetricId,
   MetricSource,
   MetricType,
   MetricValue,
@@ -43,7 +43,7 @@ enum PreBufferMetric {
 // future if needed.
 #[derive(Default)]
 pub struct PreBuffer {
-  metrics: AHashMap<MetricId, PreBufferMetric>,
+  metrics: AHashMap<MetricKey, PreBufferMetric>,
 }
 
 impl PreBuffer {
@@ -51,7 +51,9 @@ impl PreBuffer {
     for metric in metrics {
       let (metric_id, sample_rate, _, value) = metric.into_metric().into_parts();
       let mtype = metric_id.mtype();
-      let metric = match self.metrics.entry(metric_id) {
+      // TODO(mattklein123): Use hashbrown to avoid creating the metric key unless we actually need
+      // it.
+      let metric = match self.metrics.entry(MetricKey::new(&metric_id)) {
         Entry::Occupied(entry) => entry.into_mut(),
         Entry::Vacant(entry) => {
           let new_metric = match mtype {
@@ -66,7 +68,7 @@ impl PreBuffer {
                 15.seconds(),
                 "Unsupported pre-buffer metric type {:?} for metric {}",
                 mtype,
-                entry.key()
+                metric_id
               );
               continue;
             },
@@ -110,7 +112,12 @@ impl PreBuffer {
       match metric {
         PreBufferMetric::Counter(counter) => {
           ret.push(ParsedMetric::new(
-            Metric::new(id, None, now_unix, MetricValue::Simple(counter)),
+            Metric::new(
+              id.to_metric_id(),
+              None,
+              now_unix,
+              MetricValue::Simple(counter),
+            ),
             MetricSource::Aggregation { prom_source: false },
             now_instant,
             downstream_id.clone(),
@@ -118,7 +125,12 @@ impl PreBuffer {
         },
         PreBufferMetric::Gauge(gauge) => {
           ret.push(ParsedMetric::new(
-            Metric::new(id, None, now_unix, MetricValue::Simple(gauge)),
+            Metric::new(
+              id.to_metric_id(),
+              None,
+              now_unix,
+              MetricValue::Simple(gauge),
+            ),
             MetricSource::Aggregation { prom_source: false },
             now_instant,
             downstream_id.clone(),
@@ -127,10 +139,12 @@ impl PreBuffer {
         PreBufferMetric::Timer(mut timer) => {
           let (reservoir, count) = timer.drain();
           let sample_rate = reservoir.len() as f64 / count;
+          // TODO(mattklein123): Create new intermediate type which carries along all of the
+          // samples in a single wrapper metric.
           for value in reservoir {
             ret.push(ParsedMetric::new(
               Metric::new(
-                id.clone(),
+                id.to_metric_id(),
                 Some(sample_rate),
                 now_unix,
                 MetricValue::Simple(value),
