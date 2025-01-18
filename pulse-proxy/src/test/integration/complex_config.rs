@@ -354,7 +354,8 @@ pipeline:
       aggregation:
         flush_interval: 1s
         enable_last_aggregation_admin_endpoint: true
-        reservoir_timers: {{}}
+        reservoir_timers:
+          emit_as_bulk_timer: true
 
   outflows:
     wfp:
@@ -537,9 +538,9 @@ async fn all() {
           ("tag_b", "b"),
         ],
         0,
-        Some(MetricType::Timer),
+        Some(MetricType::BulkTimer),
         Some(1.0),
-        MetricValue::Simple(1.0),
+        MetricValue::BulkTimer(vec![1.0]),
         MetricSource::PromRemoteWrite,
         DownstreamId::LocalOrigin,
         None,

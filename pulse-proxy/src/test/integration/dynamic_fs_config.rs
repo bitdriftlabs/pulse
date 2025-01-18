@@ -107,7 +107,9 @@ async fn reload_config() {
   .await;
   let client = PromClient::new(bind_resolver.local_tcp_addr("inflow:prom")).await;
 
-  client.send(&[make_abs_counter("hello", &[], 1, 1.0)]).await;
+  client
+    .send(vec![make_abs_counter("hello", &[], 1, 1.0)])
+    .await;
   assert_eq!(
     vec![make_abs_counter("hello", &[], 1, 1.0)],
     upstream.wait_for_metrics().await.1
@@ -124,7 +126,9 @@ async fn reload_config() {
 
   // Use a fresh client as the previous client's connection may race with the old inflow shutdown.
   let client = PromClient::new(bind_resolver.local_tcp_addr("inflow:prom")).await;
-  client.send(&[make_abs_counter("world", &[], 1, 1.0)]).await;
+  client
+    .send(vec![make_abs_counter("world", &[], 1, 1.0)])
+    .await;
   assert_eq!(
     vec![make_abs_counter("world", &[], 1, 1.0)],
     upstream.wait_for_metrics().await.1
@@ -162,7 +166,9 @@ async fn bad_config() {
     .wait_for_counter_eq(1, "pulse_proxy:config:failed_update", &labels! {})
     .await;
 
-  client.send(&[make_abs_counter("world", &[], 1, 1.0)]).await;
+  client
+    .send(vec![make_abs_counter("world", &[], 1, 1.0)])
+    .await;
   assert_eq!(
     vec![make_abs_counter("world", &[], 1, 1.0)],
     upstream.wait_for_metrics().await.1

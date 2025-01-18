@@ -9,7 +9,7 @@ use super::{OutflowFactoryContext, OutflowStats, PipelineOutflow};
 use crate::batch::{Batch, BatchBuilder};
 use crate::clients::client_pool::Pool;
 use crate::pipeline::config::default_max_in_flight;
-use crate::protos::metric::{MetricValue, ParsedMetric};
+use crate::protos::metric::{Metric, MetricId, MetricType, MetricValue, ParsedMetric};
 use async_trait::async_trait;
 use bd_log::warn_every;
 use bd_server_stats::stats::AutoGauge;
@@ -56,13 +56,9 @@ pub(super) enum WireOutflowClient {
   Null(),
 }
 
-enum Sample {
-  Parsed(ParsedMetric),
-}
-
 /// An outflow for wire protocols that use UDP, Unix, or TCP for the transport layer.
 pub(super) struct WireOutflow {
-  batch_builder: Arc<BatchBuilder<Sample, WireBatch>>,
+  batch_builder: Arc<BatchBuilder<ParsedMetric, WireBatch>>,
 }
 
 impl WireOutflow {
@@ -115,7 +111,32 @@ impl PipelineOutflow for WireOutflow {
         continue;
       }
 
-      self.batch_builder.send(Sample::Parsed(sample));
+      // In general we don't expect bulk timers to make it here given a normal configuration, but if
+      // they do emit them as individual values. No effort is made to make this perform well.
+      if Some(MetricType::BulkTimer) == sample.metric().get_id().mtype() {
+        for value in sample.metric().value.to_bulk_timer() {
+          self.batch_builder.send(ParsedMetric::new(
+            Metric::new(
+              MetricId::new(
+                sample.metric().get_id().name().clone(),
+                Some(MetricType::Timer),
+                sample.metric().get_id().tags().to_vec(),
+                true,
+              )
+              .unwrap(),
+              sample.metric().sample_rate,
+              sample.metric().timestamp,
+              MetricValue::Simple(*value),
+            ),
+            sample.source().clone(),
+            sample.received_at(),
+            sample.downstream_id().clone(),
+          ));
+        }
+        continue;
+      }
+
+      self.batch_builder.send(sample);
     }
   }
 }
@@ -140,14 +161,10 @@ impl WireBatch {
   }
 }
 
-impl Batch<Sample> for WireBatch {
-  fn push(&mut self, sample: Sample) -> Option<usize> {
-    let line = match sample {
-      Sample::Parsed(parsed) => {
-        self.received_at.push(parsed.received_at());
-        parsed.to_wire_protocol(&self.protocol)
-      },
-    };
+impl Batch<ParsedMetric> for WireBatch {
+  fn push(&mut self, sample: ParsedMetric) -> Option<usize> {
+    self.received_at.push(sample.received_at());
+    let line = sample.to_wire_protocol(&self.protocol);
     self.samples += 1;
     self.payload.extend_from_slice(&line);
     self.payload.extend_from_slice(b"\n");
@@ -168,7 +185,7 @@ async fn send_task(
   client: WireOutflowClient,
   shutdown: ComponentShutdown,
   max_in_flight: usize,
-  batch_builder: Arc<BatchBuilder<Sample, WireBatch>>,
+  batch_builder: Arc<BatchBuilder<ParsedMetric, WireBatch>>,
 ) {
   let semaphore = Arc::new(Semaphore::new(max_in_flight));
   let name = Arc::new(name);

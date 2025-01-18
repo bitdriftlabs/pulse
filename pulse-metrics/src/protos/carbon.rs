@@ -139,7 +139,7 @@ fn write_carbon_tag(line: &mut bytes::BytesMut, tag: &TagValue) {
 }
 
 pub fn to_carbon_line(metric: &Metric) -> bytes::Bytes {
-  // TODO(mattklein123): Histograms/summaries are blocked at the wire outflow level.
+  // TODO(mattklein123): Histograms/summaries/bulk timers are blocked at the wire outflow level.
   let value = metric.value.to_simple();
 
   let mut line = bytes::BytesMut::new();

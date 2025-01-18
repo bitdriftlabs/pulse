@@ -125,7 +125,7 @@ fn summary_round_trip() {
   );
 
   let write_request = to_write_request(
-    &metrics
+    metrics
       .into_iter()
       .map(|metric| {
         ParsedMetric::new(
@@ -234,7 +234,7 @@ fn histogram_round_trip() {
   );
 
   let write_request = to_write_request(
-    &metrics
+    metrics
       .into_iter()
       .map(|metric| {
         ParsedMetric::new(

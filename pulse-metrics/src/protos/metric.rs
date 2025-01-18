@@ -54,9 +54,9 @@ pub enum MetricType {
   DirectGauge,
   Gauge,
   Histogram,
-  Set,
   Summary,
   Timer,
+  BulkTimer,
 }
 
 impl MetricType {
@@ -66,7 +66,6 @@ impl MetricType {
       b"k" | b"G" => Ok(Self::DirectGauge),
       b"g" => Ok(Self::Gauge),
       b"h" | b"ms" => Ok(Self::Timer),
-      b"s" => Ok(Self::Set),
       _ => Err(ParseError::InvalidType),
     }
   }
@@ -80,9 +79,8 @@ impl MetricType {
       Self::DeltaGauge | Self::Gauge => b"g",
       Self::DirectGauge => b"G",
       // TODO(mattklein123): Blocked at the wire outflow level.
-      Self::Histogram | Self::Summary => unreachable!(),
+      Self::Histogram | Self::Summary | Self::BulkTimer => unreachable!(),
       Self::Timer => b"ms",
-      Self::Set => b"s",
     }
   }
 }
@@ -159,6 +157,10 @@ impl MetricId {
     self.mtype
   }
 
+  pub fn set_mtype(&mut self, mtype: MetricType) {
+    self.mtype = Some(mtype);
+  }
+
   pub const fn name(&self) -> &bytes::Bytes {
     &self.name
   }
@@ -192,6 +194,10 @@ impl MetricId {
       b.put_u8(new_c);
     }
     b.freeze()
+  }
+
+  pub fn into_parts(self) -> (bytes::Bytes, Option<MetricType>, Vec<TagValue>) {
+    (self.name, self.mtype, self.tags)
   }
 }
 
@@ -300,6 +306,7 @@ pub enum MetricValue {
   Simple(f64),
   Histogram(HistogramData),
   Summary(SummaryData),
+  BulkTimer(Vec<f64>),
 }
 
 // Need to implement equality to account for prometheus stale markers which are NaN.
@@ -309,6 +316,7 @@ impl PartialEq for MetricValue {
       (Self::Simple(lhs), Self::Simple(rhs)) => f64_or_stale_marker_eq(*lhs, *rhs),
       (Self::Histogram(lhs), Self::Histogram(rhs)) => lhs == rhs,
       (Self::Summary(lhs), Self::Summary(rhs)) => lhs == rhs,
+      (Self::BulkTimer(lhs), Self::BulkTimer(rhs)) => lhs == rhs,
       _ => false,
     }
   }
@@ -319,14 +327,14 @@ impl MetricValue {
   pub fn to_simple(&self) -> f64 {
     match self {
       Self::Simple(value) => *value,
-      Self::Histogram(_) | Self::Summary(_) => unreachable!(),
+      Self::Histogram(_) | Self::Summary(_) | Self::BulkTimer(_) => unreachable!(),
     }
   }
 
   #[must_use]
   pub fn to_histogram(&self) -> &HistogramData {
     match self {
-      Self::Simple(_) | Self::Summary(_) => unreachable!(),
+      Self::Simple(_) | Self::Summary(_) | Self::BulkTimer(_) => unreachable!(),
       Self::Histogram(h) => h,
     }
   }
@@ -334,15 +342,23 @@ impl MetricValue {
   #[must_use]
   pub fn to_summary(&self) -> &SummaryData {
     match self {
-      Self::Simple(_) | Self::Histogram(_) => unreachable!(),
+      Self::Simple(_) | Self::Histogram(_) | Self::BulkTimer(_) => unreachable!(),
       Self::Summary(s) => s,
+    }
+  }
+
+  #[must_use]
+  pub fn to_bulk_timer(&self) -> &[f64] {
+    match self {
+      Self::Simple(_) | Self::Histogram(_) | Self::Summary(_) => unreachable!(),
+      Self::BulkTimer(b) => b,
     }
   }
 
   #[must_use]
   pub fn into_histogram(self) -> HistogramData {
     match self {
-      Self::Simple(_) | Self::Summary(_) => unreachable!(),
+      Self::Simple(_) | Self::Summary(_) | Self::BulkTimer(_) => unreachable!(),
       Self::Histogram(h) => h,
     }
   }
@@ -350,8 +366,16 @@ impl MetricValue {
   #[must_use]
   pub fn into_summary(self) -> SummaryData {
     match self {
-      Self::Simple(_) | Self::Histogram(_) => unreachable!(),
+      Self::Simple(_) | Self::Histogram(_) | Self::BulkTimer(_) => unreachable!(),
       Self::Summary(s) => s,
+    }
+  }
+
+  #[must_use]
+  pub fn into_bulk_timer(self) -> Vec<f64> {
+    match self {
+      Self::Simple(_) | Self::Histogram(_) | Self::Summary(_) => unreachable!(),
+      Self::BulkTimer(b) => b,
     }
   }
 }
@@ -441,6 +465,7 @@ impl std::fmt::Display for Metric {
         MetricValue::Simple(s) => s.to_string(),
         MetricValue::Histogram(_) => "histogram".to_string(),
         MetricValue::Summary(_) => "summary".to_string(),
+        MetricValue::BulkTimer(_) => "bulk_timer".to_string(),
       },
       self.timestamp,
     )
@@ -776,8 +801,9 @@ impl ParsedMetric {
     )
   }
 
+  #[must_use]
   pub fn to_write_request(
-    parsed_metrics: &[Self],
+    parsed_metrics: Vec<Self>,
     options: &ToWriteRequestOptions,
   ) -> WriteRequest {
     to_write_request(parsed_metrics, options)
