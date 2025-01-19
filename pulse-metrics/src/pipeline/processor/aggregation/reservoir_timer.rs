@@ -16,12 +16,14 @@ use tokio::time::Instant;
 
 pub(super) struct ReservoirTimerAggregation {
   reservoir: ReservoirTimer,
+  emit_as_bulk: bool,
 }
 
 impl ReservoirTimerAggregation {
-  pub(super) fn new(reservoir_size: u32) -> Self {
+  pub(super) fn new(reservoir_size: u32, emit_as_bulk: bool) -> Self {
     Self {
       reservoir: ReservoirTimer::new(reservoir_size),
+      emit_as_bulk,
     }
   }
 
@@ -39,20 +41,33 @@ impl ReservoirTimerAggregation {
     // Derive the sample rate based on the number of overall samples we got.
     let (reservoir, count) = self.reservoir.drain();
     let sample_rate = reservoir.len() as f64 / count;
-    reservoir
-      .into_iter()
-      .map(|t| {
-        make_metric(
-          metric_id.name().clone(),
-          metric_id.tags().to_vec(),
-          MetricValue::Simple(t),
-          Some(sample_rate),
-          timestamp,
-          now,
-          MetricType::Timer,
-          prom_source,
-        )
-      })
-      .collect()
+    if self.emit_as_bulk {
+      vec![make_metric(
+        metric_id.name().clone(),
+        metric_id.tags().to_vec(),
+        MetricValue::BulkTimer(reservoir),
+        Some(sample_rate),
+        timestamp,
+        now,
+        MetricType::BulkTimer,
+        prom_source,
+      )]
+    } else {
+      reservoir
+        .into_iter()
+        .map(|t| {
+          make_metric(
+            metric_id.name().clone(),
+            metric_id.tags().to_vec(),
+            MetricValue::Simple(t),
+            Some(sample_rate),
+            timestamp,
+            now,
+            MetricType::Timer,
+            prom_source,
+          )
+        })
+        .collect()
+    }
   }
 }

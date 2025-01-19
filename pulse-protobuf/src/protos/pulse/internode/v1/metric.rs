@@ -1062,6 +1062,127 @@ pub mod downstream_id {
     }
 }
 
+// @@protoc_insertion_point(message:pulse.internode.v1.BulkTimer)
+#[derive(PartialEq,Clone,Default,Debug)]
+pub struct BulkTimer {
+    // message fields
+    // @@protoc_insertion_point(field:pulse.internode.v1.BulkTimer.values)
+    pub values: ::std::vec::Vec<f64>,
+    // special fields
+    // @@protoc_insertion_point(special_field:pulse.internode.v1.BulkTimer.special_fields)
+    pub special_fields: ::protobuf::SpecialFields,
+}
+
+impl<'a> ::std::default::Default for &'a BulkTimer {
+    fn default() -> &'a BulkTimer {
+        <BulkTimer as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl BulkTimer {
+    pub fn new() -> BulkTimer {
+        ::std::default::Default::default()
+    }
+
+    fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
+        let mut fields = ::std::vec::Vec::with_capacity(1);
+        let mut oneofs = ::std::vec::Vec::with_capacity(0);
+        fields.push(::protobuf::reflect::rt::v2::make_vec_simpler_accessor::<_, _>(
+            "values",
+            |m: &BulkTimer| { &m.values },
+            |m: &mut BulkTimer| { &mut m.values },
+        ));
+        ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<BulkTimer>(
+            "BulkTimer",
+            fields,
+            oneofs,
+        )
+    }
+}
+
+impl ::protobuf::Message for BulkTimer {
+    const NAME: &'static str = "BulkTimer";
+
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
+        while let Some(tag) = is.read_raw_tag_or_eof()? {
+            match tag {
+                10 => {
+                    is.read_repeated_packed_double_into(&mut self.values)?;
+                },
+                9 => {
+                    self.values.push(is.read_double()?);
+                },
+                tag => {
+                    ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u64 {
+        let mut my_size = 0;
+        my_size += ::protobuf::rt::vec_packed_double_size(1, &self.values);
+        my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
+        self.special_fields.cached_size().set(my_size as u32);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
+        os.write_repeated_packed_double(1, &self.values)?;
+        os.write_unknown_fields(self.special_fields.unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn special_fields(&self) -> &::protobuf::SpecialFields {
+        &self.special_fields
+    }
+
+    fn mut_special_fields(&mut self) -> &mut ::protobuf::SpecialFields {
+        &mut self.special_fields
+    }
+
+    fn new() -> BulkTimer {
+        BulkTimer::new()
+    }
+
+    fn clear(&mut self) {
+        self.values.clear();
+        self.special_fields.clear();
+    }
+
+    fn default_instance() -> &'static BulkTimer {
+        static instance: BulkTimer = BulkTimer {
+            values: ::std::vec::Vec::new(),
+            special_fields: ::protobuf::SpecialFields::new(),
+        };
+        &instance
+    }
+}
+
+impl ::protobuf::MessageFull for BulkTimer {
+    fn descriptor() -> ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::Lazy::new();
+        descriptor.get(|| file_descriptor().message_by_package_relative_name("BulkTimer").unwrap()).clone()
+    }
+}
+
+impl ::std::fmt::Display for BulkTimer {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for BulkTimer {
+    type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
+}
+
 // @@protoc_insertion_point(message:pulse.internode.v1.Metric)
 #[derive(PartialEq,Clone,Default,Debug)]
 pub struct Metric {
@@ -1219,8 +1340,57 @@ impl Metric {
         }
     }
 
+    // .pulse.internode.v1.BulkTimer bulk_timer = 10;
+
+    pub fn bulk_timer(&self) -> &BulkTimer {
+        match self.value_type {
+            ::std::option::Option::Some(metric::Value_type::BulkTimer(ref v)) => v,
+            _ => <BulkTimer as ::protobuf::Message>::default_instance(),
+        }
+    }
+
+    pub fn clear_bulk_timer(&mut self) {
+        self.value_type = ::std::option::Option::None;
+    }
+
+    pub fn has_bulk_timer(&self) -> bool {
+        match self.value_type {
+            ::std::option::Option::Some(metric::Value_type::BulkTimer(..)) => true,
+            _ => false,
+        }
+    }
+
+    // Param is passed by value, moved
+    pub fn set_bulk_timer(&mut self, v: BulkTimer) {
+        self.value_type = ::std::option::Option::Some(metric::Value_type::BulkTimer(v))
+    }
+
+    // Mutable pointer to the field.
+    pub fn mut_bulk_timer(&mut self) -> &mut BulkTimer {
+        if let ::std::option::Option::Some(metric::Value_type::BulkTimer(_)) = self.value_type {
+        } else {
+            self.value_type = ::std::option::Option::Some(metric::Value_type::BulkTimer(BulkTimer::new()));
+        }
+        match self.value_type {
+            ::std::option::Option::Some(metric::Value_type::BulkTimer(ref mut v)) => v,
+            _ => panic!(),
+        }
+    }
+
+    // Take field
+    pub fn take_bulk_timer(&mut self) -> BulkTimer {
+        if self.has_bulk_timer() {
+            match self.value_type.take() {
+                ::std::option::Option::Some(metric::Value_type::BulkTimer(v)) => v,
+                _ => panic!(),
+            }
+        } else {
+            BulkTimer::new()
+        }
+    }
+
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(9);
+        let mut fields = ::std::vec::Vec::with_capacity(10);
         let mut oneofs = ::std::vec::Vec::with_capacity(1);
         fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, MetricId>(
             "id",
@@ -1256,6 +1426,13 @@ impl Metric {
             Metric::summary,
             Metric::mut_summary,
             Metric::set_summary,
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_oneof_message_has_get_mut_set_accessor::<_, BulkTimer>(
+            "bulk_timer",
+            Metric::has_bulk_timer,
+            Metric::bulk_timer,
+            Metric::mut_bulk_timer,
+            Metric::set_bulk_timer,
         ));
         fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, MetricSource>(
             "metric_source",
@@ -1308,6 +1485,9 @@ impl ::protobuf::Message for Metric {
                 },
                 50 => {
                     self.value_type = ::std::option::Option::Some(metric::Value_type::Summary(is.read_message()?));
+                },
+                82 => {
+                    self.value_type = ::std::option::Option::Some(metric::Value_type::BulkTimer(is.read_message()?));
                 },
                 58 => {
                     ::protobuf::rt::read_singular_message_into_field(is, &mut self.metric_source)?;
@@ -1364,6 +1544,10 @@ impl ::protobuf::Message for Metric {
                     let len = v.compute_size();
                     my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
                 },
+                &metric::Value_type::BulkTimer(ref v) => {
+                    let len = v.compute_size();
+                    my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+                },
             };
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
@@ -1401,6 +1585,9 @@ impl ::protobuf::Message for Metric {
                 &metric::Value_type::Summary(ref v) => {
                     ::protobuf::rt::write_message_field_with_cached_size(6, v, os)?;
                 },
+                &metric::Value_type::BulkTimer(ref v) => {
+                    ::protobuf::rt::write_message_field_with_cached_size(10, v, os)?;
+                },
             };
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
@@ -1423,6 +1610,7 @@ impl ::protobuf::Message for Metric {
         self.id.clear();
         self.sample_rate = ::std::option::Option::None;
         self.timestamp = 0;
+        self.value_type = ::std::option::Option::None;
         self.value_type = ::std::option::Option::None;
         self.value_type = ::std::option::Option::None;
         self.value_type = ::std::option::Option::None;
@@ -1476,6 +1664,8 @@ pub mod metric {
         Histogram(super::Histogram),
         // @@protoc_insertion_point(oneof_field:pulse.internode.v1.Metric.summary)
         Summary(super::Summary),
+        // @@protoc_insertion_point(oneof_field:pulse.internode.v1.Metric.bulk_timer)
+        BulkTimer(super::BulkTimer),
     }
 
     impl ::protobuf::Oneof for Value_type {
@@ -2021,14 +2211,14 @@ pub enum MetricType {
     METRIC_TYPE_DIRECT_GAUGE = 4,
     // @@protoc_insertion_point(enum_value:pulse.internode.v1.MetricType.METRIC_TYPE_GAUGE)
     METRIC_TYPE_GAUGE = 5,
-    // @@protoc_insertion_point(enum_value:pulse.internode.v1.MetricType.METRIC_TYPE_SET)
-    METRIC_TYPE_SET = 6,
     // @@protoc_insertion_point(enum_value:pulse.internode.v1.MetricType.METRIC_TYPE_TIMER)
     METRIC_TYPE_TIMER = 7,
     // @@protoc_insertion_point(enum_value:pulse.internode.v1.MetricType.METRIC_TYPE_HISTOGRAM)
     METRIC_TYPE_HISTOGRAM = 8,
     // @@protoc_insertion_point(enum_value:pulse.internode.v1.MetricType.METRIC_TYPE_SUMMARY)
     METRIC_TYPE_SUMMARY = 9,
+    // @@protoc_insertion_point(enum_value:pulse.internode.v1.MetricType.METRIC_TYPE_BULK_TIMER)
+    METRIC_TYPE_BULK_TIMER = 10,
 }
 
 impl ::protobuf::Enum for MetricType {
@@ -2046,10 +2236,10 @@ impl ::protobuf::Enum for MetricType {
             3 => ::std::option::Option::Some(MetricType::METRIC_TYPE_DELTA_GAUGE),
             4 => ::std::option::Option::Some(MetricType::METRIC_TYPE_DIRECT_GAUGE),
             5 => ::std::option::Option::Some(MetricType::METRIC_TYPE_GAUGE),
-            6 => ::std::option::Option::Some(MetricType::METRIC_TYPE_SET),
             7 => ::std::option::Option::Some(MetricType::METRIC_TYPE_TIMER),
             8 => ::std::option::Option::Some(MetricType::METRIC_TYPE_HISTOGRAM),
             9 => ::std::option::Option::Some(MetricType::METRIC_TYPE_SUMMARY),
+            10 => ::std::option::Option::Some(MetricType::METRIC_TYPE_BULK_TIMER),
             _ => ::std::option::Option::None
         }
     }
@@ -2062,10 +2252,10 @@ impl ::protobuf::Enum for MetricType {
             "METRIC_TYPE_DELTA_GAUGE" => ::std::option::Option::Some(MetricType::METRIC_TYPE_DELTA_GAUGE),
             "METRIC_TYPE_DIRECT_GAUGE" => ::std::option::Option::Some(MetricType::METRIC_TYPE_DIRECT_GAUGE),
             "METRIC_TYPE_GAUGE" => ::std::option::Option::Some(MetricType::METRIC_TYPE_GAUGE),
-            "METRIC_TYPE_SET" => ::std::option::Option::Some(MetricType::METRIC_TYPE_SET),
             "METRIC_TYPE_TIMER" => ::std::option::Option::Some(MetricType::METRIC_TYPE_TIMER),
             "METRIC_TYPE_HISTOGRAM" => ::std::option::Option::Some(MetricType::METRIC_TYPE_HISTOGRAM),
             "METRIC_TYPE_SUMMARY" => ::std::option::Option::Some(MetricType::METRIC_TYPE_SUMMARY),
+            "METRIC_TYPE_BULK_TIMER" => ::std::option::Option::Some(MetricType::METRIC_TYPE_BULK_TIMER),
             _ => ::std::option::Option::None
         }
     }
@@ -2077,10 +2267,10 @@ impl ::protobuf::Enum for MetricType {
         MetricType::METRIC_TYPE_DELTA_GAUGE,
         MetricType::METRIC_TYPE_DIRECT_GAUGE,
         MetricType::METRIC_TYPE_GAUGE,
-        MetricType::METRIC_TYPE_SET,
         MetricType::METRIC_TYPE_TIMER,
         MetricType::METRIC_TYPE_HISTOGRAM,
         MetricType::METRIC_TYPE_SUMMARY,
+        MetricType::METRIC_TYPE_BULK_TIMER,
     ];
 }
 
@@ -2091,7 +2281,18 @@ impl ::protobuf::EnumFull for MetricType {
     }
 
     fn descriptor(&self) -> ::protobuf::reflect::EnumValueDescriptor {
-        let index = *self as usize;
+        let index = match self {
+            MetricType::METRIC_TYPE_UNSPECIFIED => 0,
+            MetricType::METRIC_TYPE_DELTA_COUNTER => 1,
+            MetricType::METRIC_TYPE_ABSOLUTE_COUNTER => 2,
+            MetricType::METRIC_TYPE_DELTA_GAUGE => 3,
+            MetricType::METRIC_TYPE_DIRECT_GAUGE => 4,
+            MetricType::METRIC_TYPE_GAUGE => 5,
+            MetricType::METRIC_TYPE_TIMER => 6,
+            MetricType::METRIC_TYPE_HISTOGRAM => 7,
+            MetricType::METRIC_TYPE_SUMMARY => 8,
+            MetricType::METRIC_TYPE_BULK_TIMER => 9,
+        };
         Self::enum_descriptor().value_by_index(index)
     }
 }
@@ -2124,36 +2325,38 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x12unix_domain_socket\x18\x02\x20\x01(\tH\0R\x10unixDomainSocket\x12#\n\
     \x0cipv4_address\x18\x03\x20\x01(\rH\0R\x0bipv4Address\x12#\n\x0cipv6_ad\
     dress\x18\x04\x20\x01(\x0cH\0R\x0bipv6Address\x12)\n\x0finflow_provided\
-    \x18\x05\x20\x01(\x0cH\0R\x0einflowProvidedB\t\n\x07id_type\"\xe4\x03\n\
-    \x06Metric\x12,\n\x02id\x18\x01\x20\x01(\x0b2\x1c.pulse.internode.v1.Met\
-    ricIdR\x02id\x12$\n\x0bsample_rate\x18\x02\x20\x01(\x01H\x01R\nsampleRat\
-    e\x88\x01\x01\x12\x1c\n\ttimestamp\x18\x03\x20\x01(\x04R\ttimestamp\x12#\
-    \n\x0csimple_value\x18\x04\x20\x01(\x01H\0R\x0bsimpleValue\x12=\n\thisto\
-    gram\x18\x05\x20\x01(\x0b2\x1d.pulse.internode.v1.HistogramH\0R\thistogr\
-    am\x127\n\x07summary\x18\x06\x20\x01(\x0b2\x1b.pulse.internode.v1.Summar\
-    yH\0R\x07summary\x12E\n\rmetric_source\x18\x07\x20\x01(\x0b2\x20.pulse.i\
-    nternode.v1.MetricSourceR\x0cmetricSource\x12\x1f\n\x0breceived_at\x18\
-    \x08\x20\x01(\x04R\nreceivedAt\x12E\n\rdownstream_id\x18\t\x20\x01(\x0b2\
-    \x20.pulse.internode.v1.DownstreamIdR\x0cdownstreamIdB\x0c\n\nvalue_type\
-    B\x0e\n\x0c_sample_rate\"\x83\x01\n\x0cMetricSource\x12E\n\rwire_protoco\
-    l\x18\x01\x20\x01(\x0e2\x20.pulse.internode.v1.WireProtocolR\x0cwireProt\
-    ocol\x12\x1f\n\x08original\x18\x02\x20\x01(\x0cH\0R\x08original\x88\x01\
-    \x01B\x0b\n\t_original\"2\n\x08TagValue\x12\x10\n\x03tag\x18\x01\x20\x01\
-    (\x0cR\x03tag\x12\x14\n\x05value\x18\x02\x20\x01(\x0cR\x05value\"\xb1\
-    \x01\n\x08MetricId\x12\x12\n\x04name\x18\x01\x20\x01(\x0cR\x04name\x12D\
-    \n\x0bmetric_type\x18\x02\x20\x01(\x0e2\x1e.pulse.internode.v1.MetricTyp\
-    eH\0R\nmetricType\x88\x01\x01\x12;\n\ntag_values\x18\x03\x20\x03(\x0b2\
-    \x1c.pulse.internode.v1.TagValueR\ttagValuesB\x0e\n\x0c_metric_type*y\n\
-    \x0cWireProtocol\x12\x1d\n\x19WIRE_PROTOCOL_UNSPECIFIED\x10\0\x12\x18\n\
-    \x14WIRE_PROTOCOL_CARBON\x10\x01\x12\x18\n\x14WIRE_PROTOCOL_STATSD\x10\
-    \x02\x12\x16\n\x12WIRE_PROTOCOL_PROM\x10\x03*\x9c\x02\n\nMetricType\x12\
-    \x1b\n\x17METRIC_TYPE_UNSPECIFIED\x10\0\x12\x1d\n\x19METRIC_TYPE_DELTA_C\
-    OUNTER\x10\x01\x12\x20\n\x1cMETRIC_TYPE_ABSOLUTE_COUNTER\x10\x02\x12\x1b\
-    \n\x17METRIC_TYPE_DELTA_GAUGE\x10\x03\x12\x1c\n\x18METRIC_TYPE_DIRECT_GA\
-    UGE\x10\x04\x12\x15\n\x11METRIC_TYPE_GAUGE\x10\x05\x12\x13\n\x0fMETRIC_T\
-    YPE_SET\x10\x06\x12\x15\n\x11METRIC_TYPE_TIMER\x10\x07\x12\x19\n\x15METR\
-    IC_TYPE_HISTOGRAM\x10\x08\x12\x17\n\x13METRIC_TYPE_SUMMARY\x10\tb\x06pro\
-    to3\
+    \x18\x05\x20\x01(\x0cH\0R\x0einflowProvidedB\t\n\x07id_type\"#\n\tBulkTi\
+    mer\x12\x16\n\x06values\x18\x01\x20\x03(\x01R\x06values\"\xa4\x04\n\x06M\
+    etric\x12,\n\x02id\x18\x01\x20\x01(\x0b2\x1c.pulse.internode.v1.MetricId\
+    R\x02id\x12$\n\x0bsample_rate\x18\x02\x20\x01(\x01H\x01R\nsampleRate\x88\
+    \x01\x01\x12\x1c\n\ttimestamp\x18\x03\x20\x01(\x04R\ttimestamp\x12#\n\
+    \x0csimple_value\x18\x04\x20\x01(\x01H\0R\x0bsimpleValue\x12=\n\thistogr\
+    am\x18\x05\x20\x01(\x0b2\x1d.pulse.internode.v1.HistogramH\0R\thistogram\
+    \x127\n\x07summary\x18\x06\x20\x01(\x0b2\x1b.pulse.internode.v1.SummaryH\
+    \0R\x07summary\x12>\n\nbulk_timer\x18\n\x20\x01(\x0b2\x1d.pulse.internod\
+    e.v1.BulkTimerH\0R\tbulkTimer\x12E\n\rmetric_source\x18\x07\x20\x01(\x0b\
+    2\x20.pulse.internode.v1.MetricSourceR\x0cmetricSource\x12\x1f\n\x0brece\
+    ived_at\x18\x08\x20\x01(\x04R\nreceivedAt\x12E\n\rdownstream_id\x18\t\
+    \x20\x01(\x0b2\x20.pulse.internode.v1.DownstreamIdR\x0cdownstreamIdB\x0c\
+    \n\nvalue_typeB\x0e\n\x0c_sample_rate\"\x83\x01\n\x0cMetricSource\x12E\n\
+    \rwire_protocol\x18\x01\x20\x01(\x0e2\x20.pulse.internode.v1.WireProtoco\
+    lR\x0cwireProtocol\x12\x1f\n\x08original\x18\x02\x20\x01(\x0cH\0R\x08ori\
+    ginal\x88\x01\x01B\x0b\n\t_original\"2\n\x08TagValue\x12\x10\n\x03tag\
+    \x18\x01\x20\x01(\x0cR\x03tag\x12\x14\n\x05value\x18\x02\x20\x01(\x0cR\
+    \x05value\"\xb1\x01\n\x08MetricId\x12\x12\n\x04name\x18\x01\x20\x01(\x0c\
+    R\x04name\x12D\n\x0bmetric_type\x18\x02\x20\x01(\x0e2\x1e.pulse.internod\
+    e.v1.MetricTypeH\0R\nmetricType\x88\x01\x01\x12;\n\ntag_values\x18\x03\
+    \x20\x03(\x0b2\x1c.pulse.internode.v1.TagValueR\ttagValuesB\x0e\n\x0c_me\
+    tric_type*y\n\x0cWireProtocol\x12\x1d\n\x19WIRE_PROTOCOL_UNSPECIFIED\x10\
+    \0\x12\x18\n\x14WIRE_PROTOCOL_CARBON\x10\x01\x12\x18\n\x14WIRE_PROTOCOL_\
+    STATSD\x10\x02\x12\x16\n\x12WIRE_PROTOCOL_PROM\x10\x03*\xa9\x02\n\nMetri\
+    cType\x12\x1b\n\x17METRIC_TYPE_UNSPECIFIED\x10\0\x12\x1d\n\x19METRIC_TYP\
+    E_DELTA_COUNTER\x10\x01\x12\x20\n\x1cMETRIC_TYPE_ABSOLUTE_COUNTER\x10\
+    \x02\x12\x1b\n\x17METRIC_TYPE_DELTA_GAUGE\x10\x03\x12\x1c\n\x18METRIC_TY\
+    PE_DIRECT_GAUGE\x10\x04\x12\x15\n\x11METRIC_TYPE_GAUGE\x10\x05\x12\x15\n\
+    \x11METRIC_TYPE_TIMER\x10\x07\x12\x19\n\x15METRIC_TYPE_HISTOGRAM\x10\x08\
+    \x12\x17\n\x13METRIC_TYPE_SUMMARY\x10\t\x12\x1a\n\x16METRIC_TYPE_BULK_TI\
+    MER\x10\n\"\x04\x08\x06\x10\x06b\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
@@ -2171,10 +2374,11 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
     file_descriptor.get(|| {
         let generated_file_descriptor = generated_file_descriptor_lazy.get(|| {
             let mut deps = ::std::vec::Vec::with_capacity(0);
-            let mut messages = ::std::vec::Vec::with_capacity(9);
+            let mut messages = ::std::vec::Vec::with_capacity(10);
             messages.push(Histogram::generated_message_descriptor_data());
             messages.push(Summary::generated_message_descriptor_data());
             messages.push(DownstreamId::generated_message_descriptor_data());
+            messages.push(BulkTimer::generated_message_descriptor_data());
             messages.push(Metric::generated_message_descriptor_data());
             messages.push(MetricSource::generated_message_descriptor_data());
             messages.push(TagValue::generated_message_descriptor_data());

@@ -17,9 +17,8 @@ use crate::protos::metric::{
   ParsedMetric,
 };
 use crate::reservoir_timer::ReservoirTimer;
-use ahash::AHashMap;
 use bd_log::warn_every;
-use std::collections::hash_map::Entry;
+use hashbrown::hash_map::RawEntryMut;
 use std::time::Instant;
 use time::ext::NumericalDuration;
 
@@ -43,7 +42,7 @@ enum PreBufferMetric {
 // future if needed.
 #[derive(Default)]
 pub struct PreBuffer {
-  metrics: AHashMap<MetricKey, PreBufferMetric>,
+  metrics: hashbrown::HashMap<MetricKey, PreBufferMetric, ahash::RandomState>,
 }
 
 impl PreBuffer {
@@ -51,11 +50,17 @@ impl PreBuffer {
     for metric in metrics {
       let (metric_id, sample_rate, _, value) = metric.into_metric().into_parts();
       let mtype = metric_id.mtype();
-      // TODO(mattklein123): Use hashbrown to avoid creating the metric key unless we actually need
-      // it.
-      let metric = match self.metrics.entry(MetricKey::new(&metric_id)) {
-        Entry::Occupied(entry) => entry.into_mut(),
-        Entry::Vacant(entry) => {
+
+      // The hash for MetricKey and MetricId will be consistent. We do the following with hashbrown
+      // to avoid allocating a MetricKey if we don't need it.
+      let hash = self.metrics.hasher().hash_one(&metric_id);
+      let metric = match self
+        .metrics
+        .raw_entry_mut()
+        .from_hash(hash, |key_to_match| *key_to_match == metric_id)
+      {
+        RawEntryMut::Occupied(entry) => entry.into_mut(),
+        RawEntryMut::Vacant(entry) => {
           let new_metric = match mtype {
             Some(MetricType::Counter(CounterType::Delta)) => PreBufferMetric::Counter(0.0),
             Some(MetricType::Gauge | MetricType::DeltaGauge | MetricType::DirectGauge) => {
@@ -73,7 +78,9 @@ impl PreBuffer {
               continue;
             },
           };
-          entry.insert(new_metric)
+          entry
+            .insert_hashed_nocheck(hash, MetricKey::new(&metric_id), new_metric)
+            .1
         },
       };
 
@@ -139,21 +146,23 @@ impl PreBuffer {
         PreBufferMetric::Timer(mut timer) => {
           let (reservoir, count) = timer.drain();
           let sample_rate = reservoir.len() as f64 / count;
-          // TODO(mattklein123): Create new intermediate type which carries along all of the
-          // samples in a single wrapper metric.
-          for value in reservoir {
-            ret.push(ParsedMetric::new(
-              Metric::new(
-                id.to_metric_id(),
-                Some(sample_rate),
-                now_unix,
-                MetricValue::Simple(value),
-              ),
-              MetricSource::Aggregation { prom_source: false },
-              now_instant,
-              downstream_id.clone(),
-            ));
-          }
+          let mut metric_id = id.to_metric_id();
+
+          // Always use bulk timers for simplicity even if there is a single sample. This keeps
+          // the metric cache consistent. We could make this configurable at some point if anyone
+          // cares.
+          metric_id.set_mtype(MetricType::BulkTimer);
+          ret.push(ParsedMetric::new(
+            Metric::new(
+              metric_id,
+              Some(sample_rate),
+              now_unix,
+              MetricValue::BulkTimer(reservoir),
+            ),
+            MetricSource::Aggregation { prom_source: false },
+            now_instant,
+            downstream_id.clone(),
+          ));
         },
       }
     }

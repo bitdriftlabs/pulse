@@ -856,6 +856,8 @@ pub mod aggregation_config {
         // message fields
         // @@protoc_insertion_point(field:pulse.config.processor.v1.AggregationConfig.ReservoirTimers.reservoir_size)
         pub reservoir_size: ::std::option::Option<u32>,
+        // @@protoc_insertion_point(field:pulse.config.processor.v1.AggregationConfig.ReservoirTimers.emit_as_bulk_timer)
+        pub emit_as_bulk_timer: bool,
         // special fields
         // @@protoc_insertion_point(special_field:pulse.config.processor.v1.AggregationConfig.ReservoirTimers.special_fields)
         pub special_fields: ::protobuf::SpecialFields,
@@ -873,12 +875,17 @@ pub mod aggregation_config {
         }
 
         pub(in super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-            let mut fields = ::std::vec::Vec::with_capacity(1);
+            let mut fields = ::std::vec::Vec::with_capacity(2);
             let mut oneofs = ::std::vec::Vec::with_capacity(0);
             fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
                 "reservoir_size",
                 |m: &ReservoirTimers| { &m.reservoir_size },
                 |m: &mut ReservoirTimers| { &mut m.reservoir_size },
+            ));
+            fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+                "emit_as_bulk_timer",
+                |m: &ReservoirTimers| { &m.emit_as_bulk_timer },
+                |m: &mut ReservoirTimers| { &mut m.emit_as_bulk_timer },
             ));
             ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<ReservoirTimers>(
                 "AggregationConfig.ReservoirTimers",
@@ -901,6 +908,9 @@ pub mod aggregation_config {
                     8 => {
                         self.reservoir_size = ::std::option::Option::Some(is.read_uint32()?);
                     },
+                    16 => {
+                        self.emit_as_bulk_timer = is.read_bool()?;
+                    },
                     tag => {
                         ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                     },
@@ -916,6 +926,9 @@ pub mod aggregation_config {
             if let Some(v) = self.reservoir_size {
                 my_size += ::protobuf::rt::uint32_size(1, v);
             }
+            if self.emit_as_bulk_timer != false {
+                my_size += 1 + 1;
+            }
             my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
             self.special_fields.cached_size().set(my_size as u32);
             my_size
@@ -924,6 +937,9 @@ pub mod aggregation_config {
         fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
             if let Some(v) = self.reservoir_size {
                 os.write_uint32(1, v)?;
+            }
+            if self.emit_as_bulk_timer != false {
+                os.write_bool(2, self.emit_as_bulk_timer)?;
             }
             os.write_unknown_fields(self.special_fields.unknown_fields())?;
             ::std::result::Result::Ok(())
@@ -943,12 +959,14 @@ pub mod aggregation_config {
 
         fn clear(&mut self) {
             self.reservoir_size = ::std::option::Option::None;
+            self.emit_as_bulk_timer = false;
             self.special_fields.clear();
         }
 
         fn default_instance() -> &'static ReservoirTimers {
             static instance: ReservoirTimers = ReservoirTimers {
                 reservoir_size: ::std::option::Option::None,
+                emit_as_bulk_timer: false,
                 special_fields: ::protobuf::SpecialFields::new(),
             };
             &instance
@@ -2019,7 +2037,7 @@ pub mod aggregation_config {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n+pulse/config/processor/v1/aggregation.proto\x12\x19pulse.config.proce\
     ssor.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1egoogle/protobuf/wra\
-    ppers.proto\x1a\x17validate/validate.proto\"\x97\x11\n\x11AggregationCon\
+    ppers.proto\x1a\x17validate/validate.proto\"\xc4\x11\n\x11AggregationCon\
     fig\x12f\n\x0fquantile_timers\x18\x01\x20\x01(\x0b2;.pulse.config.proces\
     sor.v1.AggregationConfig.QuantileTimersH\0R\x0equantileTimers\x12i\n\x10\
     reservoir_timers\x18\x02\x20\x01(\x0b2<.pulse.config.processor.v1.Aggreg\
@@ -2046,15 +2064,16 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x18\x01\x20\x01(\x08R\x04mean\x12\x14\n\x05lower\x18\x02\x20\x01(\x08R\
     \x05lower\x12\x14\n\x05upper\x18\x03\x20\x01(\x08R\x05upper\x12\x14\n\
     \x05count\x18\x04\x20\x01(\x08R\x05count\x12\x12\n\x04rate\x18\x05\x20\
-    \x01(\x08R\x04rateB\t\n\x07_prefixB\x06\n\x04_eps\x1aP\n\x0fReservoirTim\
+    \x01(\x08R\x04rateB\t\n\x07_prefixB\x06\n\x04_eps\x1a}\n\x0fReservoirTim\
     ers\x12*\n\x0ereservoir_size\x18\x01\x20\x01(\rH\0R\rreservoirSize\x88\
-    \x01\x01B\x11\n\x0f_reservoir_size\x1a\xc1\x03\n\x08Counters\x12\x1b\n\
-    \x06prefix\x18\x01\x20\x01(\tH\0R\x06prefix\x88\x01\x01\x12Z\n\x08extend\
-    ed\x18\x02\x20\x01(\x0b2>.pulse.config.processor.v1.AggregationConfig.Co\
-    unters.ExtendedR\x08extended\x12s\n\x11absolute_counters\x18\x03\x20\x01\
-    (\x0b2F.pulse.config.processor.v1.AggregationConfig.Counters.AbsoluteCou\
-    ntersR\x10absoluteCounters\x1aH\n\x10AbsoluteCounters\x124\n\x12emit_as_\
-    delta_rate\x18\x03\x20\x01(\x08R\x0femitAsDeltaRateB\x07\xfaB\x04j\x02\
+    \x01\x01\x12+\n\x12emit_as_bulk_timer\x18\x02\x20\x01(\x08R\x0femitAsBul\
+    kTimerB\x11\n\x0f_reservoir_size\x1a\xc1\x03\n\x08Counters\x12\x1b\n\x06\
+    prefix\x18\x01\x20\x01(\tH\0R\x06prefix\x88\x01\x01\x12Z\n\x08extended\
+    \x18\x02\x20\x01(\x0b2>.pulse.config.processor.v1.AggregationConfig.Coun\
+    ters.ExtendedR\x08extended\x12s\n\x11absolute_counters\x18\x03\x20\x01(\
+    \x0b2F.pulse.config.processor.v1.AggregationConfig.Counters.AbsoluteCoun\
+    tersR\x10absoluteCounters\x1aH\n\x10AbsoluteCounters\x124\n\x12emit_as_d\
+    elta_rate\x18\x03\x20\x01(\x08R\x0femitAsDeltaRateB\x07\xfaB\x04j\x02\
     \x08\x01\x1ar\n\x08Extended\x12\x14\n\x05count\x18\x01\x20\x01(\x08R\x05\
     count\x12\x10\n\x03sum\x18\x02\x20\x01(\x08R\x03sum\x12\x12\n\x04rate\
     \x18\x03\x20\x01(\x08R\x04rate\x12\x14\n\x05lower\x18\x04\x20\x01(\x08R\

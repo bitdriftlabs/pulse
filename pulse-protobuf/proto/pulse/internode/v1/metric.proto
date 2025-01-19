@@ -40,6 +40,10 @@ message DownstreamId {
   }
 }
 
+message BulkTimer {
+  repeated double values = 1;
+}
+
 message Metric {
   MetricId id = 1;
   optional double sample_rate = 2;
@@ -48,6 +52,7 @@ message Metric {
     double simple_value = 4;
     Histogram histogram = 5;
     Summary summary = 6;
+    BulkTimer bulk_timer = 10;
   }
   MetricSource metric_source = 7;
   uint64 received_at = 8;
@@ -84,8 +89,9 @@ enum MetricType {
   METRIC_TYPE_DELTA_GAUGE = 3;
   METRIC_TYPE_DIRECT_GAUGE = 4;
   METRIC_TYPE_GAUGE = 5;
-  METRIC_TYPE_SET = 6;
+  reserved 6;
   METRIC_TYPE_TIMER = 7;
   METRIC_TYPE_HISTOGRAM = 8;
   METRIC_TYPE_SUMMARY = 9;
+  METRIC_TYPE_BULK_TIMER = 10;
 }

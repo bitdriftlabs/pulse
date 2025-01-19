@@ -689,8 +689,9 @@ impl Batch<ParsedMetric> for PromBatch {
       Self::Complete { .. } => unreachable!(),
     };
 
+    let received_at = samples.iter().map(ParsedMetric::received_at).collect();
     let write_request = ParsedMetric::to_write_request(
-      &samples,
+      samples,
       &ToWriteRequestOptions {
         metadata: if metadata_only {
           MetadataType::Only
@@ -704,7 +705,7 @@ impl Batch<ParsedMetric> for PromBatch {
     let size = compressed_write_request.len();
     *self = Self::Complete {
       compressed_write_request: compressed_write_request.into(),
-      received_at: samples.iter().map(ParsedMetric::received_at).collect(),
+      received_at,
       extra_headers,
     };
     size

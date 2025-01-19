@@ -1,6 +1,6 @@
 version: v2
 modules:
-  - path: api/thirdparty/
+  - path: pulse-protobuf/thirdparty/
   - path: pulse-protobuf/proto/
 lint:
   use:
@@ -16,7 +16,7 @@ lint:
     - RPC_RESPONSE_STANDARD_NAME
     - SERVICE_SUFFIX
   ignore:
-    - api/thirdparty/
+    - pulse-protobuf/thirdparty/
   service_suffix: Service
   disallow_comment_ignores: true
 breaking:

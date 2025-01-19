@@ -45,6 +45,16 @@ message AggregationConfig {
   message ReservoirTimers {
     // The size of the reservoir for each timer. If not set defaults to 100.
     optional uint32 reservoir_size = 1;
+
+    // If set to true, timers in the reservoir will be emitted as the synthetic "bulk timer" metric
+    // type. This type is internal to Pulse, but effectively packs all of the timer samples into
+    // a single pseudo metric to avoid repeated processing of metric names, tags, etc. If
+    // sending to another pulse layer that understands this format, this can yield substantial
+    // efficiency gains. Note if this type makes its way to a wire outflow, it will be converted
+    // back to individual timers. If it makes its way to prom remote write, the type will be
+    // emitted im bulk format, but only pulse understands how to read this format. Do not send
+    // this to other TSDBs.
+    bool emit_as_bulk_timer = 2;
   }
 
   message Counters {

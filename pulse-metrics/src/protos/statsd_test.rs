@@ -155,7 +155,6 @@ fn metric_types() -> anyhow::Result<()> {
     ("car:bar:3|g".into(), MetricType::Gauge),
     ("car:bar:3|G".into(), MetricType::DirectGauge),
     ("hello.bar:4.0|ms|#tags".into(), MetricType::Timer),
-    ("hello.bar:4.0|s|@1.0|#tags".into(), MetricType::Set),
   ];
   for (buf, expected_metric_type) in type_checks {
     println!("{}", String::from_utf8(buf.to_vec())?);

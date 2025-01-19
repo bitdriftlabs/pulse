@@ -755,6 +755,37 @@ struct LockedPerMetricAggregationState {
 }
 
 impl LockedPerMetricAggregationState {
+  fn update_timer(
+    config: &AggregationConfig,
+    aggregation_to_fill: &mut Option<AggregationType>,
+    value: f64,
+    sample_rate: Option<f64>,
+  ) -> Result<()> {
+    match config.timer_type.as_ref().expect("pgv") {
+      Timer_type::QuantileTimers(_) => {
+        let aggregation = aggregation_to_fill
+          .get_or_insert_with(|| AggregationType::QuantileTimer(TimerAggregation::new(config)));
+        let AggregationType::QuantileTimer(ref mut timer_aggregation) = aggregation else {
+          return Err(AggregationError::ChangedType);
+        };
+        timer_aggregation.aggregate(value, sample_rate.unwrap_or(1.0));
+      },
+      Timer_type::ReservoirTimers(r) => {
+        let aggregation = aggregation_to_fill.get_or_insert_with(|| {
+          AggregationType::ReservoirTimer(ReservoirTimerAggregation::new(
+            r.reservoir_size.unwrap_or(100),
+            r.emit_as_bulk_timer,
+          ))
+        });
+        let AggregationType::ReservoirTimer(ref mut timer_aggregation) = aggregation else {
+          return Err(AggregationError::ChangedType);
+        };
+        timer_aggregation.aggregate(value, sample_rate.unwrap_or(1.0));
+      },
+    }
+    Ok(())
+  }
+
   fn update(
     &mut self,
     sample: &ParsedMetric,
@@ -859,39 +890,22 @@ impl LockedPerMetricAggregationState {
 
         histogram_aggregation.aggregate(sample.metric(), sample.downstream_id())?;
       },
-      Some(MetricType::Set) => {
-        // TODO(mattklein123): It's unclear if we have to support this or not. Most likely not since
-        // the code appears to have no mechanism for passing through the raw set value, which would
-        // be required for the existing statsite deployment to do the aggregation.
-        return Err(AggregationError::UnsupportedType);
+      Some(MetricType::BulkTimer) => {
+        for value in sample.metric().value.to_bulk_timer() {
+          Self::update_timer(
+            config,
+            aggregation_to_fill,
+            *value,
+            sample.metric().sample_rate,
+          )?;
+        }
       },
-      Some(MetricType::Timer) => match config.timer_type.as_ref().expect("pgv") {
-        Timer_type::QuantileTimers(_) => {
-          let aggregation = aggregation_to_fill
-            .get_or_insert_with(|| AggregationType::QuantileTimer(TimerAggregation::new(config)));
-          let AggregationType::QuantileTimer(ref mut timer_aggregation) = aggregation else {
-            return Err(AggregationError::ChangedType);
-          };
-          timer_aggregation.aggregate(
-            sample.metric().value.to_simple(),
-            sample.metric().sample_rate.unwrap_or(1.0),
-          );
-        },
-        Timer_type::ReservoirTimers(r) => {
-          let aggregation = aggregation_to_fill.get_or_insert_with(|| {
-            AggregationType::ReservoirTimer(ReservoirTimerAggregation::new(
-              r.reservoir_size.unwrap_or(100),
-            ))
-          });
-          let AggregationType::ReservoirTimer(ref mut timer_aggregation) = aggregation else {
-            return Err(AggregationError::ChangedType);
-          };
-          timer_aggregation.aggregate(
-            sample.metric().value.to_simple(),
-            sample.metric().sample_rate.unwrap_or(1.0),
-          );
-        },
-      },
+      Some(MetricType::Timer) => Self::update_timer(
+        config,
+        aggregation_to_fill,
+        sample.metric().value.to_simple(),
+        sample.metric().sample_rate,
+      )?,
       Some(MetricType::Summary) => {
         let aggregation = aggregation_to_fill
           .get_or_insert_with(|| AggregationType::Summary(SummaryAggregation::default()));

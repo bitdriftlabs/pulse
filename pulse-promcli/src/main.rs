@@ -84,7 +84,7 @@ async fn main() -> anyhow::Result<()> {
   );
 
   let write_request = to_write_request(
-    &[metric],
+    vec![metric],
     &ToWriteRequestOptions {
       metadata: if options.no_emit_metadata {
         MetadataType::None

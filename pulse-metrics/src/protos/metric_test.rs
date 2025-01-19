@@ -27,8 +27,7 @@ pub mod arbitraries {
         0 ..= 50 => Self::Counter(CounterType::Delta),
         51 ..= 101 => Self::DirectGauge,
         102 ..= 152 => Self::Gauge,
-        153 ..= 203 => Self::Set,
-        204 ..= 255 => Self::Timer,
+        153 ..= 255 => Self::Timer,
       }
     }
   }
@@ -44,10 +43,12 @@ pub mod arbitraries {
         Some(MetricType::DirectGauge) => "foo.bar.G",
         Some(MetricType::Gauge) => "foo.bar.g",
         Some(
-          MetricType::Histogram | MetricType::Summary | MetricType::Counter(CounterType::Absolute),
+          MetricType::Histogram
+          | MetricType::Summary
+          | MetricType::Counter(CounterType::Absolute)
+          | MetricType::BulkTimer,
         ) => unreachable!(),
         Some(MetricType::Timer) => "foo.bar.ms",
-        Some(MetricType::Set) => "boo.bar.s",
         None => "foo.bar",
       }
       .into();
@@ -109,7 +110,7 @@ pub mod arbitraries {
 #[allow(clippy::needless_pass_by_value)]
 fn metrics_roundtrip_write_request(input: Vec<ParsedMetric>) -> anyhow::Result<()> {
   let write_request = ParsedMetric::to_write_request(
-    &input,
+    input.clone(),
     &ToWriteRequestOptions {
       metadata: MetadataType::Normal,
       convert_name: true,
@@ -172,7 +173,6 @@ fn metrics_from_write_request() {
     ),
     (PromMetricType::GAUGE, Some(MetricType::Gauge)),
     (PromMetricType::SUMMARY, Some(MetricType::Timer)),
-    (PromMetricType::STATESET, Some(MetricType::Set)),
     (PromMetricType::UNKNOWN, None),
   ];
 
@@ -250,7 +250,7 @@ fn metrics_from_write_request() {
 #[quickcheck]
 fn metrics_to_write_request_metadata_only(input: ParsedMetric) -> anyhow::Result<()> {
   let write_request = ParsedMetric::to_write_request(
-    &[input],
+    vec![input],
     &ToWriteRequestOptions {
       metadata: MetadataType::Only,
       convert_name: true,

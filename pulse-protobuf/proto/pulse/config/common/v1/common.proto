@@ -71,10 +71,26 @@ message EnvInlineOrFile {
 }
 
 // A file that is watched on the filesystem, typically within a K8s config map.
+//
+// Note that `dir` watches for *renames* in this directory only without recursion. This limits
+// watched changes and is required for Kubernetes `ConfigMap` deployments.
+//
+// A Kubernetes `ConfigMap` deployment might work as follows:
+// 1. Mount `ConfigMap` to `/config_map/foo`.
+// 2. Set `dir` to `/config_map/foo`.
+// 3. Set `file` to `/config_map/foo/foo.yaml`.
+//
+// Internally Kubernetes will create the following structure:
+// 1. `/config_map/foo/real_data/foo.yaml`.
+// 2. `/config_map/foo/..data` -> `/config_map/foo/real_data`.
+// 3. `/config_map/foo/foo.yaml` -> `/config_map/foo/..data/foo.yaml`.
+//
+// Further data swaps will only rename the `..data` symlink.
 message RuntimeConfig {
-  // Directory to watch for updates.
+  // Directory to watch for updates. See above. This needs to be the directory that owns whatever
+  // symlink is being atomically swapped.
   string dir = 1 [(validate.rules).string = {min_len: 1}];
 
-  // File to watch for updates.
+  // File to watch for updates. This is the actual full file path.
   string file = 2 [(validate.rules).string = {min_len: 1}];
 }
