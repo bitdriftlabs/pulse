@@ -49,8 +49,8 @@ jobs:
     strategy:
       matrix:
         os: [
-          {runner: ubuntu-latest-16-cores, arch: linux/amd64, tag_suffix: amd64},
-          {runner: ubuntu-latest-arm-16-cores, arch: linux/arm64, tag_suffix: arm64},
+          {runner: ubuntu-2204-16-cores, arch: linux/amd64, tag_suffix: amd64},
+          {runner: ubuntu-2204-arm-16-cores, arch: linux/arm64, tag_suffix: arm64},
         ]
     name: build
     permissions:
