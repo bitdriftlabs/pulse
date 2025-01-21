@@ -106,6 +106,7 @@ pub fn prom_metric_type_to_internal_metric_type(
         Ok(MetricType::Counter(CounterType::Absolute))
       }
     },
+    PromMetricType::DIRECTCOUNTER => Ok(MetricType::Counter(CounterType::Delta)),
     PromMetricType::DELTAGAUGE => Ok(MetricType::DeltaGauge),
     PromMetricType::DIRECTGAUGE => Ok(MetricType::DirectGauge),
     PromMetricType::GAUGE => Ok(MetricType::Gauge),
@@ -116,9 +117,8 @@ pub fn prom_metric_type_to_internal_metric_type(
         Ok(MetricType::Summary)
       }
     },
-    // TODO(mattklein123): This is not correct. A real Prom/OTel state set is not the same as a
-    // statsd aggregated set.
-    PromMetricType::STATESET => Ok(MetricType::Set),
+    PromMetricType::TIMER => Ok(MetricType::Timer),
+    PromMetricType::BULKTIMER => Ok(MetricType::BulkTimer),
     PromMetricType::HISTOGRAM => Ok(MetricType::Histogram),
     _ => Err(ParseError::InvalidType),
   }
@@ -130,17 +130,15 @@ impl From<MetricType> for PromMetricType {
   fn from(t: MetricType) -> Self {
     #[allow(clippy::match_same_arms)]
     match t {
-      MetricType::Counter(_) => Self::COUNTER,
+      MetricType::Counter(CounterType::Absolute) => Self::COUNTER,
+      MetricType::Counter(CounterType::Delta) => Self::DIRECTCOUNTER,
       MetricType::DeltaGauge => Self::DELTAGAUGE,
       MetricType::DirectGauge => Self::DIRECTGAUGE,
       MetricType::Gauge => Self::GAUGE,
       MetricType::Histogram => Self::HISTOGRAM,
-      // TODO(mattklein123): This should only be true when the Lyft summary hack is enabled, but we
-      // don't currently configure that on outflow. Reconcile this later.
-      MetricType::Timer => Self::SUMMARY,
-      // TODO(mattklein123): Not correct. See above.
-      MetricType::Set => Self::STATESET,
+      MetricType::Timer => Self::TIMER,
       MetricType::Summary => Self::SUMMARY,
+      MetricType::BulkTimer => Self::BULKTIMER,
     }
   }
 }
@@ -549,7 +547,7 @@ fn timeseries_to_metrics(
   let id = MetricId::new(name, mtype, tags, false)?;
   let res: Vec<Metric> = time_series
     .samples
-    .iter()
+    .into_iter()
     .map(|s| {
       Metric::new(
         id.clone(),
@@ -559,7 +557,11 @@ fn timeseries_to_metrics(
           Some(s.sample_rate)
         },
         unwrap_prom_timestamp(s.timestamp),
-        MetricValue::Simple(s.value),
+        if Some(MetricType::BulkTimer) == id.mtype() {
+          MetricValue::BulkTimer(s.bulk_values)
+        } else {
+          MetricValue::Simple(s.value)
+        },
       )
     })
     .collect();
@@ -713,11 +715,16 @@ fn make_family_name(metric: &ParsedMetric, options: &ToWriteRequestOptions) -> C
   Chars::from_bytes(metric_name_to_use).unwrap_or_default()
 }
 
+enum WriteSampleValue {
+  Simple(f64),
+  Bulk(Vec<f64>),
+}
+
 // Common timeseries creation for both simple metrics and histograms.
 fn timeseries_common(
   timeseries_map: &mut HashMap<Vec<TagValue>, TimeSeries>,
   tags: Vec<TagValue>,
-  value: f64,
+  value: WriteSampleValue,
   timestamp: u64,
   sample_rate: f64,
   options: &ToWriteRequestOptions,
@@ -740,10 +747,16 @@ fn timeseries_common(
   });
 
   if !matches!(options.metadata, MetadataType::Only) {
+    let (value, bulk_values) = match value {
+      WriteSampleValue::Simple(value) => (value, vec![]),
+      WriteSampleValue::Bulk(bulk_values) => (0., bulk_values),
+    };
+
     timeseries.samples.push(Sample {
       value,
       timestamp: (timestamp * 1000) as i64,
       sample_rate,
+      bulk_values,
       ..Default::default()
     });
   }
@@ -770,7 +783,7 @@ fn timeseries_for_summary_metric(
           value: bucket.quantile.to_string().into(),
         }),
       ),
-      bucket.value,
+      WriteSampleValue::Simple(bucket.value),
       metric.metric().timestamp,
       metric.metric().sample_rate.unwrap_or_default(),
       options,
@@ -783,7 +796,7 @@ fn timeseries_for_summary_metric(
       format!("{family_name}_count").into(),
       None,
     ),
-    summary.sample_count,
+    WriteSampleValue::Simple(summary.sample_count),
     metric.metric().timestamp,
     metric.metric().sample_rate.unwrap_or_default(),
     options,
@@ -795,7 +808,7 @@ fn timeseries_for_summary_metric(
       format!("{family_name}_sum").into(),
       None,
     ),
-    summary.sample_sum,
+    WriteSampleValue::Simple(summary.sample_sum),
     metric.metric().timestamp,
     metric.metric().sample_rate.unwrap_or_default(),
     options,
@@ -823,7 +836,7 @@ fn timeseries_for_histogram_metric(
           value: bucket.le.to_string().into(),
         }),
       ),
-      bucket.count,
+      WriteSampleValue::Simple(bucket.count),
       metric.metric().timestamp,
       metric.metric().sample_rate.unwrap_or_default(),
       options,
@@ -839,7 +852,7 @@ fn timeseries_for_histogram_metric(
         value: "+Inf".into(),
       }),
     ),
-    histogram.sample_count,
+    WriteSampleValue::Simple(histogram.sample_count),
     metric.metric().timestamp,
     metric.metric().sample_rate.unwrap_or_default(),
     options,
@@ -851,7 +864,7 @@ fn timeseries_for_histogram_metric(
       format!("{family_name}_count").into(),
       None,
     ),
-    histogram.sample_count,
+    WriteSampleValue::Simple(histogram.sample_count),
     metric.metric().timestamp,
     metric.metric().sample_rate.unwrap_or_default(),
     options,
@@ -863,7 +876,7 @@ fn timeseries_for_histogram_metric(
       format!("{family_name}_sum").into(),
       None,
     ),
-    histogram.sample_sum,
+    WriteSampleValue::Simple(histogram.sample_sum),
     metric.metric().timestamp,
     metric.metric().sample_rate.unwrap_or_default(),
     options,
@@ -887,14 +900,14 @@ fn final_tags_for_timeseries(
   tags
 }
 
-// Create the timeseries for a "simple" (non-histogram) metric.
+// Create the timeseries for a "simple" (non-histogram/summary) metric.
 fn timeseries_for_simple_metric(
-  metric: &ParsedMetric,
+  metric: ParsedMetric,
   timeseries_map: &mut HashMap<Vec<TagValue>, TimeSeries>,
   metadata_map: &mut HashMap<Chars, PromMetricType>,
   options: &ToWriteRequestOptions,
 ) {
-  let family_name = make_family_name(metric, options);
+  let family_name = make_family_name(&metric, options);
   metadata_map.insert(
     family_name.clone(),
     metric
@@ -904,12 +917,19 @@ fn timeseries_for_simple_metric(
       .map_or(PromMetricType::UNKNOWN, std::convert::Into::into),
   );
 
+  let (id, sample_rate, timestamp, value) = metric.into_metric().into_parts();
+  let (_, mtype, tags) = id.into_parts();
   timeseries_common(
     timeseries_map,
-    final_tags_for_timeseries(metric.metric().get_id().tags().to_vec(), family_name, None),
-    metric.metric().value.to_simple(),
-    metric.metric().timestamp,
-    metric.metric().sample_rate.unwrap_or_default(),
+    final_tags_for_timeseries(tags, family_name, None),
+    // TODO(mattklein123): Should we make writing bulk timers vs. converting configurable?
+    if Some(MetricType::BulkTimer) == mtype {
+      WriteSampleValue::Bulk(value.into_bulk_timer())
+    } else {
+      WriteSampleValue::Simple(value.to_simple())
+    },
+    timestamp,
+    sample_rate.unwrap_or_default(),
     options,
   );
 }
@@ -927,17 +947,21 @@ pub struct ToWriteRequestOptions {
 
 // Converts a list of metrics into a Prometheus remote write request. If `metadata_only` is true,
 // then only the metric metadata (metric labels and types) are included.
-pub fn to_write_request(metrics: &[ParsedMetric], options: &ToWriteRequestOptions) -> WriteRequest {
+#[must_use]
+pub fn to_write_request(
+  metrics: Vec<ParsedMetric>,
+  options: &ToWriteRequestOptions,
+) -> WriteRequest {
   let mut metadata_map: HashMap<Chars, PromMetricType> = HashMap::default();
   let mut timeseries_map: HashMap<Vec<TagValue>, TimeSeries> = HashMap::default();
 
   for metric in metrics {
     match metric.metric().get_id().mtype() {
       Some(MetricType::Histogram) => {
-        timeseries_for_histogram_metric(metric, &mut timeseries_map, &mut metadata_map, options);
+        timeseries_for_histogram_metric(&metric, &mut timeseries_map, &mut metadata_map, options);
       },
       Some(MetricType::Summary) => {
-        timeseries_for_summary_metric(metric, &mut timeseries_map, &mut metadata_map, options);
+        timeseries_for_summary_metric(&metric, &mut timeseries_map, &mut metadata_map, options);
       },
       _ => timeseries_for_simple_metric(metric, &mut timeseries_map, &mut metadata_map, options),
     }

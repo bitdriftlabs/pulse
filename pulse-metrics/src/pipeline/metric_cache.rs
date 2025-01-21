@@ -200,9 +200,9 @@ impl MetricKey {
       Some(MetricType::DirectGauge) => 4,
       Some(MetricType::Gauge) => 5,
       Some(MetricType::Histogram) => 6,
-      Some(MetricType::Set) => 7,
-      Some(MetricType::Summary) => 8,
-      Some(MetricType::Timer) => 9,
+      Some(MetricType::Summary) => 7,
+      Some(MetricType::Timer) => 8,
+      Some(MetricType::BulkTimer) => 9,
     }
   }
 
@@ -215,9 +215,9 @@ impl MetricKey {
       4 => Some(MetricType::DirectGauge),
       5 => Some(MetricType::Gauge),
       6 => Some(MetricType::Histogram),
-      7 => Some(MetricType::Set),
-      8 => Some(MetricType::Summary),
-      9 => Some(MetricType::Timer),
+      7 => Some(MetricType::Summary),
+      8 => Some(MetricType::Timer),
+      9 => Some(MetricType::BulkTimer),
       _ => unreachable!(),
     }
   }
@@ -308,8 +308,8 @@ impl Hash for MetricKey {
   }
 }
 
-impl Equivalent<MetricId> for Arc<MetricKey> {
-  fn equivalent(&self, other: &MetricId) -> bool {
+impl PartialEq<MetricId> for MetricKey {
+  fn eq(&self, other: &MetricId) -> bool {
     let mut buf = &self.data[..];
     let name_len = buf.get_u16() as usize;
     let mut index = 2;
@@ -320,7 +320,7 @@ impl Equivalent<MetricId> for Arc<MetricKey> {
     index += name_len;
 
     // Get metric type and the number of tags and advance past those bytes.
-    let mtype = MetricKey::u8_to_metric_type(buf.get_u8());
+    let mtype = Self::u8_to_metric_type(buf.get_u8());
     let tags_len = buf.get_u16() as usize;
     index += 3;
 
@@ -346,6 +346,12 @@ impl Equivalent<MetricId> for Arc<MetricKey> {
     }
 
     name == other.name() && mtype == other.mtype()
+  }
+}
+
+impl Equivalent<MetricId> for Arc<MetricKey> {
+  fn equivalent(&self, other: &MetricId) -> bool {
+    *self.as_ref() == *other
   }
 }
 

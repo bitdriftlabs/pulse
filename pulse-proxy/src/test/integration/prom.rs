@@ -82,7 +82,7 @@ async fn remote_write() {
         )
       })
       .collect_vec();
-    client.send(&metrics).await;
+    client.send(metrics).await;
   }
 
   assert_eq!(
@@ -193,13 +193,13 @@ async fn lyft_remote_write() {
   .await;
   let client = PromClient::new(bind_resolver.local_tcp_addr("inflow:prom")).await;
 
-  client.send(&[make_metric("foo", &[], 1)]).await;
+  client.send(vec![make_metric("foo", &[], 1)]).await;
   let headers = expect_metric(&mut upstream1, "foo", make_metric("foo", &[], 1)).await;
   assert_eq!(headers.get("extra").unwrap(), "header");
   expect_metric(&mut upstream2, "blah", make_metric("foo", &[], 1)).await;
 
   client
-    .send(&[make_metric("foo:host", &[("host", "foo")], 1)])
+    .send(vec![make_metric("foo:host", &[("host", "foo")], 1)])
     .await;
   upstream1.add_failure_response_code(StatusCode::INTERNAL_SERVER_ERROR);
   expect_metric(
@@ -216,7 +216,7 @@ async fn lyft_remote_write() {
   .await;
 
   client
-    .send(&[make_metric(
+    .send(vec![make_metric(
       "foo:infra:aws:blah",
       &[("source", "non_statsd")],
       1,
@@ -238,7 +238,7 @@ async fn lyft_remote_write() {
   upstream1.add_failure_response_code(StatusCode::BAD_REQUEST);
   upstream2.add_failure_response_code(StatusCode::BAD_REQUEST);
   client
-    .send(&[make_metric(
+    .send(vec![make_metric(
       "foo:infra:aws:blah",
       &[("source", "non_statsd")],
       1,

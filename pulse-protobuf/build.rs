@@ -33,7 +33,7 @@ fn generate_directory(root_path: &Path, partial_path: &Path) {
             .oneofs_non_exhaustive(false)
             .file_header(GENERATED_HEADER.to_string()),
         )
-        .includes(["proto/", "../api/thirdparty/", "../api/src/"])
+        .includes(["proto/", "thirdparty/"])
         .inputs([file.path()])
         .out_dir(Path::new("src/protos").join(partial_path))
         .capture_stderr()

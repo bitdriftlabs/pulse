@@ -19,6 +19,7 @@ exclude_dirs = (
     './.git',
     './api/',
     './pulse-protobuf/src/',
+    './pulse-protobuf/thirdparty/',
     './target/',
 )
 

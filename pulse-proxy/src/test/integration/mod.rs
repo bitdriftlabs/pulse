@@ -534,7 +534,7 @@ impl PromClient {
     }
   }
 
-  async fn send(&self, metrics: &[ParsedMetric]) {
+  async fn send(&self, metrics: Vec<ParsedMetric>) {
     let write_request = to_write_request(
       metrics,
       &ToWriteRequestOptions {

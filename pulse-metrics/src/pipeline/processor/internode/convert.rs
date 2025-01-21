@@ -30,6 +30,7 @@ use pulse_protobuf::protos::pulse::internode::v1::metric::histogram::Bucket;
 use pulse_protobuf::protos::pulse::internode::v1::metric::metric::Value_type;
 use pulse_protobuf::protos::pulse::internode::v1::metric::summary::Quantile;
 use pulse_protobuf::protos::pulse::internode::v1::metric::{
+  BulkTimer,
   DownstreamId as ProtoDownstreamId,
   Histogram,
   Metric as ProtoMetric,
@@ -68,9 +69,9 @@ impl From<MetricType> for ProtoMetricType {
       MetricType::DirectGauge => Self::METRIC_TYPE_DIRECT_GAUGE,
       MetricType::Gauge => Self::METRIC_TYPE_GAUGE,
       MetricType::Histogram => Self::METRIC_TYPE_HISTOGRAM,
-      MetricType::Set => Self::METRIC_TYPE_SET,
       MetricType::Summary => Self::METRIC_TYPE_SUMMARY,
       MetricType::Timer => Self::METRIC_TYPE_TIMER,
+      MetricType::BulkTimer => Self::METRIC_TYPE_BULK_TIMER,
     }
   }
 }
@@ -87,9 +88,9 @@ impl TryFrom<EnumOrUnknown<ProtoMetricType>> for MetricType {
       ProtoMetricType::METRIC_TYPE_DIRECT_GAUGE => Ok(Self::DirectGauge),
       ProtoMetricType::METRIC_TYPE_GAUGE => Ok(Self::Gauge),
       ProtoMetricType::METRIC_TYPE_HISTOGRAM => Ok(Self::Histogram),
-      ProtoMetricType::METRIC_TYPE_SET => Ok(Self::Set),
       ProtoMetricType::METRIC_TYPE_SUMMARY => Ok(Self::Summary),
       ProtoMetricType::METRIC_TYPE_TIMER => Ok(Self::Timer),
+      ProtoMetricType::METRIC_TYPE_BULK_TIMER => Ok(Self::BulkTimer),
     }
   }
 }
@@ -213,6 +214,10 @@ impl From<&ParsedMetric> for ProtoMetric {
           sample_sum: summary.sample_sum,
           ..Default::default()
         }),
+        MetricValue::BulkTimer(values) => Value_type::BulkTimer(BulkTimer {
+          values: values.clone(),
+          ..Default::default()
+        }),
       }),
       metric_source: Some(m.source().into()).into(),
       received_at: 0, // TODO(mattklein123): Support received_at.
@@ -294,6 +299,7 @@ pub fn proto_metric_to_parsed_metric(m: ProtoMetric) -> Result<ParsedMetric, Par
           sample_count: summary.sample_count,
           sample_sum: summary.sample_sum,
         }),
+        Value_type::BulkTimer(bulk_timer) => MetricValue::BulkTimer(bulk_timer.values),
       },
     ),
     source,
