@@ -18,6 +18,28 @@ fn test_convert() {
     Metric::new(
       MetricId::new(
         Bytes::from_static(b"hello"),
+        Some(MetricType::BulkTimer),
+        vec![make_tag("yummy", "cheese")],
+        false,
+      )
+      .unwrap(),
+      Some(0.2_f64),
+      1234,
+      MetricValue::BulkTimer(vec![1.5_f64]),
+    ),
+    MetricSource::Carbon(Bytes::from_static(b"original line")),
+    Instant::now(),
+    DownstreamId::LocalOrigin,
+  );
+
+  let m_proto = ProtoMetric::from(&m);
+  let m2 = proto_metric_to_parsed_metric(m_proto).unwrap();
+  assert_eq!(m, m2);
+
+  let m = ParsedMetric::new(
+    Metric::new(
+      MetricId::new(
+        Bytes::from_static(b"hello"),
         Some(MetricType::DeltaGauge),
         vec![make_tag("yummy", "cheese")],
         false,

@@ -92,6 +92,11 @@ impl HelperBuilder {
     self
   }
 
+  pub const fn flush_interval(mut self, flush_interval: Duration) -> Self {
+    self.flush_interval = Some(flush_interval);
+    self
+  }
+
   pub const fn flush_jitter(mut self, flush_jitter: Duration) -> Self {
     self.flush_jitter = Some(flush_jitter);
     self
