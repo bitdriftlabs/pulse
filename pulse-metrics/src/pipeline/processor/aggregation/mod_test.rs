@@ -28,6 +28,40 @@ fn make_time_provider(time: i64) -> TestTimeProvider {
   }
 }
 
+#[ignore]
+#[tokio::test(flavor = "multi_thread")]
+async fn stress() {
+  let mut helper = HelperBuilder::default()
+    .timer_type(TimerType::QuantileExtended)
+    .flush_interval(1.seconds())
+    .build()
+    .await;
+
+  make_mut(&mut helper.helper.dispatcher)
+    .expect_send()
+    .times(..)
+    .returning(|_| {});
+  let helper = Arc::new(helper);
+
+  for _ in 0 .. 16 {
+    let cloned_helper = helper.clone();
+    tokio::spawn(async move {
+      loop {
+        cloned_helper
+          .recv(vec![cloned_helper.make_metric(
+            "hello",
+            MetricType::BulkTimer,
+            MetricValue::BulkTimer((0 .. 200u64).map(|i| i as f64).collect()),
+          )])
+          .await;
+        tokio::task::yield_now().await;
+      }
+    });
+  }
+
+  tokio::time::sleep(1.minutes().unsigned_abs()).await;
+}
+
 #[test]
 fn flush_interval() {
   assert_eq!(1.minutes(), next_flush_interval(&make_time_provider(0), 60));
@@ -294,6 +328,30 @@ async fn bulk_timers() {
     .return_once(move |samples| {
       assert_eq!(100, samples.len());
       assert_eq!(0.5, samples[0].metric().sample_rate.unwrap());
+    });
+  61.seconds().sleep().await;
+}
+
+#[tokio::test(start_paused = true)]
+async fn bulk_timers_empty() {
+  let mut helper = HelperBuilder::default()
+    .timer_type(TimerType::Reservoir)
+    .build()
+    .await;
+
+  helper
+    .recv(vec![helper.make_metric(
+      "hello",
+      MetricType::BulkTimer,
+      MetricValue::BulkTimer(vec![]),
+    )])
+    .await;
+
+  make_mut(&mut helper.helper.dispatcher)
+    .expect_send()
+    .times(1)
+    .return_once(move |samples| {
+      assert!(samples.is_empty());
     });
   61.seconds().sleep().await;
 }

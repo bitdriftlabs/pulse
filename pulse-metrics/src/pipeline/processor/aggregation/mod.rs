@@ -103,6 +103,8 @@ enum AggregationError {
   UnsupportedType,
   #[error("Summary quantiles do not match")]
   QuantileMismatch,
+  #[error("Empty bulk timer")]
+  EmptyBulkTimer,
 }
 
 type Result<T> = std::result::Result<T, AggregationError>;
@@ -545,6 +547,7 @@ impl AggregationProcessor {
           AggregationError::ChangedType => self.stats.changed_type.inc(),
           AggregationError::UnsupportedType => self.stats.unsupported_type.inc(),
           AggregationError::QuantileMismatch => self.stats.summary_quantile_mismatch.inc(),
+          AggregationError::EmptyBulkTimer => {},
         }
 
         // TODO(mattklein123): Should we pass these metrics through?
@@ -560,6 +563,7 @@ impl AggregationProcessor {
 
     // If the state is not part of the current snapshot generation, add it.
     if locked_per_metric_state.current_snapshot_generation != current_snapshot.generation {
+      debug_assert!(locked_per_metric_state.aggregation.is_some());
       log::debug!(
         "adding {} to snapshot generation {}",
         per_metric_state.metric_key.to_metric_id(),
@@ -901,6 +905,9 @@ impl LockedPerMetricAggregationState {
         histogram_aggregation.aggregate(sample.metric(), sample.downstream_id())?;
       },
       Some(MetricType::BulkTimer) => {
+        if sample.metric().value.to_bulk_timer().is_empty() {
+          return Err(AggregationError::EmptyBulkTimer);
+        }
         for value in sample.metric().value.to_bulk_timer() {
           Self::update_timer(
             config,
