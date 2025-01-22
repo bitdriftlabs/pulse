@@ -345,6 +345,54 @@ async fn reservoir_timers() {
 }
 
 #[tokio::test(start_paused = true)]
+async fn timers_bulk() {
+  let mut helper = HelperBuilder::default()
+    .timer_type(TimerType::QuantileExtended)
+    .build()
+    .await;
+  helper
+    .recv(vec![helper.make_metric(
+      "hello",
+      MetricType::BulkTimer,
+      MetricValue::BulkTimer((0 .. 100u64).map(|i| i as f64).collect()),
+    )])
+    .await;
+  for i in 0 .. 100u64 {
+    helper
+      .recv(vec![helper.make_metric(
+        "hello",
+        MetricType::Timer,
+        MetricValue::Simple(i as f64),
+      )])
+      .await;
+  }
+  let expected = vec![
+    helper.expect_gauge("timers.hello.mean", 49.5),
+    helper.expect_gauge("timers.hello.lower", 0.0),
+    helper.expect_gauge("timers.hello.upper", 99.0),
+    helper.expect_dcounter("timers.hello.count", 100.0),
+    helper.expect_dcounter("timers.hello.rate", 82.5),
+    helper.expect_gauge("timers.hello.p50", 49.0),
+    helper.expect_gauge("timers.hello.p95", 94.0),
+    helper.expect_gauge("timers.hello.p99", 98.0),
+    helper.expect_gauge("timers.hello.p999", 99.0),
+    helper.expect_gauge("timers.hello.mean", 49.5),
+    helper.expect_gauge("timers.hello.lower", 0.0),
+    helper.expect_gauge("timers.hello.upper", 99.0),
+    helper.expect_dcounter("timers.hello.count", 100.0),
+    helper.expect_dcounter("timers.hello.rate", 82.5),
+    helper.expect_gauge("timers.hello.p50", 49.0),
+    helper.expect_gauge("timers.hello.p95", 94.0),
+    helper.expect_gauge("timers.hello.p99", 98.0),
+    helper.expect_gauge("timers.hello.p999", 99.0),
+  ];
+  helper.expect_dispatch(expected);
+  61.seconds().sleep().await;
+  helper.expect_dispatch(vec![]);
+  61.seconds().sleep().await;
+}
+
+#[tokio::test(start_paused = true)]
 async fn timers() {
   let mut helper = HelperBuilder::default()
     .timer_type(TimerType::QuantileExtended)
