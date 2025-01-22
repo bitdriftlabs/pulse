@@ -379,7 +379,17 @@ impl AggregationProcessor {
         // next_aggregation member, so we have a better chance of having samples in every window.
         // Once the flush is complete, we move next_aggregation into aggregation if there is
         // data. Further samples in the window will use aggregation per normal.
-        let aggregation = locked_state.aggregation.take().unwrap();
+        let Some(aggregation) = locked_state.aggregation.take() else {
+          panic!(
+            "inconsistent aggregation state for metric={} old_snapshot_gen={} \
+             current_snapshot_gen={} last_flushed_snapshot_gen={} has_next_aggregation={}",
+            metric_id,
+            old_snapshot.generation,
+            locked_state.current_snapshot_generation,
+            locked_state.last_flushed_snapshot_generation,
+            locked_state.next_aggregation.is_some()
+          );
+        };
         locked_state.last_flushed_snapshot_generation = old_snapshot.generation;
         if let Some(next_aggregation) = locked_state.next_aggregation.take() {
           log::debug!("{} has new data in next_aggregation", metric_id);
