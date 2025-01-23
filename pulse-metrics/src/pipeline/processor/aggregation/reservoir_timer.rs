@@ -8,6 +8,8 @@
 use super::make_metric;
 use crate::protos::metric::{MetricId, MetricType, MetricValue, ParsedMetric};
 use crate::reservoir_timer::ReservoirTimer;
+use bd_log::warn_every;
+use time::ext::NumericalDuration;
 use tokio::time::Instant;
 
 //
@@ -42,6 +44,14 @@ impl ReservoirTimerAggregation {
     let (reservoir, count) = self.reservoir.drain();
     let sample_rate = reservoir.len() as f64 / count;
     if self.emit_as_bulk {
+      if reservoir.is_empty() {
+        warn_every!(
+          15.seconds(),
+          "Empty reservoir timer for metric {}",
+          metric_id
+        );
+        return vec![];
+      }
       vec![make_metric(
         metric_id.name().clone(),
         metric_id.tags().to_vec(),
