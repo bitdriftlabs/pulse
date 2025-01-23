@@ -27,6 +27,7 @@ use super::metric::{
   SummaryData,
   TagValue,
 };
+use bd_log::warn_every;
 use bd_proto::protos::prometheus::prompb;
 use bytes::Bytes;
 use config::inflow::v1::prom_remote_write::prom_remote_write_server_config::ParseConfig;
@@ -38,6 +39,7 @@ use protobuf::{Chars, EnumOrUnknown};
 use pulse_protobuf::protos::pulse::config;
 use std::collections::hash_map::Entry;
 use std::collections::BTreeMap;
+use time::ext::NumericalDuration;
 
 type HashMap<Key, Value> = std::collections::HashMap<Key, Value, ahash::RandomState>;
 
@@ -548,8 +550,23 @@ fn timeseries_to_metrics(
   let res: Vec<Metric> = time_series
     .samples
     .into_iter()
-    .map(|s| {
-      Metric::new(
+    .filter_map(|s| {
+      let metric_value = if Some(MetricType::BulkTimer) == id.mtype() {
+        if s.bulk_values.is_empty() {
+          warn_every!(
+            15.seconds(),
+            "ignoring prom sample with empty bulk values: {}",
+            id
+          );
+          return None;
+        }
+
+        MetricValue::BulkTimer(s.bulk_values)
+      } else {
+        MetricValue::Simple(s.value)
+      };
+
+      Some(Metric::new(
         id.clone(),
         if s.sample_rate == 0. {
           None
@@ -557,12 +574,8 @@ fn timeseries_to_metrics(
           Some(s.sample_rate)
         },
         unwrap_prom_timestamp(s.timestamp),
-        if Some(MetricType::BulkTimer) == id.mtype() {
-          MetricValue::BulkTimer(s.bulk_values)
-        } else {
-          MetricValue::Simple(s.value)
-        },
-      )
+        metric_value,
+      ))
     })
     .collect();
   Ok(res)
