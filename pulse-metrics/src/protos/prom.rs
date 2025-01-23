@@ -783,7 +783,7 @@ fn timeseries_for_summary_metric(
   options: &ToWriteRequestOptions,
 ) {
   let family_name = make_family_name(metric, options);
-  metadata_map.insert(family_name.clone(), PromMetricType::SUMMARY);
+  update_metadata_map(metadata_map, &family_name, metric);
   let summary = metric.metric().value.to_summary();
   for bucket in &summary.quantiles {
     timeseries_common(
@@ -836,7 +836,7 @@ fn timeseries_for_histogram_metric(
   options: &ToWriteRequestOptions,
 ) {
   let family_name = make_family_name(metric, options);
-  metadata_map.insert(family_name.clone(), PromMetricType::HISTOGRAM);
+  update_metadata_map(metadata_map, &family_name, metric);
   let histogram = metric.metric().value.to_histogram();
   for bucket in &histogram.buckets {
     timeseries_common(
@@ -913,6 +913,29 @@ fn final_tags_for_timeseries(
   tags
 }
 
+fn update_metadata_map(
+  metadata_map: &mut HashMap<Chars, PromMetricType>,
+  family_name: &Chars,
+  metric: &ParsedMetric,
+) {
+  let prom_type = metric
+    .metric()
+    .get_id()
+    .mtype()
+    .map_or(PromMetricType::UNKNOWN, std::convert::Into::into);
+  if let Some(old) = metadata_map.insert(family_name.clone(), prom_type) {
+    if old != prom_type {
+      warn_every!(
+        15.seconds(),
+        "mismatched metric types for {}: {:?} != {:?}",
+        metric.metric().get_id(),
+        old,
+        prom_type
+      );
+    }
+  }
+}
+
 // Create the timeseries for a "simple" (non-histogram/summary) metric.
 fn timeseries_for_simple_metric(
   metric: ParsedMetric,
@@ -921,14 +944,17 @@ fn timeseries_for_simple_metric(
   options: &ToWriteRequestOptions,
 ) {
   let family_name = make_family_name(&metric, options);
-  metadata_map.insert(
-    family_name.clone(),
-    metric
-      .metric()
-      .get_id()
-      .mtype()
-      .map_or(PromMetricType::UNKNOWN, std::convert::Into::into),
-  );
+  update_metadata_map(metadata_map, &family_name, &metric);
+  if Some(MetricType::BulkTimer) == metric.metric().get_id().mtype()
+    && metric.metric().value.to_bulk_timer().is_empty()
+  {
+    warn_every!(
+      15.seconds(),
+      "ignoring outbound prom sample with bulk timer: {}",
+      metric.metric().get_id()
+    );
+    return;
+  }
 
   let (id, sample_rate, timestamp, value) = metric.into_metric().into_parts();
   let (_, mtype, tags) = id.into_parts();
