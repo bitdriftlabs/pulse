@@ -43,7 +43,12 @@ use pulse_metrics::pipeline::inflow::wire::tcp::TcpInflow;
 use pulse_metrics::pipeline::inflow::{InflowFactoryContext, PipelineInflow};
 use pulse_metrics::pipeline::MockPipelineDispatch;
 use pulse_metrics::protos::metric::{DownstreamId, ParsedMetric};
-use pulse_metrics::protos::prom::{to_write_request, MetadataType, ToWriteRequestOptions};
+use pulse_metrics::protos::prom::{
+  to_write_request,
+  ChangedTypeTracker,
+  MetadataType,
+  ToWriteRequestOptions,
+};
 use pulse_metrics::test::make_carbon_wire_protocol;
 use pulse_protobuf::protos::pulse::config::bootstrap::v1::bootstrap::KubernetesBootstrapConfig;
 use pulse_protobuf::protos::pulse::config::inflow::v1::prom_remote_write;
@@ -541,6 +546,7 @@ impl PromClient {
         metadata: MetadataType::Normal,
         convert_name: false,
       },
+      &ChangedTypeTracker::new_for_test(),
     );
     self
       .client

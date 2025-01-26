@@ -29,9 +29,12 @@ use super::metric::{
 };
 use bd_log::warn_every;
 use bd_proto::protos::prometheus::prompb;
+use bd_server_stats::stats::{Collector, Scope};
 use bytes::Bytes;
 use config::inflow::v1::prom_remote_write::prom_remote_write_server_config::ParseConfig;
 use itertools::Itertools;
+use parking_lot::Mutex;
+use prometheus::IntCounterVec;
 use prompb::remote::WriteRequest;
 use prompb::types::metric_metadata::MetricType as PromMetricType;
 use prompb::types::{Label, MetricMetadata, Sample, TimeSeries};
@@ -241,6 +244,62 @@ enum InProgressMetric {
   Simple(Option<MetricType>),
   Histogram(InProgressHistogram),
   Summary(InProgressSummary),
+}
+
+//
+// ChangedTypeTracker
+//
+
+#[allow(clippy::zero_sized_map_values)] // entry API
+pub struct ChangedTypeTracker {
+  changed_type: IntCounterVec,
+  family_names: Mutex<HashMap<Chars, ()>>,
+}
+
+impl ChangedTypeTracker {
+  #[must_use]
+  pub fn new(scope: &Scope) -> Self {
+    Self {
+      changed_type: scope.counter_vec("changed_type", &["family_name"]),
+      family_names: Mutex::default(),
+    }
+  }
+
+  #[must_use]
+  pub fn new_for_test() -> Self {
+    Self::new(&Collector::default().scope("test"))
+  }
+
+  fn changed_type_warning(&self, family_name: &Chars, old: PromMetricType, new: PromMetricType) {
+    // In order to prevent unbounded label growth we limit to 100 labels. This is not optimal in
+    // the sense that these labels will live for the process lifetime. It would be better to
+    // implement a custom collector gather plugin which expires old labels, but this is good
+    // enough for now. Using a Cuckoo filter vs. a set would also be better but also good enough
+    // for now.
+    {
+      let mut family_names = self.family_names.lock();
+      let len = family_names.len();
+      let label = match family_names.entry(family_name.clone()) {
+        Entry::Occupied(occupied) => occupied.key().clone(),
+        Entry::Vacant(vacant) => {
+          if len < 100 {
+            vacant.insert_entry(()).key().clone()
+          } else {
+            "other".into()
+          }
+        },
+      };
+      self.changed_type.with_label_values(&[&label]).inc();
+    }
+
+    warn_every!(
+      15.seconds(),
+      "mismatched metric types for {}: {:?} != {:?}",
+      family_name,
+      old,
+      new
+    );
+  }
 }
 
 // Given the tags and samples for an incoming timeseries that is part of a summary, collect the
@@ -781,9 +840,10 @@ fn timeseries_for_summary_metric(
   timeseries_map: &mut HashMap<Vec<TagValue>, TimeSeries>,
   metadata_map: &mut HashMap<Chars, PromMetricType>,
   options: &ToWriteRequestOptions,
+  changed_type_tracker: &ChangedTypeTracker,
 ) {
   let family_name = make_family_name(metric, options);
-  update_metadata_map(metadata_map, &family_name, metric);
+  update_metadata_map(metadata_map, &family_name, metric, changed_type_tracker);
   let summary = metric.metric().value.to_summary();
   for bucket in &summary.quantiles {
     timeseries_common(
@@ -834,9 +894,10 @@ fn timeseries_for_histogram_metric(
   timeseries_map: &mut HashMap<Vec<TagValue>, TimeSeries>,
   metadata_map: &mut HashMap<Chars, PromMetricType>,
   options: &ToWriteRequestOptions,
+  changed_type_tracker: &ChangedTypeTracker,
 ) {
   let family_name = make_family_name(metric, options);
-  update_metadata_map(metadata_map, &family_name, metric);
+  update_metadata_map(metadata_map, &family_name, metric, changed_type_tracker);
   let histogram = metric.metric().value.to_histogram();
   for bucket in &histogram.buckets {
     timeseries_common(
@@ -917,6 +978,7 @@ fn update_metadata_map(
   metadata_map: &mut HashMap<Chars, PromMetricType>,
   family_name: &Chars,
   metric: &ParsedMetric,
+  changed_type_tracker: &ChangedTypeTracker,
 ) {
   let prom_type = metric
     .metric()
@@ -925,13 +987,7 @@ fn update_metadata_map(
     .map_or(PromMetricType::UNKNOWN, std::convert::Into::into);
   if let Some(old) = metadata_map.insert(family_name.clone(), prom_type) {
     if old != prom_type {
-      warn_every!(
-        15.seconds(),
-        "mismatched metric types for {}: {:?} != {:?}",
-        metric.metric().get_id(),
-        old,
-        prom_type
-      );
+      changed_type_tracker.changed_type_warning(family_name, old, prom_type);
     }
   }
 }
@@ -942,19 +998,10 @@ fn timeseries_for_simple_metric(
   timeseries_map: &mut HashMap<Vec<TagValue>, TimeSeries>,
   metadata_map: &mut HashMap<Chars, PromMetricType>,
   options: &ToWriteRequestOptions,
+  changed_type_tracker: &ChangedTypeTracker,
 ) {
   let family_name = make_family_name(&metric, options);
-  update_metadata_map(metadata_map, &family_name, &metric);
-  if Some(MetricType::BulkTimer) == metric.metric().get_id().mtype()
-    && metric.metric().value.to_bulk_timer().is_empty()
-  {
-    warn_every!(
-      15.seconds(),
-      "ignoring outbound prom sample with bulk timer: {}",
-      metric.metric().get_id()
-    );
-    return;
-  }
+  update_metadata_map(metadata_map, &family_name, &metric, changed_type_tracker);
 
   let (id, sample_rate, timestamp, value) = metric.into_metric().into_parts();
   let (_, mtype, tags) = id.into_parts();
@@ -963,7 +1010,9 @@ fn timeseries_for_simple_metric(
     final_tags_for_timeseries(tags, family_name, None),
     // TODO(mattklein123): Should we make writing bulk timers vs. converting configurable?
     if Some(MetricType::BulkTimer) == mtype {
-      WriteSampleValue::Bulk(value.into_bulk_timer())
+      let values = value.into_bulk_timer();
+      debug_assert!(!values.is_empty());
+      WriteSampleValue::Bulk(values)
     } else {
       WriteSampleValue::Simple(value.to_simple())
     },
@@ -990,6 +1039,7 @@ pub struct ToWriteRequestOptions {
 pub fn to_write_request(
   metrics: Vec<ParsedMetric>,
   options: &ToWriteRequestOptions,
+  changed_type_tracker: &ChangedTypeTracker,
 ) -> WriteRequest {
   let mut metadata_map: HashMap<Chars, PromMetricType> = HashMap::default();
   let mut timeseries_map: HashMap<Vec<TagValue>, TimeSeries> = HashMap::default();
@@ -997,12 +1047,30 @@ pub fn to_write_request(
   for metric in metrics {
     match metric.metric().get_id().mtype() {
       Some(MetricType::Histogram) => {
-        timeseries_for_histogram_metric(&metric, &mut timeseries_map, &mut metadata_map, options);
+        timeseries_for_histogram_metric(
+          &metric,
+          &mut timeseries_map,
+          &mut metadata_map,
+          options,
+          changed_type_tracker,
+        );
       },
       Some(MetricType::Summary) => {
-        timeseries_for_summary_metric(&metric, &mut timeseries_map, &mut metadata_map, options);
+        timeseries_for_summary_metric(
+          &metric,
+          &mut timeseries_map,
+          &mut metadata_map,
+          options,
+          changed_type_tracker,
+        );
       },
-      _ => timeseries_for_simple_metric(metric, &mut timeseries_map, &mut metadata_map, options),
+      _ => timeseries_for_simple_metric(
+        metric,
+        &mut timeseries_map,
+        &mut metadata_map,
+        options,
+        changed_type_tracker,
+      ),
     }
   }
 

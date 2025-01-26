@@ -23,7 +23,7 @@ use crate::pipeline::outflow::prom::retry_offload::maybe_queue_for_retry;
 use crate::pipeline::outflow::{OutflowFactoryContext, OutflowStats, PipelineOutflow};
 use crate::pipeline::time::RealTimeProvider;
 use crate::protos::metric::ParsedMetric;
-use crate::protos::prom::{MetadataType, ToWriteRequestOptions};
+use crate::protos::prom::{ChangedTypeTracker, MetadataType, ToWriteRequestOptions};
 use async_trait::async_trait;
 use axum::http::HeaderValue;
 use backoff::backoff::Backoff;
@@ -155,17 +155,20 @@ impl PromRemoteWriteOutflow {
     backoff: Arc<dyn Fn() -> Box<dyn Backoff + Send> + Send + Sync>,
     shutdown: ComponentShutdown,
   ) -> anyhow::Result<Arc<Self>> {
+    let changed_type_tracker = Arc::new(ChangedTypeTracker::new(&stats.stats));
     let batch_router = if config.lyft_specific_config.is_some() {
       Arc::new(LyftBatchRouter::new(
         &config,
         &stats.stats,
         shutdown.clone(),
+        changed_type_tracker,
       )) as Arc<dyn BatchRouter>
     } else {
       Arc::new(DefaultBatchRouter::new(
         config.clone(),
         &stats.stats,
         shutdown.clone(),
+        changed_type_tracker,
       )) as Arc<dyn BatchRouter>
     };
 
@@ -457,9 +460,14 @@ struct DefaultBatchRouter {
 }
 
 impl DefaultBatchRouter {
-  fn new(config: PromRemoteWriteClientConfig, scope: &Scope, shutdown: ComponentShutdown) -> Self {
+  fn new(
+    config: PromRemoteWriteClientConfig,
+    scope: &Scope,
+    shutdown: ComponentShutdown,
+    changed_type_tracker: Arc<ChangedTypeTracker>,
+  ) -> Self {
     Self {
-      builder: Self::make_batch_builder(config, scope, shutdown, None),
+      builder: Self::make_batch_builder(config, scope, shutdown, None, changed_type_tracker),
     }
   }
 
@@ -469,6 +477,7 @@ impl DefaultBatchRouter {
     scope: &Scope,
     shutdown: ComponentShutdown,
     extra_headers: Option<Arc<HeaderMap>>,
+    changed_type_tracker: Arc<ChangedTypeTracker>,
   ) -> Arc<BatchBuilder<ParsedMetric, PromBatch>> {
     let batch_max_samples: usize = config
       .batch_max_samples
@@ -485,6 +494,7 @@ impl DefaultBatchRouter {
           config.metadata_only,
           config.convert_metric_name.unwrap_or(true),
           extra_headers.clone(),
+          changed_type_tracker.clone(),
         )
       },
       shutdown,
@@ -516,13 +526,19 @@ struct LyftBatchRouter {
 }
 
 impl LyftBatchRouter {
-  fn new(config: &PromRemoteWriteClientConfig, scope: &Scope, shutdown: ComponentShutdown) -> Self {
+  fn new(
+    config: &PromRemoteWriteClientConfig,
+    scope: &Scope,
+    shutdown: ComponentShutdown,
+    changed_type_tracker: Arc<ChangedTypeTracker>,
+  ) -> Self {
     let lyft_config = config.lyft_specific_config.as_ref().unwrap();
     let generic = DefaultBatchRouter::make_batch_builder(
       config.clone(),
       &scope.scope("general"),
       shutdown.clone(),
       Self::make_storage_headers(&lyft_config.general_storage_policy),
+      changed_type_tracker.clone(),
     );
     let instance = lyft_config
       .instance_metrics_storage_policy
@@ -533,6 +549,7 @@ impl LyftBatchRouter {
           &scope.scope("instance"),
           shutdown.clone(),
           Self::make_storage_headers(p),
+          changed_type_tracker.clone(),
         )
       });
     let cloudwatch = lyft_config
@@ -544,6 +561,7 @@ impl LyftBatchRouter {
           &scope.scope("cloudwatch"),
           shutdown,
           Self::make_storage_headers(p),
+          changed_type_tracker,
         )
       });
 
@@ -629,6 +647,7 @@ enum PromBatch {
     metadata_only: bool,
     convert_name: bool,
     extra_headers: Option<Arc<HeaderMap>>,
+    changed_type_tracker: Arc<ChangedTypeTracker>,
   },
   Complete {
     compressed_write_request: Bytes,
@@ -643,6 +662,7 @@ impl PromBatch {
     metadata_only: bool,
     convert_name: bool,
     extra_headers: Option<Arc<HeaderMap>>,
+    changed_type_tracker: Arc<ChangedTypeTracker>,
   ) -> Self {
     Self::Building {
       samples: Vec::with_capacity(max_samples),
@@ -650,6 +670,7 @@ impl PromBatch {
       metadata_only,
       convert_name,
       extra_headers,
+      changed_type_tracker,
     }
   }
 }
@@ -673,18 +694,20 @@ impl Batch<ParsedMetric> for PromBatch {
   }
 
   fn finish(&mut self) -> usize {
-    let (samples, metadata_only, convert_name, extra_headers) = match self {
+    let (samples, metadata_only, convert_name, extra_headers, changed_type_tracker) = match self {
       Self::Building {
         samples,
         metadata_only,
         convert_name,
         extra_headers,
+        changed_type_tracker,
         ..
       } => (
         std::mem::take(samples),
         *metadata_only,
         *convert_name,
         std::mem::take(extra_headers),
+        changed_type_tracker,
       ),
       Self::Complete { .. } => unreachable!(),
     };
@@ -700,6 +723,7 @@ impl Batch<ParsedMetric> for PromBatch {
         },
         convert_name,
       },
+      changed_type_tracker,
     );
     let compressed_write_request = compress_write_request(&write_request);
     let size = compressed_write_request.len();
