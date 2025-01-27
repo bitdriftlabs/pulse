@@ -14,6 +14,7 @@ use super::prom::{
   f64_or_stale_marker_eq,
   from_write_request,
   to_write_request,
+  ChangedTypeTracker,
   ToWriteRequestOptions,
 };
 use super::statsd::to_statsd_line;
@@ -805,8 +806,9 @@ impl ParsedMetric {
   pub fn to_write_request(
     parsed_metrics: Vec<Self>,
     options: &ToWriteRequestOptions,
+    changed_type_tracker: &ChangedTypeTracker,
   ) -> WriteRequest {
-    to_write_request(parsed_metrics, options)
+    to_write_request(parsed_metrics, options, changed_type_tracker)
   }
 
   pub fn try_from_wire_protocol(

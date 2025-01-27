@@ -22,7 +22,12 @@ use pulse_metrics::protos::metric::{
   ParsedMetric,
   TagValue,
 };
-use pulse_metrics::protos::prom::{to_write_request, MetadataType, ToWriteRequestOptions};
+use pulse_metrics::protos::prom::{
+  to_write_request,
+  ChangedTypeTracker,
+  MetadataType,
+  ToWriteRequestOptions,
+};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use time::ext::NumericalDuration;
 
@@ -93,6 +98,7 @@ async fn main() -> anyhow::Result<()> {
       },
       convert_name: true,
     },
+    &ChangedTypeTracker::new_for_test(),
   );
   let client =
     HyperPromRemoteWriteClient::new(options.endpoint, 10.seconds(), None, vec![]).await?;

@@ -5,6 +5,10 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
+#[cfg(test)]
+#[path = "./stats_test.rs"]
+mod stats_test;
+
 use crate::protos::prom::{make_label, make_timeseries};
 use bd_proto::protos::prometheus::prompb;
 use bd_server_stats::stats::Collector;

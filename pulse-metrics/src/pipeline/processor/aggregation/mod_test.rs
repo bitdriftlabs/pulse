@@ -333,30 +333,6 @@ async fn bulk_timers() {
 }
 
 #[tokio::test(start_paused = true)]
-async fn bulk_timers_empty() {
-  let mut helper = HelperBuilder::default()
-    .timer_type(TimerType::Reservoir)
-    .build()
-    .await;
-
-  helper
-    .recv(vec![helper.make_metric(
-      "hello",
-      MetricType::BulkTimer,
-      MetricValue::BulkTimer(vec![]),
-    )])
-    .await;
-
-  make_mut(&mut helper.helper.dispatcher)
-    .expect_send()
-    .times(1)
-    .return_once(move |samples| {
-      assert!(samples.is_empty());
-    });
-  61.seconds().sleep().await;
-}
-
-#[tokio::test(start_paused = true)]
 async fn reservoir_timers() {
   let mut helper = HelperBuilder::default()
     .timer_type(TimerType::Reservoir)

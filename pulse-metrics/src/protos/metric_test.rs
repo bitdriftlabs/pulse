@@ -115,6 +115,7 @@ fn metrics_roundtrip_write_request(input: Vec<ParsedMetric>) -> anyhow::Result<(
       metadata: MetadataType::Normal,
       convert_name: true,
     },
+    &ChangedTypeTracker::new_for_test(),
   );
   // TODO(mattklein123): Make this test work both with and without the summary hack as well as the
   // counter hack.
@@ -255,6 +256,7 @@ fn metrics_to_write_request_metadata_only(input: ParsedMetric) -> anyhow::Result
       metadata: MetadataType::Only,
       convert_name: true,
     },
+    &ChangedTypeTracker::new_for_test(),
   );
   assert_eq!(write_request.timeseries.len(), 1);
   assert!(write_request.timeseries[0].samples.is_empty());

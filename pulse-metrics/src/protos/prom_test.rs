@@ -22,6 +22,7 @@ use crate::protos::prom::{
   make_label,
   make_timeseries,
   to_write_request,
+  ChangedTypeTracker,
   HistogramBucket,
   MetadataType,
   SummaryBucket,
@@ -140,6 +141,7 @@ fn summary_round_trip() {
       metadata: MetadataType::Normal,
       convert_name: true,
     },
+    &ChangedTypeTracker::new_for_test(),
   );
 
   let (metrics, errors) = from_write_request(write_request, &ParseConfig::default());
@@ -249,6 +251,7 @@ fn histogram_round_trip() {
       metadata: MetadataType::Normal,
       convert_name: true,
     },
+    &ChangedTypeTracker::new_for_test(),
   );
 
   let (metrics, errors) = from_write_request(write_request, &ParseConfig::default());

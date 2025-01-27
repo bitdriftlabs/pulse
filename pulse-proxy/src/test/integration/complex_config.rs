@@ -570,5 +570,20 @@ async fn all() {
     clean_timestamps(fake_central.wait_for_metrics().await.1)
   );
 
+  // Verify the changed type warning and tracker.
+  stream
+    .write_all(b"blah.baz:1|g\nblah.baz:1|c\n")
+    .await
+    .unwrap();
+  tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+  helper
+    .stats_helper()
+    .wait_for_counter_eq(
+      1,
+      "pulse_proxy:pipeline:outflow:central:changed_type",
+      &labels! {"family_name" => "ghostmatchingmain-production-xyz.blah.baz"},
+    )
+    .await;
+
   helper.shutdown().await;
 }
