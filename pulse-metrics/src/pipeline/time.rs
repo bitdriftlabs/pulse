@@ -84,11 +84,11 @@ pub struct RealDurationJitter {}
 impl RealDurationJitter {
   fn jitter_worker(min_millis: u64, max_millis: u64) -> Duration {
     thread_local! {
-      static RANDOM: RefCell<SmallRng> = RefCell::new(SmallRng::from_entropy());
+      static RANDOM: RefCell<SmallRng> = RefCell::new(SmallRng::from_os_rng());
     }
 
     let jittered_as_millis =
-      RANDOM.with(|random| random.borrow_mut().gen_range(min_millis ..= max_millis));
+      RANDOM.with(|random| random.borrow_mut().random_range(min_millis ..= max_millis));
     Duration::milliseconds(jittered_as_millis.try_into().unwrap())
   }
 }
