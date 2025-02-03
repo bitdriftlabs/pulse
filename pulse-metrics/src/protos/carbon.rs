@@ -14,13 +14,12 @@ use crate::protos::metric;
 use nom::branch::alt;
 use nom::bytes::complete::{escaped, is_not, tag, take_while1};
 use nom::character::complete::digit1;
-use nom::character::is_space;
 use nom::combinator::{map_res, opt};
 use nom::error::ParseError;
 use nom::multi::many1;
 use nom::number::complete::double;
-use nom::sequence::{delimited, pair, tuple};
-use nom::IResult;
+use nom::sequence::{delimited, pair};
+use nom::{AsChar, IResult, Parser};
 use std::convert::Infallible;
 use std::str::Utf8Error;
 use thiserror;
@@ -31,11 +30,11 @@ use thiserror;
 /// literal \' (or \") character inside the string.
 fn escaped_string<'a, E: ParseError<&'a [u8]>>(
   double_quoted: bool,
-) -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], &'a [u8], E> {
+) -> impl Parser<&'a [u8], Output = &'a [u8], Error = E> {
   let (quote, not_chars) = if double_quoted {
-    (b"\"", "\\\"")
+    (&b"\""[..], "\\\"")
   } else {
-    (b"'", "\\'")
+    (&b"'"[..], "\\'")
   };
   delimited(
     tag(quote),
@@ -56,7 +55,7 @@ fn non_escaped_string<'a, E: ParseError<&'a [u8]>>(
   })
 }
 
-fn string<'a, E: ParseError<&'a [u8]>>() -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], &'a [u8], E> {
+fn string<'a, E: ParseError<&'a [u8]>>() -> impl Parser<&'a [u8], Output = &'a [u8], Error = E> {
   alt((
     escaped_string(false),
     escaped_string(true),
@@ -70,9 +69,14 @@ fn named_tag<
   E: ParseError<&'a [u8]> + nom::error::FromExternalError<&'a [u8], std::convert::Infallible>,
 >(
   input: &'a bytes::Bytes,
-) -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], TagValue, E> {
+) -> impl Parser<&'a [u8], Output = TagValue, Error = E> {
   map_res(
-    tuple((string(), tag(b"="), string(), opt(take_while1(is_space)))),
+    (
+      string(),
+      tag(&b"="[..]),
+      string(),
+      opt(take_while1(AsChar::is_space)),
+    ),
     #[allow(clippy::type_complexity)]
     |t: (&[u8], &[u8], &[u8], Option<&[u8]>)| -> Result<TagValue, Infallible> {
       Ok(TagValue {
@@ -100,17 +104,18 @@ fn parse_timestamp(input: &[u8]) -> Result<u64, TimestampError> {
 /// populated, including tags, timestamp and underlying value
 fn parse_carbon_line(input: &bytes::Bytes) -> Result<(&[u8], Metric), metric::ParseError> {
   let bytes: &[u8] = input;
-  let (bytes, (metric, _, value, timestamp, tags)) = tuple((
+  let (bytes, (metric, _, value, timestamp, tags)) = (
     string::<nom::error::Error<_>>(),
-    take_while1(is_space),
+    take_while1(AsChar::is_space),
     double,
     opt(pair(
-      take_while1(is_space),
+      take_while1(AsChar::is_space),
       map_res(digit1, parse_timestamp), // Timestamp is technically optional
     )),
-    opt(pair(take_while1(is_space), many1(named_tag(input)))),
-  ))(bytes)
-  .map_err(|_| metric::ParseError::Generic)?;
+    opt(pair(take_while1(AsChar::is_space), many1(named_tag(input)))),
+  )
+    .parse(bytes)
+    .map_err(|_| metric::ParseError::Generic)?;
   let tags = tags.map(|(_, tags)| tags).unwrap_or_default();
   let id = MetricId::new(input.slice_ref(metric), None, tags, false)?;
 

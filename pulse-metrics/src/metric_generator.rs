@@ -16,7 +16,7 @@ use crate::protos::metric::{
 };
 use pulse_protobuf::protos::pulse::config::common::v1::common::wire_protocol::Protocol_type;
 use pulse_protobuf::protos::pulse::config::common::v1::common::WireProtocol;
-use rand::seq::SliceRandom;
+use rand::seq::IndexedRandom;
 use rand::Rng;
 use rand_xoshiro::rand_core::SeedableRng;
 use rand_xoshiro::Xoroshiro128StarStar;
@@ -110,7 +110,7 @@ impl MetricGenerator {
   }
 
   pub fn default_name_terms(&mut self) -> String {
-    let range = self.rng.gen_range(5 .. 10);
+    let range = self.rng.random_range(5 .. 10);
     self.name_terms(range)
   }
 
@@ -121,10 +121,10 @@ impl MetricGenerator {
   ) -> Vec<ParsedMetric> {
     (0 .. count)
       .map(|i| {
-        let name_terms = self.rng.gen_range(5 .. 10);
+        let name_terms = self.rng.random_range(5 .. 10);
         let name = self.name_terms(name_terms);
 
-        let num_tags: usize = self.rng.gen_range(1 .. 10);
+        let num_tags: usize = self.rng.random_range(1 .. 10);
 
         let mut tags: Vec<_> = (0 .. num_tags).map(|_| self.name_terms(1)).collect();
         tags.sort();

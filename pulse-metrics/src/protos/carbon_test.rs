@@ -14,18 +14,18 @@ use time::OffsetDateTime;
 
 /// Parse an escaped string, returning the actual parsed state
 fn parse_escaped_string(s: &[u8], double_quoted: bool) -> IResult<&[u8], &[u8]> {
-  escaped_string(double_quoted)(s)
+  escaped_string(double_quoted).parse(s)
 }
 
 /// Parse a string, returning the actual parsed state
 fn parse_string(s: &[u8]) -> IResult<&[u8], &[u8]> {
-  string()(s)
+  string().parse(s)
 }
 
 /// Parse a named tag, consisting of a "a"="b" set, where a and b are escaped string capable.
 fn parse_named_tag(s: &'static [u8]) -> IResult<&'static [u8], TagValue> {
   map_res(
-    tuple((string(), tag(b"="), string(), opt(tag(b" ")))),
+    (string(), tag(&b"="[..]), string(), opt(tag(&b" "[..]))),
     #[allow(clippy::type_complexity)]
     |t: (&[u8], &[u8], &[u8], Option<&[u8]>)| -> Result<TagValue, Infallible> {
       Ok(TagValue {
@@ -33,7 +33,8 @@ fn parse_named_tag(s: &'static [u8]) -> IResult<&'static [u8], TagValue> {
         value: t.2.into(),
       })
     },
-  )(s)
+  )
+  .parse(s)
 }
 
 #[test]

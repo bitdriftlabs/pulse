@@ -33,7 +33,7 @@ impl ReservoirTimer {
   pub fn aggregate(&mut self, value: f64, sample_rate: f64) {
     thread_local! {
       // Fast non crypto rng.
-      static RANDOM: RefCell<Xoshiro128StarStar> = RefCell::new(Xoshiro128StarStar::from_entropy());
+      static RANDOM: RefCell<Xoshiro128StarStar> = RefCell::new(Xoshiro128StarStar::from_os_rng());
     }
 
     // Do an initial fill if we haven't filled the full reservoir.

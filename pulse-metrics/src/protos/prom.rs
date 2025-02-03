@@ -682,11 +682,24 @@ pub fn from_write_request(
   parse_config: &ParseConfig,
 ) -> (Vec<Metric>, Vec<ParseError>) {
   let mut errors = Vec::new();
+  log::trace!(
+    "received write request with {} metadata and {} timeseries",
+    write_request.metadata.len(),
+    write_request.timeseries.len()
+  );
   let mut metric_type_map = write_request.metadata.into_iter().fold(
     HashMap::<Bytes, InProgressMetric>::default(),
     |mut map, m| {
       let metric_type: Option<MetricType> =
-        prom_metric_type_to_internal_metric_type(m.type_, parse_config).ok();
+        prom_metric_type_to_internal_metric_type(m.type_, parse_config)
+          .inspect_err(|_| {
+            log::trace!(
+              "family {} has invalid metric type: {:?}",
+              m.metric_family_name,
+              m.type_
+            );
+          })
+          .ok();
       log::trace!(
         "found metric family: {}, type: {:?}",
         m.metric_family_name,
