@@ -431,12 +431,20 @@ pub struct KubernetesMetadata {
     pub namespace: ::protobuf::Chars,
     // @@protoc_insertion_point(field:pulse.vrl_tester.v1.KubernetesMetadata.pod_name)
     pub pod_name: ::protobuf::Chars,
+    // @@protoc_insertion_point(field:pulse.vrl_tester.v1.KubernetesMetadata.pod_ip)
+    pub pod_ip: ::protobuf::Chars,
     // @@protoc_insertion_point(field:pulse.vrl_tester.v1.KubernetesMetadata.pod_labels)
     pub pod_labels: ::std::collections::HashMap<::protobuf::Chars, ::protobuf::Chars>,
     // @@protoc_insertion_point(field:pulse.vrl_tester.v1.KubernetesMetadata.pod_annotations)
     pub pod_annotations: ::std::collections::HashMap<::protobuf::Chars, ::protobuf::Chars>,
     // @@protoc_insertion_point(field:pulse.vrl_tester.v1.KubernetesMetadata.service_name)
     pub service_name: ::std::option::Option<::protobuf::Chars>,
+    // @@protoc_insertion_point(field:pulse.vrl_tester.v1.KubernetesMetadata.host_name)
+    pub host_name: ::protobuf::Chars,
+    // @@protoc_insertion_point(field:pulse.vrl_tester.v1.KubernetesMetadata.host_ip)
+    pub host_ip: ::protobuf::Chars,
+    // @@protoc_insertion_point(field:pulse.vrl_tester.v1.KubernetesMetadata.prom_scrape_address)
+    pub prom_scrape_address: ::std::option::Option<::protobuf::Chars>,
     // special fields
     // @@protoc_insertion_point(special_field:pulse.vrl_tester.v1.KubernetesMetadata.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -454,7 +462,7 @@ impl KubernetesMetadata {
     }
 
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(5);
+        let mut fields = ::std::vec::Vec::with_capacity(9);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "namespace",
@@ -465,6 +473,11 @@ impl KubernetesMetadata {
             "pod_name",
             |m: &KubernetesMetadata| { &m.pod_name },
             |m: &mut KubernetesMetadata| { &mut m.pod_name },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+            "pod_ip",
+            |m: &KubernetesMetadata| { &m.pod_ip },
+            |m: &mut KubernetesMetadata| { &mut m.pod_ip },
         ));
         fields.push(::protobuf::reflect::rt::v2::make_map_simpler_accessor_new::<_, _>(
             "pod_labels",
@@ -480,6 +493,21 @@ impl KubernetesMetadata {
             "service_name",
             |m: &KubernetesMetadata| { &m.service_name },
             |m: &mut KubernetesMetadata| { &mut m.service_name },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+            "host_name",
+            |m: &KubernetesMetadata| { &m.host_name },
+            |m: &mut KubernetesMetadata| { &mut m.host_name },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+            "host_ip",
+            |m: &KubernetesMetadata| { &m.host_ip },
+            |m: &mut KubernetesMetadata| { &mut m.host_ip },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+            "prom_scrape_address",
+            |m: &KubernetesMetadata| { &m.prom_scrape_address },
+            |m: &mut KubernetesMetadata| { &mut m.prom_scrape_address },
         ));
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<KubernetesMetadata>(
             "KubernetesMetadata",
@@ -504,6 +532,9 @@ impl ::protobuf::Message for KubernetesMetadata {
                 },
                 18 => {
                     self.pod_name = is.read_tokio_chars()?;
+                },
+                50 => {
+                    self.pod_ip = is.read_tokio_chars()?;
                 },
                 26 => {
                     let len = is.read_raw_varint32()?;
@@ -538,6 +569,15 @@ impl ::protobuf::Message for KubernetesMetadata {
                 42 => {
                     self.service_name = ::std::option::Option::Some(is.read_tokio_chars()?);
                 },
+                58 => {
+                    self.host_name = is.read_tokio_chars()?;
+                },
+                66 => {
+                    self.host_ip = is.read_tokio_chars()?;
+                },
+                74 => {
+                    self.prom_scrape_address = ::std::option::Option::Some(is.read_tokio_chars()?);
+                },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                 },
@@ -556,6 +596,9 @@ impl ::protobuf::Message for KubernetesMetadata {
         if !self.pod_name.is_empty() {
             my_size += ::protobuf::rt::string_size(2, &self.pod_name);
         }
+        if !self.pod_ip.is_empty() {
+            my_size += ::protobuf::rt::string_size(6, &self.pod_ip);
+        }
         for (k, v) in &self.pod_labels {
             let mut entry_size = 0;
             entry_size += ::protobuf::rt::string_size(1, &k);
@@ -571,6 +614,15 @@ impl ::protobuf::Message for KubernetesMetadata {
         if let Some(v) = self.service_name.as_ref() {
             my_size += ::protobuf::rt::string_size(5, &v);
         }
+        if !self.host_name.is_empty() {
+            my_size += ::protobuf::rt::string_size(7, &self.host_name);
+        }
+        if !self.host_ip.is_empty() {
+            my_size += ::protobuf::rt::string_size(8, &self.host_ip);
+        }
+        if let Some(v) = self.prom_scrape_address.as_ref() {
+            my_size += ::protobuf::rt::string_size(9, &v);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
         my_size
@@ -582,6 +634,9 @@ impl ::protobuf::Message for KubernetesMetadata {
         }
         if !self.pod_name.is_empty() {
             os.write_string(2, &self.pod_name)?;
+        }
+        if !self.pod_ip.is_empty() {
+            os.write_string(6, &self.pod_ip)?;
         }
         for (k, v) in &self.pod_labels {
             let mut entry_size = 0;
@@ -604,6 +659,15 @@ impl ::protobuf::Message for KubernetesMetadata {
         if let Some(v) = self.service_name.as_ref() {
             os.write_string(5, v)?;
         }
+        if !self.host_name.is_empty() {
+            os.write_string(7, &self.host_name)?;
+        }
+        if !self.host_ip.is_empty() {
+            os.write_string(8, &self.host_ip)?;
+        }
+        if let Some(v) = self.prom_scrape_address.as_ref() {
+            os.write_string(9, v)?;
+        }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
     }
@@ -623,9 +687,13 @@ impl ::protobuf::Message for KubernetesMetadata {
     fn clear(&mut self) {
         self.namespace.clear();
         self.pod_name.clear();
+        self.pod_ip.clear();
         self.pod_labels.clear();
         self.pod_annotations.clear();
         self.service_name = ::std::option::Option::None;
+        self.host_name.clear();
+        self.host_ip.clear();
+        self.prom_scrape_address = ::std::option::Option::None;
         self.special_fields.clear();
     }
 
@@ -1233,36 +1301,40 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     tput\x18\x02\x20\x01(\tR\x06outputB\x07\xfaB\x04r\x02\x10\x01\"~\n\tTran\
     sform\x12>\n\x06metric\x18\x01\x20\x01(\x0b2$.pulse.vrl_tester.v1.Metric\
     TransformH\0R\x06metric\x12\x1a\n\x07integer\x18\x02\x20\x01(\x03H\0R\
-    \x07integerB\x15\n\x0etransform_type\x12\x03\xf8B\x01\"\xd6\x03\n\x12Kub\
+    \x07integerB\x15\n\x0etransform_type\x12\x03\xf8B\x01\"\xf0\x04\n\x12Kub\
     ernetesMetadata\x12%\n\tnamespace\x18\x01\x20\x01(\tR\tnamespaceB\x07\
     \xfaB\x04r\x02\x10\x01\x12\"\n\x08pod_name\x18\x02\x20\x01(\tR\x07podNam\
-    eB\x07\xfaB\x04r\x02\x10\x01\x12U\n\npod_labels\x18\x03\x20\x03(\x0b26.p\
-    ulse.vrl_tester.v1.KubernetesMetadata.PodLabelsEntryR\tpodLabels\x12d\n\
-    \x0fpod_annotations\x18\x04\x20\x03(\x0b2;.pulse.vrl_tester.v1.Kubernete\
-    sMetadata.PodAnnotationsEntryR\x0epodAnnotations\x12&\n\x0cservice_name\
-    \x18\x05\x20\x01(\tH\0R\x0bserviceName\x88\x01\x01\x1a<\n\x0ePodLabelsEn\
-    try\x12\x10\n\x03key\x18\x01\x20\x01(\tR\x03key\x12\x14\n\x05value\x18\
-    \x02\x20\x01(\tR\x05value:\x028\x01\x1aA\n\x13PodAnnotationsEntry\x12\
-    \x10\n\x03key\x18\x01\x20\x01(\tR\x03key\x12\x14\n\x05value\x18\x02\x20\
-    \x01(\tR\x05value:\x028\x01B\x0f\n\r_service_name\"\xc9\x05\n\x0bVrlTest\
-    Case\x12#\n\x07program\x18\x01\x20\x01(\tH\0R\x07programB\x07\xfaB\x04r\
-    \x02\x10\x01\x12=\n\x15mutate_processor_name\x18\x02\x20\x01(\tH\0R\x13m\
-    utateProcessorNameB\x07\xfaB\x04r\x02\x10\x01\x12R\n\x20cardinality_limi\
-    t_processor_name\x18\x07\x20\x01(\tH\0R\x1dcardinalityLimitProcessorName\
-    B\x07\xfaB\x04r\x02\x10\x01\x12l\n\x14program_replacements\x18\x03\x20\
-    \x03(\x0b29.pulse.vrl_tester.v1.VrlTestCase.ProgramReplacementsEntryR\
-    \x13programReplacements\x12X\n\x13kubernetes_metadata\x18\x04\x20\x01(\
-    \x0b2'.pulse.vrl_tester.v1.KubernetesMetadataR\x12kubernetesMetadata\x12\
-    S\n\x0benvironment\x18\x05\x20\x03(\x0b21.pulse.vrl_tester.v1.VrlTestCas\
-    e.EnvironmentEntryR\x0benvironment\x12H\n\ntransforms\x18\x06\x20\x03(\
-    \x0b2\x1e.pulse.vrl_tester.v1.TransformR\ntransformsB\x08\xfaB\x05\x92\
-    \x01\x02\x08\x01\x1aF\n\x18ProgramReplacementsEntry\x12\x10\n\x03key\x18\
-    \x01\x20\x01(\tR\x03key\x12\x14\n\x05value\x18\x02\x20\x01(\tR\x05value:\
-    \x028\x01\x1a>\n\x10EnvironmentEntry\x12\x10\n\x03key\x18\x01\x20\x01(\t\
-    R\x03key\x12\x14\n\x05value\x18\x02\x20\x01(\tR\x05value:\x028\x01B\x13\
-    \n\x0cprogram_type\x12\x03\xf8B\x01\"\\\n\x0fVrlTesterConfig\x12I\n\ntes\
-    t_cases\x18\x01\x20\x03(\x0b2\x20.pulse.vrl_tester.v1.VrlTestCaseR\ttest\
-    CasesB\x08\xfaB\x05\x92\x01\x02\x08\x01b\x06proto3\
+    eB\x07\xfaB\x04r\x02\x10\x01\x12\x15\n\x06pod_ip\x18\x06\x20\x01(\tR\x05\
+    podIp\x12U\n\npod_labels\x18\x03\x20\x03(\x0b26.pulse.vrl_tester.v1.Kube\
+    rnetesMetadata.PodLabelsEntryR\tpodLabels\x12d\n\x0fpod_annotations\x18\
+    \x04\x20\x03(\x0b2;.pulse.vrl_tester.v1.KubernetesMetadata.PodAnnotation\
+    sEntryR\x0epodAnnotations\x12&\n\x0cservice_name\x18\x05\x20\x01(\tH\0R\
+    \x0bserviceName\x88\x01\x01\x12\x1b\n\thost_name\x18\x07\x20\x01(\tR\x08\
+    hostName\x12\x17\n\x07host_ip\x18\x08\x20\x01(\tR\x06hostIp\x123\n\x13pr\
+    om_scrape_address\x18\t\x20\x01(\tH\x01R\x11promScrapeAddress\x88\x01\
+    \x01\x1a<\n\x0ePodLabelsEntry\x12\x10\n\x03key\x18\x01\x20\x01(\tR\x03ke\
+    y\x12\x14\n\x05value\x18\x02\x20\x01(\tR\x05value:\x028\x01\x1aA\n\x13Po\
+    dAnnotationsEntry\x12\x10\n\x03key\x18\x01\x20\x01(\tR\x03key\x12\x14\n\
+    \x05value\x18\x02\x20\x01(\tR\x05value:\x028\x01B\x0f\n\r_service_nameB\
+    \x16\n\x14_prom_scrape_address\"\xc9\x05\n\x0bVrlTestCase\x12#\n\x07prog\
+    ram\x18\x01\x20\x01(\tH\0R\x07programB\x07\xfaB\x04r\x02\x10\x01\x12=\n\
+    \x15mutate_processor_name\x18\x02\x20\x01(\tH\0R\x13mutateProcessorNameB\
+    \x07\xfaB\x04r\x02\x10\x01\x12R\n\x20cardinality_limit_processor_name\
+    \x18\x07\x20\x01(\tH\0R\x1dcardinalityLimitProcessorNameB\x07\xfaB\x04r\
+    \x02\x10\x01\x12l\n\x14program_replacements\x18\x03\x20\x03(\x0b29.pulse\
+    .vrl_tester.v1.VrlTestCase.ProgramReplacementsEntryR\x13programReplaceme\
+    nts\x12X\n\x13kubernetes_metadata\x18\x04\x20\x01(\x0b2'.pulse.vrl_teste\
+    r.v1.KubernetesMetadataR\x12kubernetesMetadata\x12S\n\x0benvironment\x18\
+    \x05\x20\x03(\x0b21.pulse.vrl_tester.v1.VrlTestCase.EnvironmentEntryR\
+    \x0benvironment\x12H\n\ntransforms\x18\x06\x20\x03(\x0b2\x1e.pulse.vrl_t\
+    ester.v1.TransformR\ntransformsB\x08\xfaB\x05\x92\x01\x02\x08\x01\x1aF\n\
+    \x18ProgramReplacementsEntry\x12\x10\n\x03key\x18\x01\x20\x01(\tR\x03key\
+    \x12\x14\n\x05value\x18\x02\x20\x01(\tR\x05value:\x028\x01\x1a>\n\x10Env\
+    ironmentEntry\x12\x10\n\x03key\x18\x01\x20\x01(\tR\x03key\x12\x14\n\x05v\
+    alue\x18\x02\x20\x01(\tR\x05value:\x028\x01B\x13\n\x0cprogram_type\x12\
+    \x03\xf8B\x01\"\\\n\x0fVrlTesterConfig\x12I\n\ntest_cases\x18\x01\x20\
+    \x03(\x0b2\x20.pulse.vrl_tester.v1.VrlTestCaseR\ttestCasesB\x08\xfaB\x05\
+    \x92\x01\x02\x08\x01b\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file

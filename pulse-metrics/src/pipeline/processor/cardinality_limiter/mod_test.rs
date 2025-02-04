@@ -30,8 +30,12 @@ fn make_metadata(pod_name: &str) -> Metadata {
   Metadata::new(
     "default",
     pod_name,
+    "ip",
     &BTreeMap::default(),
     &BTreeMap::default(),
+    None,
+    "node_name",
+    "node_ip",
     None,
   )
 }

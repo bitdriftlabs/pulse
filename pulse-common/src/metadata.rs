@@ -31,9 +31,13 @@ impl Metadata {
   pub fn new(
     namespace: &str,
     pod_name: &str,
+    pod_ip: &str,
     pod_labels: &BTreeMap<String, String>,
     pod_annotations: &BTreeMap<String, String>,
     service: Option<&str>,
+    node_name: &str,
+    node_ip: &str,
+    prom_scrape_address: Option<String>,
   ) -> Self {
     fn btree_to_value(values: &BTreeMap<String, String>) -> Value {
       values
@@ -47,13 +51,23 @@ impl Metadata {
     let pod_annotations = btree_to_value(pod_annotations);
     let service = service.map(|s| value!({"name": s}));
     let value = value!({
+      "prom": {
+        "scrape": {
+          "address": prom_scrape_address,
+        },
+      },
       "k8s": {
         "namespace": namespace,
         "service": service,
         "pod": {
           "name": pod_name,
+          "ip": pod_ip,
           "labels": pod_labels,
           "annotations": pod_annotations,
+        },
+        "node": {
+          "name": node_name,
+          "ip": node_ip,
         }
       }
     });
@@ -85,18 +99,30 @@ impl Metadata {
         Kind::object(Collection::from_unknown(Kind::bytes())).or_undefined(),
       );
 
+    let node_collection = Collection::empty()
+      .with_known("name", Kind::bytes().or_undefined())
+      .with_known("ip", Kind::bytes().or_undefined());
+
     let service_collection = Collection::empty().with_known("name", Kind::bytes().or_undefined());
 
+    let prom_collection = Collection::empty().with_known(
+      "scrape",
+      Kind::object(Collection::empty().with_known("address", Kind::bytes().or_undefined())),
+    );
+
     Kind::object(
-      Collection::empty().with_known(
-        "k8s",
-        Kind::object(
-          Collection::empty()
-            .with_known("service", Kind::object(service_collection).or_undefined())
-            .with_known("namespace", Kind::bytes().or_undefined())
-            .with_known("pod", Kind::object(pod_collection).or_undefined()),
-        ),
-      ),
+      Collection::empty()
+        .with_known(
+          "k8s",
+          Kind::object(
+            Collection::empty()
+              .with_known("service", Kind::object(service_collection).or_undefined())
+              .with_known("namespace", Kind::bytes().or_undefined())
+              .with_known("pod", Kind::object(pod_collection).or_undefined())
+              .with_known("node", Kind::object(node_collection).or_undefined()),
+          ),
+        )
+        .with_known("prom", Kind::object(prom_collection)),
     )
   }
 }

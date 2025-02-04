@@ -88,9 +88,13 @@ if string!(%k8s.service.name) == "kube_state_metrics" &&
       Metadata::new(
         "default",
         "podA",
+        "podAIP",
         &btreemap!(),
         &btreemap!(),
         Some("kube_state_metrics"),
+        "node_name",
+        "node_ip",
+        None,
       ),
     )])
     .await;
@@ -108,9 +112,13 @@ if string!(%k8s.service.name) == "kube_state_metrics" &&
         Metadata::new(
           "default",
           "podA",
+          "podAIP",
           &btreemap!(),
           &btreemap!(),
           Some("kube_state_metrics"),
+          "node_name",
+          "node_ip",
+          None,
         ),
       ),
       make_abs_counter_with_metadata(
@@ -121,9 +129,13 @@ if string!(%k8s.service.name) == "kube_state_metrics" &&
         Metadata::new(
           "default",
           "podA",
+          "podAIP",
           &btreemap!(),
           &btreemap!(),
           Some("kube_state_metrics"),
+          "node_name",
+          "node_ip",
+          None,
         ),
       ),
     )
@@ -161,9 +173,13 @@ if is_null(.tags.namespace) {
         Metadata::new(
           "default",
           "podA",
+          "podAIP",
           &btreemap!(),
           &btreemap!(),
           Some("some-service"),
+          "node_name",
+          "node_ip",
+          None,
         ),
       ),
       make_abs_counter_with_metadata(
@@ -174,9 +190,13 @@ if is_null(.tags.namespace) {
         Metadata::new(
           "default",
           "podA",
+          "podAIP",
           &btreemap!(),
           &btreemap!(),
           Some("some-service"),
+          "node_name",
+          "node_ip",
+          None,
         ),
       ),
     )
@@ -207,9 +227,13 @@ async fn test_transformation_kubernetes_service_name() {
         Metadata::new(
           "default",
           "podA",
+          "podAIP",
           &btreemap!("label_a" => "foo"),
           &btreemap!("annotation_b" => "bar"),
           Some("some-service"),
+          "node_name",
+          "node_ip",
+          None,
         ),
       ),
       make_abs_counter_with_metadata(
@@ -226,9 +250,13 @@ async fn test_transformation_kubernetes_service_name() {
         Metadata::new(
           "default",
           "podA",
+          "podAIP",
           &btreemap!("label_a" => "foo"),
           &btreemap!("annotation_b" => "bar"),
           Some("some-service"),
+          "node_name",
+          "node_ip",
+          None,
         ),
       ),
     )
@@ -241,7 +269,11 @@ async fn test_transformation_kubernetes_namespace() {
     r#"
 .name = join!([get_env_var!("TEST"), ":", %k8s.namespace, ":", .name])
 .tags.pod = %k8s.pod.name
+.tags.pod_ip = %k8s.pod.ip
+.tags.node = %k8s.node.name
+.tags.node_ip = %k8s.node.ip
 .tags.namespace = %k8s.namespace
+.tags.scrape_address = %prom.scrape.address
     "#,
   );
 
@@ -254,14 +286,41 @@ async fn test_transformation_kubernetes_namespace() {
         &[],
         0,
         1.0,
-        Metadata::new("default", "podA", &btreemap!(), &btreemap!(), None),
+        Metadata::new(
+          "default",
+          "podA",
+          "podAIP",
+          &btreemap!(),
+          &btreemap!(),
+          None,
+          "node_name",
+          "node_ip",
+          Some("1.2.3.4:8000".to_string()),
+        ),
       ),
       make_abs_counter_with_metadata(
         "prod:default:test:pod_name",
-        &[("namespace", "default"), ("pod", "podA")],
+        &[
+          ("namespace", "default"),
+          ("pod", "podA"),
+          ("pod_ip", "podAIP"),
+          ("node", "node_name"),
+          ("node_ip", "node_ip"),
+          ("scrape_address", "1.2.3.4:8000"),
+        ],
         0,
         1.0,
-        Metadata::new("default", "podA", &btreemap!(), &btreemap!(), None),
+        Metadata::new(
+          "default",
+          "podA",
+          "podAIP",
+          &btreemap!(),
+          &btreemap!(),
+          None,
+          "node_name",
+          "node_ip",
+          Some("1.2.3.4:8000".to_string()),
+        ),
       ),
     )
     .await;
@@ -283,14 +342,34 @@ del(.tags.key1)
         &[("key1", "value1"), ("key2", "value2")],
         0,
         1.0,
-        Metadata::new("default", "podA", &btreemap!(), &btreemap!(), None),
+        Metadata::new(
+          "default",
+          "podA",
+          "podAIP",
+          &btreemap!(),
+          &btreemap!(),
+          None,
+          "node_name",
+          "node_ip",
+          None,
+        ),
       ),
       make_abs_counter_with_metadata(
         "test:foo",
         &[("key3", "value2")],
         0,
         1.0,
-        Metadata::new("default", "podA", &btreemap!(), &btreemap!(), None),
+        Metadata::new(
+          "default",
+          "podA",
+          "podAIP",
+          &btreemap!(),
+          &btreemap!(),
+          None,
+          "node_name",
+          "node_ip",
+          None,
+        ),
       ),
     )
     .await;
@@ -314,14 +393,34 @@ if exists(.tags.key1) {
         &[("key1", "value1")],
         0,
         1.0,
-        Metadata::new("default", "podA", &btreemap!(), &btreemap!(), None),
+        Metadata::new(
+          "default",
+          "podA",
+          "podAIP",
+          &btreemap!(),
+          &btreemap!(),
+          None,
+          "node_name",
+          "node_ip",
+          None,
+        ),
       ),
       make_abs_counter_with_metadata(
         "test:foo",
         &[("key1", "value1")],
         0,
         1.0,
-        Metadata::new("default", "podA", &btreemap!(), &btreemap!(), None),
+        Metadata::new(
+          "default",
+          "podA",
+          "podAIP",
+          &btreemap!(),
+          &btreemap!(),
+          None,
+          "node_name",
+          "node_ip",
+          None,
+        ),
       ),
     )
     .await;

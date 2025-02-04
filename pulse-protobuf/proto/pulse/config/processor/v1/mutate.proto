@@ -22,8 +22,12 @@ import "validate/validate.proto";
 //                   associated service.
 // %k8s.namespace is the namespace of the pod.
 // %k8s.pod.name is the name of the pod.
+// %k8s.pod.ip is the IP of the pod.
 // %k8s.pod.labels are the labels of the pod.
 // %k8s.pod.annotations are the annotations of the pod.
+// %k8s.node.name is the name of the node.
+// %k8s.node.ip is the IP of the node.
+// %prom.scrape.address is <IP>:<PORT> if the target has been scraped.
 //
 // Errors and abort() are handled differently. Errors will emit a periodic warnings and are
 // assumed to be real operator errors. Aborts via abort() are assumed to be intentional with the
