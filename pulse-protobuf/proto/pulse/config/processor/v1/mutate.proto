@@ -14,8 +14,9 @@ import "validate/validate.proto";
 // which is documented at a high level here: https://vector.dev/docs/reference/vrl/. Pulse supports
 // a limited set of operations on metrics, and provides context metadata that can be used during
 // transforms. The following context is provided:
-// .name is the name of hte metric. Can be modified.
+// .name is the name of the metric. Can be modified.
 // .tags are the metric tags as a map. Can be modified.
+// .mtype is the type of the metric. Cannot be modified.
 //
 // If using Kubernetes discovery, the following metadata is provided:
 // %k8s.service.name is the name of the service if service discovery is enabled and there is an

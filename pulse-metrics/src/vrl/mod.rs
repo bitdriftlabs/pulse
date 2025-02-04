@@ -5,7 +5,7 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
-use crate::protos::metric::{EditableParsedMetric, ParsedMetric, TagValue};
+use crate::protos::metric::{EditableParsedMetric, MetricType, ParsedMetric, TagValue};
 use anyhow::{anyhow, bail};
 use pulse_common::metadata::Metadata;
 use vrl::compiler::state::{ExternalEnv, RuntimeState};
@@ -114,6 +114,17 @@ impl Target for EditableMetricVrlTarget<'_> {
               .find_tag(tag_name.as_bytes())
               .map(|t| OwnedValueOrRef::Owned(Value::Bytes(t.value.clone()))),
           ),
+          [name] if name == "mtype" => Ok(Some(OwnedValueOrRef::Owned(Value::Bytes(
+            match self.metric.metric().metric().get_id().mtype() {
+              None => "unknown",
+              Some(MetricType::Counter(_)) => "counter",
+              Some(MetricType::DeltaGauge | MetricType::DirectGauge | MetricType::Gauge) => "gauge",
+              Some(MetricType::Histogram) => "histogram",
+              Some(MetricType::Summary) => "summary",
+              Some(MetricType::Timer | MetricType::BulkTimer) => "timer",
+            }
+            .into(),
+          )))),
           _ => {
             // TODO(mattklein123): Support synthetic reading of other attributes on demand.
             Ok(None)
@@ -221,7 +232,8 @@ impl ProgramWrapper {
           .with_known(
             "tags",
             Kind::object(Collection::empty().with_unknown(Kind::bytes())),
-          ),
+          )
+          .with_known("mtype", Kind::bytes()),
       ),
       Metadata::schema(),
     );
