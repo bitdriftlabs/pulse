@@ -265,7 +265,12 @@ pub mod container {
       self.by_name.iter()
     }
 
-    pub fn apply_pod(&mut self, pod: &Pod, service_cache: Option<&ServiceMonitor>) -> bool {
+    pub fn apply_pod(
+      &mut self,
+      node_name: &str,
+      pod: &Pod,
+      service_cache: Option<&ServiceMonitor>,
+    ) -> bool {
       log::debug!("processing pod candidate");
 
       // TODO(snowp): Consider short circuiting if we know that nothing relevant changed.
@@ -280,13 +285,18 @@ pub mod container {
         return false;
       };
 
-      let Some(pod_ip) = status.pod_ip.as_ref() else {
+      let Some(pod_ip_string) = status.pod_ip.as_ref() else {
         log::trace!("skipping pod {pod_name}, no allocated IP");
         return false;
       };
 
-      let Ok(pod_ip) = pod_ip.parse() else {
+      let Ok(pod_ip) = pod_ip_string.parse() else {
         log::trace!("skipping pod {pod_name}, failed to parse IP");
+        return false;
+      };
+
+      let Some(host_ip) = status.host_ip.as_ref() else {
+        log::trace!("skipping pod {pod_name}, no host IP");
         return false;
       };
 
@@ -328,8 +338,12 @@ pub mod container {
           metadata: Arc::new(crate::metadata::Metadata::new(
             namespace,
             pod_name,
+            pod_ip_string,
             pod.labels(),
             pod.annotations(),
+            None,
+            node_name,
+            host_ip,
             None,
           )),
           ip: pod_ip,
@@ -343,6 +357,7 @@ pub mod container {
       if Self::has_prom_endpoint(pod.annotations()) {
         pod_info.prom_endpoint = Some(Self::create_endpoint(
           pod_name,
+          pod_ip_string,
           pod_ip,
           None,
           None,
@@ -350,6 +365,8 @@ pub mod container {
           pod.labels(),
           pod.annotations(),
           pod.annotations(),
+          node_name,
+          host_ip,
         ));
       }
 
@@ -387,6 +404,7 @@ pub mod container {
             let service_name = service.metadata().name.as_ref().unwrap();
             service_info.prom_endpoint = Some(Self::create_endpoint(
               pod_name,
+              pod_ip_string,
               pod_ip,
               Some(service_name),
               maybe_service_port,
@@ -394,6 +412,8 @@ pub mod container {
               pod.labels(),
               pod.annotations(),
               service.annotations(),
+              node_name,
+              host_ip,
             ));
           }
 
@@ -414,6 +434,7 @@ pub mod container {
 
     fn create_endpoint(
       pod_name: &str,
+      pod_ip_string: &str,
       pod_ip: IpAddr,
       service_name: Option<&str>,
       maybe_service_port: Option<i32>,
@@ -421,6 +442,8 @@ pub mod container {
       pod_labels: &BTreeMap<String, String>,
       pod_annotations: &BTreeMap<String, String>,
       prom_annotations: &BTreeMap<String, String>,
+      node_name: &str,
+      node_ip: &str,
     ) -> PromEndpoint {
       let prom_namespace = prom_annotations
         .get("prometheus.io/namespace")
@@ -454,9 +477,13 @@ pub mod container {
         Some(Arc::new(crate::metadata::Metadata::new(
           &prom_namespace,
           pod_name,
+          pod_ip_string,
           pod_labels,
           pod_annotations,
           service_name,
+          node_name,
+          node_ip,
+          Some(format!("{pod_ip}:{prom_port}")),
         ))),
       )
     }
@@ -531,7 +558,7 @@ pub async fn watch_pods(
   )
   .default_backoff();
 
-  let mut pods_info_cache = PodsInfoCache::new(update_tx);
+  let mut pods_info_cache = PodsInfoCache::new(node, update_tx);
   let (initial_sync_tx, initial_sync_rx) = oneshot::channel();
 
   tokio::spawn(async move {
@@ -552,9 +579,11 @@ pub async fn watch_pods(
           log::info!("starting pod resync");
         },
         watcher::Event::InitApply(pod) => {
-          initial_state
-            .get_or_insert(PodsInfo::default())
-            .apply_pod(&pod, service_cache.as_deref());
+          initial_state.get_or_insert(PodsInfo::default()).apply_pod(
+            &pods_info_cache.node_name,
+            &pod,
+            service_cache.as_deref(),
+          );
         },
         watcher::Event::InitDone => {
           pods_info_cache.swap_state(initial_state.take().unwrap_or_default());
@@ -595,13 +624,15 @@ fn process_resource_update<T>(
 //
 
 struct PodsInfoCache {
+  node_name: String,
   state: PodsInfo,
   update_tx: tokio::sync::watch::Sender<PodsInfo>,
 }
 
 impl PodsInfoCache {
-  fn new(update_tx: tokio::sync::watch::Sender<PodsInfo>) -> Self {
+  fn new(node_name: String, update_tx: tokio::sync::watch::Sender<PodsInfo>) -> Self {
     Self {
+      node_name,
       state: PodsInfo::default(),
       update_tx,
     }
@@ -613,7 +644,7 @@ impl PodsInfoCache {
   }
 
   fn apply_pod(&mut self, pod: &Pod, service_cache: Option<&ServiceMonitor>) {
-    if self.state.apply_pod(pod, service_cache) {
+    if self.state.apply_pod(&self.node_name, pod, service_cache) {
       self.broadcast();
     }
   }

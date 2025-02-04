@@ -111,6 +111,7 @@ fn run_test_case(test_case: VrlTestCase, proxy_config: Option<&Config>) -> anyho
       Arc::new(Metadata::new(
         &kubernetes_metadata.namespace,
         &kubernetes_metadata.pod_name,
+        &kubernetes_metadata.pod_ip,
         &kubernetes_metadata
           .pod_labels
           .into_iter()
@@ -122,6 +123,11 @@ fn run_test_case(test_case: VrlTestCase, proxy_config: Option<&Config>) -> anyho
           .map(|(k, v)| (k.to_string(), v.to_string()))
           .collect(),
         kubernetes_metadata.service_name.as_deref(),
+        &kubernetes_metadata.host_name,
+        &kubernetes_metadata.host_ip,
+        kubernetes_metadata
+          .prom_scrape_address
+          .map(|c| c.to_string()),
       ))
     });
 

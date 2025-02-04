@@ -39,9 +39,13 @@ message Transform {
 message KubernetesMetadata {
   string namespace = 1 [(validate.rules).string = {min_len: 1}];
   string pod_name = 2 [(validate.rules).string = {min_len: 1}];
+  string pod_ip = 6;
   map<string, string> pod_labels = 3;
   map<string, string> pod_annotations = 4;
   optional string service_name = 5;
+  string host_name = 7;
+  string host_ip = 8;
+  optional string prom_scrape_address = 9;
 }
 
 // An individual test case, composed of a VRL program, optional K8s metadata, and a number of

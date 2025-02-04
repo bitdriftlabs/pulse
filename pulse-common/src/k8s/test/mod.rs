@@ -21,7 +21,17 @@ pub fn make_pod_info(
   services: HashMap<String, Arc<ServiceInfo>>,
   ip: &str,
 ) -> PodInfo {
-  let metadata = Arc::new(Metadata::new(namespace, name, labels, &annotations, None));
+  let metadata = Arc::new(Metadata::new(
+    namespace,
+    name,
+    ip,
+    labels,
+    &annotations,
+    None,
+    "node",
+    "node_ip",
+    None,
+  ));
   PodInfo {
     name: name.to_string().into(),
     namespace: namespace.to_string().into(),

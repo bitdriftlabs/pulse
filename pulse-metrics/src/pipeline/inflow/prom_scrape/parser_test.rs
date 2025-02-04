@@ -29,7 +29,17 @@ use time::OffsetDateTime;
 const TIMESTAMP: OffsetDateTime = datetime!(2021-02-04 04:05:06 UTC);
 
 fn expected_metadata() -> Metadata {
-  Metadata::new("", "", &BTreeMap::default(), &BTreeMap::default(), None)
+  Metadata::new(
+    "",
+    "",
+    "",
+    &BTreeMap::default(),
+    &BTreeMap::default(),
+    None,
+    "",
+    "",
+    None,
+  )
 }
 
 fn test_metadata() -> Arc<Metadata> {

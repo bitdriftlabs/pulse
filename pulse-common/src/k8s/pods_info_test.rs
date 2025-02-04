@@ -20,6 +20,7 @@ use vrl::btreemap;
 fn make_pod_status(ip: &str, phase: &str) -> Option<PodStatus> {
   Some(PodStatus {
     pod_ip: Some(ip.to_string()),
+    host_ip: Some("node_ip".to_string()),
     phase: Some(phase.to_string()),
     ..Default::default()
   })
@@ -42,7 +43,7 @@ fn make_object_meta(
 fn pod_cache() {
   let (tx, mut rx) = tokio::sync::watch::channel(PodsInfo::default());
 
-  let mut cache = PodsInfoCache::new(tx);
+  let mut cache = PodsInfoCache::new("node".to_string(), tx);
 
   let services = ServiceMonitor::default();
 
@@ -152,9 +153,13 @@ fn pod_cache() {
         Some(Arc::new(Metadata::new(
           "default",
           "my-awesome-pod",
+          "127.0.0.1",
           &btreemap!("service" => "svc1"),
           &btreemap!("prometheus.io/scrape" => "true"),
-          None
+          None,
+          "node",
+          "node_ip",
+          Some("127.0.0.1:9090".to_string()),
         ))),
       )),
       HashMap::from([(
@@ -172,9 +177,13 @@ fn pod_cache() {
             Some(Arc::new(Metadata::new(
               "default",
               "my-awesome-pod",
+              "127.0.0.1",
               &btreemap!("service" => "svc1"),
               &btreemap!("prometheus.io/scrape" => "true"),
-              Some("svc1")
+              Some("svc1"),
+              "node",
+              "node_ip",
+              Some("127.0.0.1:1234".to_string()),
             ))),
           )),
         }),
@@ -220,9 +229,13 @@ fn pod_cache() {
             metadata: Some(Arc::new(Metadata::new(
               "another_namespace",
               "my-second-awesome-pod",
+              "127.0.0.2",
               &btreemap!("service" => "svc2"),
               &BTreeMap::default(),
-              Some("svc2")
+              Some("svc2"),
+              "node",
+              "node_ip",
+              Some("127.0.0.2:4321".to_string()),
             ))),
           }),
         }),
