@@ -274,6 +274,7 @@ async fn test_transformation_kubernetes_namespace() {
 .tags.node_ip = %k8s.node.ip
 .tags.namespace = %k8s.namespace
 .tags.scrape_address = %prom.scrape.address
+.tags.mtype = .mtype
     "#,
   );
 
@@ -307,6 +308,7 @@ async fn test_transformation_kubernetes_namespace() {
           ("node", "node_name"),
           ("node_ip", "node_ip"),
           ("scrape_address", "1.2.3.4:8000"),
+          ("mtype", "counter"),
         ],
         0,
         1.0,
