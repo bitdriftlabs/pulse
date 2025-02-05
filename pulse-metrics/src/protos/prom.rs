@@ -1008,6 +1008,13 @@ fn update_metadata_map(
     if old != prom_type {
       changed_type_tracker.changed_type_warning(family_name, old, prom_type);
     }
+  } else {
+    log::trace!(
+      "added metadata for family {}, type={:?}/{:?}",
+      family_name,
+      metric.metric().get_id().mtype(),
+      prom_type
+    );
   }
 }
 
