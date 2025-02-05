@@ -596,7 +596,13 @@ fn timeseries_to_metrics(
   }
 
   let mtype = match metric_type_map.get(&name) {
-    None => None,
+    None => {
+      log::trace!(
+        "prom metric name '{}' not found in metadata, defaulting type to None",
+        String::from_utf8_lossy(&name)
+      );
+      None
+    },
     Some(InProgressMetric::Simple(mtype)) => *mtype,
     Some(InProgressMetric::Histogram(_) | InProgressMetric::Summary(_)) => {
       return Err(ParseError::PromRemoteWrite(
