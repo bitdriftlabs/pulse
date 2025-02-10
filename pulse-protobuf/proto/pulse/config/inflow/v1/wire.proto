@@ -56,6 +56,9 @@ message TcpServerConfig {
   // continuously. This is useful if for example applications are sending larger numbers of timers
   // and we would like to do as little processing as possible on initial ingestion.
   bool always_pre_buffer = 6;
+
+  // The size of the reservoir for timers. If not set defaults to 100.
+  optional uint32 reservoir_size = 7;
 }
 
 // Configuration for a UDP based inflow.
@@ -81,6 +84,9 @@ message UdpServerConfig {
     // continuously. This is useful if for example applications are sending larger numbers of timers
     // and we would like to do as little processing as possible on initial ingestion.
     bool always_pre_buffer = 3;
+
+    // The size of the reservoir for timers. If not set defaults to 100.
+    optional uint32 reservoir_size = 4;
   }
 
   // Which address to bind to.

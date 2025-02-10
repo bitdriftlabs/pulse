@@ -40,12 +40,19 @@ enum PreBufferMetric {
 // the pre_buffer_window setting. See the documentation of that setting for more information.
 // This will only realistically work for statsd but could be expanded to other protocols in the
 // future if needed.
-#[derive(Default)]
 pub struct PreBuffer {
   metrics: hashbrown::HashMap<MetricKey, PreBufferMetric, ahash::RandomState>,
+  reservoir_size: Option<u32>,
 }
 
 impl PreBuffer {
+  pub fn new(reservoir_size: Option<u32>) -> Self {
+    Self {
+      metrics: hashbrown::HashMap::with_hasher(ahash::RandomState::new()),
+      reservoir_size,
+    }
+  }
+
   pub fn buffer(&mut self, metrics: Vec<ParsedMetric>) {
     for metric in metrics {
       let (metric_id, sample_rate, _, value) = metric.into_metric().into_parts();
@@ -66,8 +73,9 @@ impl PreBuffer {
             Some(MetricType::Gauge | MetricType::DeltaGauge | MetricType::DirectGauge) => {
               PreBufferMetric::Gauge(0.0)
             },
-            // TODO(mattklein123): Potentially make the reservoir size configurable.
-            Some(MetricType::Timer) => PreBufferMetric::Timer(ReservoirTimer::new(10)),
+            Some(MetricType::Timer) => {
+              PreBufferMetric::Timer(ReservoirTimer::new(self.reservoir_size.unwrap_or(100)))
+            },
             _ => {
               warn_every!(
                 15.seconds(),

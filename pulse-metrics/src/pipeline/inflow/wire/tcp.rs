@@ -101,6 +101,7 @@ async fn accept_tcp_connections(
               config.pre_buffer_window.as_ref().map(|w| PreBufferConfig {
                 timeout: w.to_time_duration(),
                 always_pre_buffer: config.always_pre_buffer,
+                reservoir_size: config.reservoir_size,
               }),
             ).run(socket, shutdown.clone()));
           }
