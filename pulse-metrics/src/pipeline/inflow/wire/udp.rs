@@ -321,6 +321,7 @@ impl PipelineInflow for UdpInflow {
           pre_buffer_config: PreBufferConfig {
             timeout: pre_buffer.pre_buffer_window.to_time_duration(),
             always_pre_buffer: pre_buffer.always_pre_buffer,
+            reservoir_size: pre_buffer.reservoir_size,
           },
           session_idle_timeout: pre_buffer.session_idle_timeout.to_time_duration(),
         }) as Box<dyn SessionManager>

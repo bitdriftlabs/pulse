@@ -184,16 +184,18 @@ pub(super) struct PreBufferWrapper {
 
 impl PreBufferWrapper {
   pub(super) fn new(config: PreBufferConfig) -> Self {
+    let buffer = PreBuffer::new(config.reservoir_size);
     let sleep = Box::pin(config.timeout.sleep());
     Self {
       config,
-      buffer: PreBuffer::default(),
+      buffer,
       sleep,
     }
   }
 
   pub(super) fn reset(&mut self) -> PreBuffer {
-    let old_buffer = std::mem::take(&mut self.buffer);
+    let old_buffer =
+      std::mem::replace(&mut self.buffer, PreBuffer::new(self.config.reservoir_size));
     self
       .sleep
       .as_mut()
@@ -235,6 +237,7 @@ impl PreBufferWrapper {
 pub(super) struct PreBufferConfig {
   pub timeout: Duration,
   pub always_pre_buffer: bool,
+  pub reservoir_size: Option<u32>,
 }
 
 //

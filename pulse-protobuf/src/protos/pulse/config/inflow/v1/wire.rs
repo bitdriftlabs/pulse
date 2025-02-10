@@ -207,6 +207,8 @@ pub struct TcpServerConfig {
     pub pre_buffer_window: ::protobuf::MessageField<::protobuf::well_known_types::duration::Duration>,
     // @@protoc_insertion_point(field:pulse.config.inflow.v1.TcpServerConfig.always_pre_buffer)
     pub always_pre_buffer: bool,
+    // @@protoc_insertion_point(field:pulse.config.inflow.v1.TcpServerConfig.reservoir_size)
+    pub reservoir_size: ::std::option::Option<u32>,
     // special fields
     // @@protoc_insertion_point(special_field:pulse.config.inflow.v1.TcpServerConfig.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -224,7 +226,7 @@ impl TcpServerConfig {
     }
 
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(6);
+        let mut fields = ::std::vec::Vec::with_capacity(7);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "bind",
@@ -255,6 +257,11 @@ impl TcpServerConfig {
             "always_pre_buffer",
             |m: &TcpServerConfig| { &m.always_pre_buffer },
             |m: &mut TcpServerConfig| { &mut m.always_pre_buffer },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+            "reservoir_size",
+            |m: &TcpServerConfig| { &m.reservoir_size },
+            |m: &mut TcpServerConfig| { &mut m.reservoir_size },
         ));
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<TcpServerConfig>(
             "TcpServerConfig",
@@ -292,6 +299,9 @@ impl ::protobuf::Message for TcpServerConfig {
                 48 => {
                     self.always_pre_buffer = is.read_bool()?;
                 },
+                56 => {
+                    self.reservoir_size = ::std::option::Option::Some(is.read_uint32()?);
+                },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                 },
@@ -325,6 +335,9 @@ impl ::protobuf::Message for TcpServerConfig {
         if self.always_pre_buffer != false {
             my_size += 1 + 1;
         }
+        if let Some(v) = self.reservoir_size {
+            my_size += ::protobuf::rt::uint32_size(7, v);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
         my_size
@@ -349,6 +362,9 @@ impl ::protobuf::Message for TcpServerConfig {
         if self.always_pre_buffer != false {
             os.write_bool(6, self.always_pre_buffer)?;
         }
+        if let Some(v) = self.reservoir_size {
+            os.write_uint32(7, v)?;
+        }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
     }
@@ -372,6 +388,7 @@ impl ::protobuf::Message for TcpServerConfig {
         self.bind_k8s_pod_metadata_by_remote_ip = false;
         self.pre_buffer_window.clear();
         self.always_pre_buffer = false;
+        self.reservoir_size = ::std::option::Option::None;
         self.special_fields.clear();
     }
 
@@ -383,6 +400,7 @@ impl ::protobuf::Message for TcpServerConfig {
             bind_k8s_pod_metadata_by_remote_ip: false,
             pre_buffer_window: ::protobuf::MessageField::none(),
             always_pre_buffer: false,
+            reservoir_size: ::std::option::Option::None,
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -596,6 +614,8 @@ pub mod udp_server_config {
         pub session_idle_timeout: ::protobuf::MessageField<::protobuf::well_known_types::duration::Duration>,
         // @@protoc_insertion_point(field:pulse.config.inflow.v1.UdpServerConfig.PreBufferConfig.always_pre_buffer)
         pub always_pre_buffer: bool,
+        // @@protoc_insertion_point(field:pulse.config.inflow.v1.UdpServerConfig.PreBufferConfig.reservoir_size)
+        pub reservoir_size: ::std::option::Option<u32>,
         // special fields
         // @@protoc_insertion_point(special_field:pulse.config.inflow.v1.UdpServerConfig.PreBufferConfig.special_fields)
         pub special_fields: ::protobuf::SpecialFields,
@@ -613,7 +633,7 @@ pub mod udp_server_config {
         }
 
         pub(in super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-            let mut fields = ::std::vec::Vec::with_capacity(3);
+            let mut fields = ::std::vec::Vec::with_capacity(4);
             let mut oneofs = ::std::vec::Vec::with_capacity(0);
             fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, ::protobuf::well_known_types::duration::Duration>(
                 "pre_buffer_window",
@@ -629,6 +649,11 @@ pub mod udp_server_config {
                 "always_pre_buffer",
                 |m: &PreBufferConfig| { &m.always_pre_buffer },
                 |m: &mut PreBufferConfig| { &mut m.always_pre_buffer },
+            ));
+            fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+                "reservoir_size",
+                |m: &PreBufferConfig| { &m.reservoir_size },
+                |m: &mut PreBufferConfig| { &mut m.reservoir_size },
             ));
             ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<PreBufferConfig>(
                 "UdpServerConfig.PreBufferConfig",
@@ -657,6 +682,9 @@ pub mod udp_server_config {
                     24 => {
                         self.always_pre_buffer = is.read_bool()?;
                     },
+                    32 => {
+                        self.reservoir_size = ::std::option::Option::Some(is.read_uint32()?);
+                    },
                     tag => {
                         ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                     },
@@ -680,6 +708,9 @@ pub mod udp_server_config {
             if self.always_pre_buffer != false {
                 my_size += 1 + 1;
             }
+            if let Some(v) = self.reservoir_size {
+                my_size += ::protobuf::rt::uint32_size(4, v);
+            }
             my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
             self.special_fields.cached_size().set(my_size as u32);
             my_size
@@ -694,6 +725,9 @@ pub mod udp_server_config {
             }
             if self.always_pre_buffer != false {
                 os.write_bool(3, self.always_pre_buffer)?;
+            }
+            if let Some(v) = self.reservoir_size {
+                os.write_uint32(4, v)?;
             }
             os.write_unknown_fields(self.special_fields.unknown_fields())?;
             ::std::result::Result::Ok(())
@@ -715,6 +749,7 @@ pub mod udp_server_config {
             self.pre_buffer_window.clear();
             self.session_idle_timeout.clear();
             self.always_pre_buffer = false;
+            self.reservoir_size = ::std::option::Option::None;
             self.special_fields.clear();
         }
 
@@ -723,6 +758,7 @@ pub mod udp_server_config {
                 pre_buffer_window: ::protobuf::MessageField::none(),
                 session_idle_timeout: ::protobuf::MessageField::none(),
                 always_pre_buffer: false,
+                reservoir_size: ::std::option::Option::None,
                 special_fields: ::protobuf::SpecialFields::new(),
             };
             &instance
@@ -916,7 +952,7 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x18\x02\x20\x01(\x04H\0R\nbufferSize\x88\x01\x01\x12[\n\x17max_connecti\
     on_duration\x18\x03\x20\x01(\x0b2\x19.google.protobuf.DurationR\x15maxCo\
     nnectionDurationB\x08\xfaB\x05\xaa\x01\x02*\0B\x0e\n\x0c_buffer_size\"\
-    \x87\x03\n\x0fTcpServerConfig\x12\x1b\n\x04bind\x18\x01\x20\x01(\tR\x04b\
+    \xc6\x03\n\x0fTcpServerConfig\x12\x1b\n\x04bind\x18\x01\x20\x01(\tR\x04b\
     indB\x07\xfaB\x04r\x02\x10\x01\x12J\n\x08protocol\x18\x02\x20\x01(\x0b2$\
     .pulse.config.common.v1.WireProtocolR\x08protocolB\x08\xfaB\x05\x8a\x01\
     \x02\x10\x01\x12N\n\x08advanced\x18\x03\x20\x01(\x0b22.pulse.config.infl\
@@ -924,23 +960,26 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     ata_by_remote_ip\x18\x04\x20\x01(\x08R\x1cbindK8sPodMetadataByRemoteIp\
     \x12E\n\x11pre_buffer_window\x18\x05\x20\x01(\x0b2\x19.google.protobuf.D\
     urationR\x0fpreBufferWindow\x12*\n\x11always_pre_buffer\x18\x06\x20\x01(\
-    \x08R\x0falwaysPreBuffer\"\x84\x04\n\x0fUdpServerConfig\x12\x1b\n\x04bin\
-    d\x18\x01\x20\x01(\tR\x04bindB\x07\xfaB\x04r\x02\x10\x01\x12J\n\x08proto\
-    col\x18\x02\x20\x01(\x0b2$.pulse.config.common.v1.WireProtocolR\x08proto\
-    colB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12H\n\"bind_k8s_pod_metadata_by_r\
-    emote_ip\x18\x03\x20\x01(\x08R\x1cbindK8sPodMetadataByRemoteIp\x12V\n\np\
-    re_buffer\x18\x04\x20\x01(\x0b27.pulse.config.inflow.v1.UdpServerConfig.\
-    PreBufferConfigR\tpreBuffer\x1a\xe5\x01\n\x0fPreBufferConfig\x12O\n\x11p\
-    re_buffer_window\x18\x01\x20\x01(\x0b2\x19.google.protobuf.DurationR\x0f\
-    preBufferWindowB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12U\n\x14session_idle\
-    _timeout\x18\x02\x20\x01(\x0b2\x19.google.protobuf.DurationR\x12sessionI\
-    dleTimeoutB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12*\n\x11always_pre_buffer\
-    \x18\x03\x20\x01(\x08R\x0falwaysPreBuffer\"\xcb\x01\n\x10UnixServerConfi\
-    g\x12\x1b\n\x04path\x18\x01\x20\x01(\tR\x04pathB\x07\xfaB\x04r\x02\x10\
-    \x01\x12J\n\x08protocol\x18\x02\x20\x01(\x0b2$.pulse.config.common.v1.Wi\
-    reProtocolR\x08protocolB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12N\n\x08adva\
-    nced\x18\x03\x20\x01(\x0b22.pulse.config.inflow.v1.AdvancedSocketServerC\
-    onfigR\x08advancedb\x06proto3\
+    \x08R\x0falwaysPreBuffer\x12*\n\x0ereservoir_size\x18\x07\x20\x01(\rH\0R\
+    \rreservoirSize\x88\x01\x01B\x11\n\x0f_reservoir_size\"\xc3\x04\n\x0fUdp\
+    ServerConfig\x12\x1b\n\x04bind\x18\x01\x20\x01(\tR\x04bindB\x07\xfaB\x04\
+    r\x02\x10\x01\x12J\n\x08protocol\x18\x02\x20\x01(\x0b2$.pulse.config.com\
+    mon.v1.WireProtocolR\x08protocolB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12H\
+    \n\"bind_k8s_pod_metadata_by_remote_ip\x18\x03\x20\x01(\x08R\x1cbindK8sP\
+    odMetadataByRemoteIp\x12V\n\npre_buffer\x18\x04\x20\x01(\x0b27.pulse.con\
+    fig.inflow.v1.UdpServerConfig.PreBufferConfigR\tpreBuffer\x1a\xa4\x02\n\
+    \x0fPreBufferConfig\x12O\n\x11pre_buffer_window\x18\x01\x20\x01(\x0b2\
+    \x19.google.protobuf.DurationR\x0fpreBufferWindowB\x08\xfaB\x05\x8a\x01\
+    \x02\x10\x01\x12U\n\x14session_idle_timeout\x18\x02\x20\x01(\x0b2\x19.go\
+    ogle.protobuf.DurationR\x12sessionIdleTimeoutB\x08\xfaB\x05\x8a\x01\x02\
+    \x10\x01\x12*\n\x11always_pre_buffer\x18\x03\x20\x01(\x08R\x0falwaysPreB\
+    uffer\x12*\n\x0ereservoir_size\x18\x04\x20\x01(\rH\0R\rreservoirSize\x88\
+    \x01\x01B\x11\n\x0f_reservoir_size\"\xcb\x01\n\x10UnixServerConfig\x12\
+    \x1b\n\x04path\x18\x01\x20\x01(\tR\x04pathB\x07\xfaB\x04r\x02\x10\x01\
+    \x12J\n\x08protocol\x18\x02\x20\x01(\x0b2$.pulse.config.common.v1.WirePr\
+    otocolR\x08protocolB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12N\n\x08advanced\
+    \x18\x03\x20\x01(\x0b22.pulse.config.inflow.v1.AdvancedSocketServerConfi\
+    gR\x08advancedb\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
