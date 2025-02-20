@@ -521,6 +521,10 @@ pub enum MetricSource {
   Aggregation { prom_source: bool },
 }
 
+//
+// DownstreamId
+//
+
 // The ID of the downstream sender of a metric.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum DownstreamId {
@@ -549,6 +553,14 @@ impl DownstreamId {
       },
     }
   }
+}
+
+//
+// DownstreamIdProvider
+//
+
+pub trait DownstreamIdProvider {
+  fn downstream_id(&self, metric_id: &MetricId) -> DownstreamId;
 }
 
 //
@@ -782,7 +794,7 @@ impl ParsedMetric {
     write_request: WriteRequest,
     received_at: Instant,
     parse_config: &ParseConfig,
-    downstream_id: &DownstreamId,
+    downstream_id_provider: &dyn DownstreamIdProvider,
   ) -> (Vec<Self>, Vec<ParseError>) {
     let result = from_write_request(write_request, parse_config);
     (
@@ -790,11 +802,12 @@ impl ParsedMetric {
         .0
         .into_iter()
         .map(|metric| {
+          let downstream_id = downstream_id_provider.downstream_id(metric.get_id());
           Self::new(
             metric,
             MetricSource::PromRemoteWrite,
             received_at,
-            downstream_id.clone(),
+            downstream_id,
           )
         })
         .collect(),

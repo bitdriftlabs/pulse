@@ -47,7 +47,16 @@ message PromRemoteWriteServerConfig {
   // Extra configuration for parsing incoming remote write protocol.
   ParseConfig parse_config = 2;
 
-  // How to determine the downstrean ID of incoming metrics. If not specified, defaults to
+  // How to determine the downstream ID of incoming metrics. If not specified, defaults to
   // `remote_ip`.
   DownstreamIdSource downstream_id_source = 3;
+
+  // Whether to append the incoming metric tags to the downstream ID. When doing aggregation using
+  // Prometheus absolute counters, the aggregation processor must know all unique sources of a
+  // metric so that absolute counter deltas can be correctly calculated. If tags are removed
+  // using a mutate processor, the aggregation processor will no longer be able to determine
+  // unique sources. By appending the original tags to the incoming ID, tags can be removed and
+  // then forwarded via internode and aggregated correctly. Depending on the aggregation topology
+  // this is likely required if absolute counters are being used.
+  bool append_tags_to_downstream_id = 4;
 }

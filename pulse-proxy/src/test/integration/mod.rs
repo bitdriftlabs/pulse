@@ -42,14 +42,14 @@ use pulse_metrics::clients::prom::{
 use pulse_metrics::pipeline::inflow::wire::tcp::TcpInflow;
 use pulse_metrics::pipeline::inflow::{InflowFactoryContext, PipelineInflow};
 use pulse_metrics::pipeline::MockPipelineDispatch;
-use pulse_metrics::protos::metric::{DownstreamId, ParsedMetric};
+use pulse_metrics::protos::metric::ParsedMetric;
 use pulse_metrics::protos::prom::{
   to_write_request,
   ChangedTypeTracker,
   MetadataType,
   ToWriteRequestOptions,
 };
-use pulse_metrics::test::make_carbon_wire_protocol;
+use pulse_metrics::test::{make_carbon_wire_protocol, TestDownstreamIdProvider};
 use pulse_protobuf::protos::pulse::config::bootstrap::v1::bootstrap::KubernetesBootstrapConfig;
 use pulse_protobuf::protos::pulse::config::inflow::v1::prom_remote_write;
 use pulse_protobuf::protos::pulse::config::inflow::v1::wire::TcpServerConfig;
@@ -390,7 +390,7 @@ impl FakePromUpstream {
       write_request,
       Instant::now(),
       &state.parse_config,
-      &DownstreamId::LocalOrigin,
+      &TestDownstreamIdProvider {},
     );
 
     // Sort metrics by name so that we can have consistent matching.

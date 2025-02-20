@@ -8,7 +8,7 @@
 use super::*;
 use crate::clients::prom::{MockPromRemoteWriteClient, PromRemoteWriteError};
 use crate::protos::metric::DownstreamId;
-use crate::test::make_carbon_wire_protocol;
+use crate::test::{make_carbon_wire_protocol, TestDownstreamIdProvider};
 use bd_proto::protos::prometheus::prompb::remote::WriteRequest;
 use bd_server_stats::stats::Collector;
 use bd_shutdown::ComponentShutdownTrigger;
@@ -105,7 +105,7 @@ fn expect_send_write_request(
         write_request,
         Instant::now(),
         &ParseConfig::default(),
-        &DownstreamId::LocalOrigin,
+        &TestDownstreamIdProvider {},
       );
       assert!(errors.is_empty());
       log::debug!("got {} metric(s)", metrics.len());
