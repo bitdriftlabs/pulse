@@ -6,7 +6,7 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
 use super::{make_metric, make_name};
-use crate::protos::metric::{MetricId, MetricType, MetricValue, ParsedMetric};
+use crate::protos::metric::{DownstreamId, MetricId, MetricType, MetricValue, ParsedMetric};
 use crate::protos::prom::prom_stale_marker;
 use pulse_protobuf::protos::pulse::config::processor::v1::aggregation::AggregationConfig;
 use tokio::time::Instant;
@@ -160,19 +160,34 @@ pub(super) struct GaugeAggregation {
 }
 
 impl GaugeAggregation {
-  pub(super) fn aggregate(&mut self, sample: f64, delta: bool) {
+  pub(super) fn aggregate(
+    &mut self,
+    sample: f64,
+    delta: bool,
+    metric: &MetricId,
+    downstream_id: &DownstreamId,
+  ) {
     if delta {
       self.value += sample;
     } else {
       self.value = sample;
     }
 
+    log::trace!(
+      "aggregating gauge sample: {}/{:?}: {}",
+      metric,
+      downstream_id,
+      sample
+    );
     if self.count == 0 {
+      log::trace!("setting min/max: {}: {}", metric, sample);
       self.min = sample;
       self.max = sample;
     } else if self.min > sample {
+      log::trace!("setting min: {}: {}", metric, sample);
       self.min = sample;
     } else if self.max < sample {
+      log::trace!("setting max: {}: {}", metric, sample);
       self.max = sample;
     }
 

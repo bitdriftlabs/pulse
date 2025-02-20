@@ -874,7 +874,12 @@ impl LockedPerMetricAggregationState {
         let AggregationType::Gauge(ref mut gauge_aggregation) = aggregation else {
           return Err(AggregationError::ChangedType);
         };
-        gauge_aggregation.aggregate(sample.metric().value.to_simple(), false);
+        gauge_aggregation.aggregate(
+          sample.metric().value.to_simple(),
+          false,
+          sample.metric().get_id(),
+          sample.downstream_id(),
+        );
       },
       Some(MetricType::DeltaGauge) => {
         let aggregation = aggregation_to_fill
@@ -882,7 +887,12 @@ impl LockedPerMetricAggregationState {
         let AggregationType::DeltaGauge(ref mut gauge_aggregation) = aggregation else {
           return Err(AggregationError::ChangedType);
         };
-        gauge_aggregation.aggregate(sample.metric().value.to_simple(), true);
+        gauge_aggregation.aggregate(
+          sample.metric().value.to_simple(),
+          true,
+          sample.metric().get_id(),
+          sample.downstream_id(),
+        );
       },
       Some(MetricType::DirectGauge) => {
         let aggregation = aggregation_to_fill
