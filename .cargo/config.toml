@@ -75,6 +75,9 @@ rustflags = [
     # The cache sized field is correctly handled but there doesn't seem to be a way to turn this
     # off for a type.
     "-Aclippy::mutable-key-type",
+
+    # This is trigger in built.rs and disabling it in the owning mod is not working.
+    "-Aclippy::needless_raw_string_hashes",
 ]
 
 # Fetch internal repos via git

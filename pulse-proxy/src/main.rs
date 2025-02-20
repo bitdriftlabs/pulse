@@ -25,6 +25,7 @@ use tokio::time::Duration;
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
 
+#[allow(clippy::needless_raw_string_hashes)]
 pub mod built_info {
   include!(concat!(env!("OUT_DIR"), "/built.rs"));
 }

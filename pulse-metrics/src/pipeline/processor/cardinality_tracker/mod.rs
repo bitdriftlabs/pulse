@@ -175,9 +175,10 @@ impl Tracker for TopKTracker {
       GroupByType::NameRegex(name_regex) => {
         // If there is no regex, every metric is considered. Otherwise we perform the regex check
         // first.
-        if name_regex.as_ref().map_or(true, |regex| {
-          regex.is_match(metric.metric().get_id().name())
-        }) {
+        if name_regex
+          .as_ref()
+          .is_none_or(|regex| regex.is_match(metric.metric().get_id().name()))
+        {
           self.insert(
             // TODO(mattklein123): In order to avoid storing a reference to the entire incoming
             // payload we make a full copy of the name here. In practice we could potentially use

@@ -41,6 +41,8 @@ pub struct PromRemoteWriteServerConfig {
     pub parse_config: ::protobuf::MessageField<prom_remote_write_server_config::ParseConfig>,
     // @@protoc_insertion_point(field:pulse.config.inflow.v1.PromRemoteWriteServerConfig.downstream_id_source)
     pub downstream_id_source: ::protobuf::MessageField<prom_remote_write_server_config::DownstreamIdSource>,
+    // @@protoc_insertion_point(field:pulse.config.inflow.v1.PromRemoteWriteServerConfig.append_tags_to_downstream_id)
+    pub append_tags_to_downstream_id: bool,
     // special fields
     // @@protoc_insertion_point(special_field:pulse.config.inflow.v1.PromRemoteWriteServerConfig.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -58,7 +60,7 @@ impl PromRemoteWriteServerConfig {
     }
 
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(3);
+        let mut fields = ::std::vec::Vec::with_capacity(4);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "bind",
@@ -74,6 +76,11 @@ impl PromRemoteWriteServerConfig {
             "downstream_id_source",
             |m: &PromRemoteWriteServerConfig| { &m.downstream_id_source },
             |m: &mut PromRemoteWriteServerConfig| { &mut m.downstream_id_source },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+            "append_tags_to_downstream_id",
+            |m: &PromRemoteWriteServerConfig| { &m.append_tags_to_downstream_id },
+            |m: &mut PromRemoteWriteServerConfig| { &mut m.append_tags_to_downstream_id },
         ));
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<PromRemoteWriteServerConfig>(
             "PromRemoteWriteServerConfig",
@@ -102,6 +109,9 @@ impl ::protobuf::Message for PromRemoteWriteServerConfig {
                 26 => {
                     ::protobuf::rt::read_singular_message_into_field(is, &mut self.downstream_id_source)?;
                 },
+                32 => {
+                    self.append_tags_to_downstream_id = is.read_bool()?;
+                },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                 },
@@ -125,6 +135,9 @@ impl ::protobuf::Message for PromRemoteWriteServerConfig {
             let len = v.compute_size();
             my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
         }
+        if self.append_tags_to_downstream_id != false {
+            my_size += 1 + 1;
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
         my_size
@@ -139,6 +152,9 @@ impl ::protobuf::Message for PromRemoteWriteServerConfig {
         }
         if let Some(v) = self.downstream_id_source.as_ref() {
             ::protobuf::rt::write_message_field_with_cached_size(3, v, os)?;
+        }
+        if self.append_tags_to_downstream_id != false {
+            os.write_bool(4, self.append_tags_to_downstream_id)?;
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -160,6 +176,7 @@ impl ::protobuf::Message for PromRemoteWriteServerConfig {
         self.bind.clear();
         self.parse_config.clear();
         self.downstream_id_source.clear();
+        self.append_tags_to_downstream_id = false;
         self.special_fields.clear();
     }
 
@@ -168,6 +185,7 @@ impl ::protobuf::Message for PromRemoteWriteServerConfig {
             bind: ::protobuf::Chars::new(),
             parse_config: ::protobuf::MessageField::none(),
             downstream_id_source: ::protobuf::MessageField::none(),
+            append_tags_to_downstream_id: false,
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -604,20 +622,21 @@ pub mod prom_remote_write_server_config {
 
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n.pulse/config/inflow/v1/prom_remote_write.proto\x12\x16pulse.config.in\
-    flow.v1\x1a\x17validate/validate.proto\"\xbd\x04\n\x1bPromRemoteWriteSer\
+    flow.v1\x1a\x17validate/validate.proto\"\xfd\x04\n\x1bPromRemoteWriteSer\
     verConfig\x12\x1b\n\x04bind\x18\x01\x20\x01(\tR\x04bindB\x07\xfaB\x04r\
     \x02\x10\x01\x12b\n\x0cparse_config\x18\x02\x20\x01(\x0b2?.pulse.config.\
     inflow.v1.PromRemoteWriteServerConfig.ParseConfigR\x0bparseConfig\x12x\n\
     \x14downstream_id_source\x18\x03\x20\x01(\x0b2F.pulse.config.inflow.v1.P\
-    romRemoteWriteServerConfig.DownstreamIdSourceR\x12downstreamIdSource\x1a\
-    \x9d\x01\n\x0bParseConfig\x12(\n\x10summary_as_timer\x18\x01\x20\x01(\
-    \x08R\x0esummaryAsTimer\x12(\n\x10counter_as_delta\x18\x02\x20\x01(\x08R\
-    \x0ecounterAsDelta\x12:\n\x19ignore_duplicate_metadata\x18\x03\x20\x01(\
-    \x08R\x17ignoreDuplicateMetadata\x1a\x82\x01\n\x12DownstreamIdSource\x12\
-    &\n\tremote_ip\x18\x01\x20\x01(\x08H\0R\x08remoteIpB\x07\xfaB\x04j\x02\
-    \x08\x01\x120\n\x0erequest_header\x18\x02\x20\x01(\tH\0R\rrequestHeaderB\
-    \x07\xfaB\x04r\x02\x10\x01B\x12\n\x0bsource_type\x12\x03\xf8B\x01b\x06pr\
-    oto3\
+    romRemoteWriteServerConfig.DownstreamIdSourceR\x12downstreamIdSource\x12\
+    >\n\x1cappend_tags_to_downstream_id\x18\x04\x20\x01(\x08R\x18appendTagsT\
+    oDownstreamId\x1a\x9d\x01\n\x0bParseConfig\x12(\n\x10summary_as_timer\
+    \x18\x01\x20\x01(\x08R\x0esummaryAsTimer\x12(\n\x10counter_as_delta\x18\
+    \x02\x20\x01(\x08R\x0ecounterAsDelta\x12:\n\x19ignore_duplicate_metadata\
+    \x18\x03\x20\x01(\x08R\x17ignoreDuplicateMetadata\x1a\x82\x01\n\x12Downs\
+    treamIdSource\x12&\n\tremote_ip\x18\x01\x20\x01(\x08H\0R\x08remoteIpB\
+    \x07\xfaB\x04j\x02\x08\x01\x120\n\x0erequest_header\x18\x02\x20\x01(\tH\
+    \0R\rrequestHeaderB\x07\xfaB\x04r\x02\x10\x01B\x12\n\x0bsource_type\x12\
+    \x03\xf8B\x01b\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file

@@ -13,6 +13,7 @@ use crate::pipeline::MockPipelineDispatch;
 use crate::protos::metric::{
   CounterType,
   DownstreamId,
+  DownstreamIdProvider,
   Metric,
   MetricId,
   MetricSource,
@@ -46,6 +47,14 @@ use tokio::sync::watch;
 
 #[cfg(test)]
 pub mod thread_synchronizer;
+
+pub struct TestDownstreamIdProvider {}
+
+impl DownstreamIdProvider for TestDownstreamIdProvider {
+  fn downstream_id(&self, _metric_id: &MetricId) -> DownstreamId {
+    DownstreamId::LocalOrigin
+  }
+}
 
 #[must_use]
 pub fn make_tag(tag: &'static str, value: &'static str) -> TagValue {

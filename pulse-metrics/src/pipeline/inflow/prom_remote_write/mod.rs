@@ -11,7 +11,7 @@ mod mod_test;
 
 use super::{InflowFactoryContext, PipelineInflow};
 use crate::pipeline::PipelineDispatch;
-use crate::protos::metric::{DownstreamId, ParsedMetric};
+use crate::protos::metric::{DownstreamId, DownstreamIdProvider, MetricId, ParsedMetric};
 use async_trait::async_trait;
 use axum::extract::{ConnectInfo, Request, State};
 use axum::response::Response;
@@ -22,7 +22,7 @@ use bd_log::warn_every;
 use bd_proto::protos::prometheus::prompb::remote::WriteRequest;
 use bd_server_stats::stats::{AutoGauge, Scope};
 use bd_shutdown::ComponentShutdownTriggerHandle;
-use bytes::Bytes;
+use bytes::{BufMut, Bytes, BytesMut};
 use http::StatusCode;
 use http_body_util::BodyExt;
 use hyper::body::Body;
@@ -42,6 +42,10 @@ use std::time::Instant;
 use time::ext::NumericalDuration;
 
 const MAX_ALLOWED_REQUEST_SIZE: u64 = 20_000_000;
+
+//
+// Stats
+//
 
 #[derive(Clone)]
 struct Stats {
@@ -64,6 +68,10 @@ impl Stats {
     }
   }
 }
+
+//
+// PromRemoteWriteInflow
+//
 
 pub(super) struct PromRemoteWriteInflow {
   stats: Stats,
@@ -121,6 +129,10 @@ impl PipelineInflow for PromRemoteWriteInflow {
   }
 }
 
+//
+// DecodeError
+//
+
 #[derive(thiserror::Error, Debug)]
 enum DecodeError {
   #[error("io error: {0}")]
@@ -129,6 +141,68 @@ enum DecodeError {
   ProtobufDecode(#[from] protobuf::Error),
   #[error("snappy decode error: {0}")]
   SnappyDecode(#[from] snap::Error),
+}
+
+//
+// DownstreamIdProviderImpl
+//
+
+struct DownstreamIdProviderImpl {
+  base: Bytes,
+  append_tags_to_downstream_id: bool,
+}
+
+impl DownstreamIdProviderImpl {
+  fn new(
+    append_tags_to_downstream_id: bool,
+    downstream_id_source: Option<&DownstreamIdSource>,
+    remote_addr: IpAddr,
+    req: &Request,
+  ) -> Self {
+    // Note, there is currently no way to get the Bytes directly out of the header value so we have
+    // to clone it.
+    let base = downstream_id_source
+      .and_then(|source| match source.source_type.as_ref().expect("pgv") {
+        Source_type::RemoteIp(_) => None,
+        Source_type::RequestHeader(header_name) => req
+          .headers()
+          .get(header_name.as_str())
+          .map(|value| value.as_bytes().to_vec().into())
+          .or_else(|| {
+            warn_every!(
+              1.minutes(),
+              "downstream ID header '{}' not found",
+              header_name
+            );
+            None
+          }),
+      })
+      .unwrap_or_else(|| remote_addr.to_string().into());
+
+    Self {
+      base,
+      append_tags_to_downstream_id,
+    }
+  }
+}
+
+impl DownstreamIdProvider for DownstreamIdProviderImpl {
+  fn downstream_id(&self, metric_id: &MetricId) -> DownstreamId {
+    let bytes = if self.append_tags_to_downstream_id {
+      let mut bytes = BytesMut::with_capacity(self.base.len());
+      bytes.extend_from_slice(&self.base);
+      for tag in metric_id.tags() {
+        bytes.put_u8(b':');
+        bytes.extend_from_slice(&tag.tag);
+        bytes.put_u8(b'=');
+        bytes.extend_from_slice(&tag.value);
+      }
+      bytes.freeze()
+    } else {
+      self.base.clone()
+    };
+    DownstreamId::InflowProvided(bytes)
+  }
 }
 
 fn decode_body_into_write_request(body: &[u8]) -> Result<WriteRequest, DecodeError> {
@@ -142,32 +216,6 @@ fn make_error_response(status: StatusCode, message: String) -> Response {
     .status(status)
     .body(message.into())
     .unwrap()
-}
-
-fn downstream_id(
-  downstream_id_source: Option<&DownstreamIdSource>,
-  remote_addr: IpAddr,
-  req: &Request,
-) -> DownstreamId {
-  // Note, there is currently no way to get the Bytes directly out of the header value so we have to
-  // clone it.
-  downstream_id_source
-    .and_then(|source| match source.source_type.as_ref().expect("pgv") {
-      Source_type::RemoteIp(_) => Some(DownstreamId::IpAddress(remote_addr)),
-      Source_type::RequestHeader(header_name) => req
-        .headers()
-        .get(header_name.as_str())
-        .map(|value| DownstreamId::InflowProvided(value.as_bytes().to_vec().into()))
-        .or_else(|| {
-          warn_every!(
-            1.minutes(),
-            "downstream ID header '{}' not found",
-            header_name
-          );
-          None
-        }),
-    })
-    .unwrap_or_else(|| DownstreamId::IpAddress(remote_addr))
 }
 
 async fn prometheus_remote_write_handler(
@@ -203,7 +251,12 @@ async fn prometheus_remote_write_handler(
   }
 
   // Pull the downstream ID depending on what is configured.
-  let downstream_id = downstream_id(state.config.downstream_id_source.as_ref(), addr.ip(), &req);
+  let downstream_id_provider = DownstreamIdProviderImpl::new(
+    state.config.append_tags_to_downstream_id,
+    state.config.downstream_id_source.as_ref(),
+    addr.ip(),
+    &req,
+  );
   let body = req
     .into_body()
     .collect()
@@ -230,7 +283,7 @@ async fn prometheus_remote_write_handler(
     write_request,
     received_at,
     &state.config.parse_config,
-    &downstream_id,
+    &downstream_id_provider,
   );
 
   state.dispatcher.send(samples).await;
