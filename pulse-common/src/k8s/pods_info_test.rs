@@ -6,11 +6,10 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
 use super::PodsInfoCache;
-use crate::k8s::pods_info::{PodsInfo, PromEndpoint, ServiceInfo, ServiceMonitor};
+use crate::k8s::pods_info::{ContainerPort, PodsInfo, ServiceInfo, ServiceMonitor};
 use crate::k8s::test::make_pod_info;
-use crate::metadata::Metadata;
-use k8s_openapi::api::core::v1::{Pod, PodStatus, Service, ServicePort, ServiceSpec};
-use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
+use k8s_openapi::api::core::v1;
+use k8s_openapi::api::core::v1::{Container, Pod, PodSpec, PodStatus};
 use kube::core::ObjectMeta;
 use pretty_assertions::assert_eq;
 use std::collections::{BTreeMap, HashMap};
@@ -52,49 +51,33 @@ fn pod_cache() {
     HashMap::from([
       (
         "svc1".to_string(),
-        Service {
-          metadata: make_object_meta(
-            "svc1",
-            btreemap! {},
-            btreemap! {
-              "prometheus.io/port" => "1234",
-              "prometheus.io/scrape" => "true",
-              "bitdrift.io/team_name" => "team",
-              "not_supported.io/team_name" => "team",
-            },
-          ),
-          spec: Some(ServiceSpec {
-            selector: Some(btreemap! {
-              "service" => "svc1"
-            }),
-            ..Default::default()
-          }),
-          ..Default::default()
-        },
+        Arc::new(ServiceInfo {
+          name: "svc1".to_string(),
+          annotations: btreemap! {
+            "prometheus.io/port" => "1234",
+            "prometheus.io/scrape" => "true",
+            "bitdrift.io/team_name" => "team",
+            "not_supported.io/team_name" => "team",
+          },
+          selector: btreemap! {
+            "service" => "svc1"
+          },
+          maybe_service_port: None,
+        }),
       ),
       (
         "svc2".to_string(),
-        Service {
-          metadata: make_object_meta(
-            "svc2",
-            btreemap! {},
-            btreemap! {
-              "prometheus.io/scrape" => "true",
-              "prometheus.io/namespace" => "another_namespace"
-            },
-          ),
-          spec: Some(ServiceSpec {
-            selector: Some(btreemap! {
-              "service" => "svc2"
-            }),
-            ports: Some(vec![ServicePort {
-              target_port: Some(IntOrString::Int(4321)),
-              ..Default::default()
-            }]),
-            ..Default::default()
-          }),
-          ..Default::default()
-        },
+        Arc::new(ServiceInfo {
+          name: "svc2".to_string(),
+          annotations: btreemap! {
+            "prometheus.io/scrape" => "true",
+            "prometheus.io/namespace" => "another_namespace"
+          },
+          selector: btreemap! {
+            "service" => "svc2"
+          },
+          maybe_service_port: Some(4321),
+        }),
       ),
     ]),
   );
@@ -111,7 +94,17 @@ fn pod_cache() {
         },
       ),
       status: make_pod_status("127.0.0.1", "Running"),
-      ..Default::default()
+      spec: Some(PodSpec {
+        containers: vec![Container {
+          ports: Some(vec![v1::ContainerPort {
+            container_port: 1234,
+            name: Some("http".to_string()),
+            ..Default::default()
+          }]),
+          ..Default::default()
+        }],
+        ..Default::default()
+      }),
     },
     Some(&services),
   );
@@ -146,49 +139,27 @@ fn pod_cache() {
       "my-awesome-pod",
       &btreemap!("service" => "svc1"),
       btreemap!("prometheus.io/scrape" => "true"),
-      Some(PromEndpoint::new(
-        "127.0.0.1".parse().unwrap(),
-        9090,
-        "/metrics",
-        Some(Arc::new(Metadata::new(
-          "default",
-          "my-awesome-pod",
-          "127.0.0.1",
-          &btreemap!("service" => "svc1"),
-          &btreemap!("prometheus.io/scrape" => "true"),
-          None,
-          "node",
-          "node_ip",
-          Some("127.0.0.1:9090".to_string()),
-        ))),
-      )),
       HashMap::from([(
         "svc1".to_string(),
         Arc::new(ServiceInfo {
-          name: "svc1".to_string().into(),
-          annotations: vec![(
-            "bitdrift.io/team_name".to_string().into(),
-            "team".to_string().into()
-          )],
-          prom_endpoint: Some(PromEndpoint::new(
-            "127.0.0.1".parse().unwrap(),
-            1234,
-            "/metrics",
-            Some(Arc::new(Metadata::new(
-              "default",
-              "my-awesome-pod",
-              "127.0.0.1",
-              &btreemap!("service" => "svc1"),
-              &btreemap!("prometheus.io/scrape" => "true"),
-              Some("svc1"),
-              "node",
-              "node_ip",
-              Some("127.0.0.1:1234".to_string()),
-            ))),
-          )),
+          name: "svc1".to_string(),
+          annotations: btreemap! {
+            "prometheus.io/port" => "1234",
+            "prometheus.io/scrape" => "true",
+            "bitdrift.io/team_name" => "team",
+            "not_supported.io/team_name" => "team",
+          },
+          selector: btreemap! {
+            "service" => "svc1"
+          },
+          maybe_service_port: None,
         }),
       )]),
-      "127.0.0.1"
+      "127.0.0.1",
+      vec![ContainerPort {
+        name: "http".to_string(),
+        port: 1234,
+      }]
     ),
     current
       .by_name("default", "my-awesome-pod")
@@ -218,29 +189,22 @@ fn pod_cache() {
       "my-second-awesome-pod",
       &btreemap!("service" => "svc2"),
       BTreeMap::default(),
-      None,
       HashMap::from([(
         "svc2".to_string(),
         Arc::new(ServiceInfo {
-          name: "svc2".to_string().into(),
-          annotations: Vec::new(),
-          prom_endpoint: Some(PromEndpoint {
-            url: "http://127.0.0.2:4321/metrics".to_string(),
-            metadata: Some(Arc::new(Metadata::new(
-              "another_namespace",
-              "my-second-awesome-pod",
-              "127.0.0.2",
-              &btreemap!("service" => "svc2"),
-              &BTreeMap::default(),
-              Some("svc2"),
-              "node",
-              "node_ip",
-              Some("127.0.0.2:4321".to_string()),
-            ))),
-          }),
+          name: "svc2".to_string(),
+          annotations: btreemap! {
+            "prometheus.io/scrape" => "true",
+            "prometheus.io/namespace" => "another_namespace"
+          },
+          selector: btreemap! {
+            "service" => "svc2"
+          },
+          maybe_service_port: Some(4321),
         }),
       )]),
-      "127.0.0.2"
+      "127.0.0.2",
+      Vec::new()
     ),
     current
       .by_name("default", "my-second-awesome-pod")
@@ -262,9 +226,9 @@ fn pod_cache() {
       "my-serviceless-pod",
       &BTreeMap::default(),
       BTreeMap::default(),
-      None,
       HashMap::new(),
-      "127.0.0.3"
+      "127.0.0.3",
+      Vec::new()
     ),
     current
       .by_name("default", "my-serviceless-pod")

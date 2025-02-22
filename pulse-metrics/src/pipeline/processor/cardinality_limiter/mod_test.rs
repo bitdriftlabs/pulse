@@ -50,9 +50,9 @@ async fn all_per_pod() {
     "pod1",
     &BTreeMap::default(),
     BTreeMap::default(),
-    None,
     HashMap::default(),
     "127.0.0.1",
+    vec![],
   ));
   helper.k8s_sender.send(pods_info.clone()).unwrap();
 
@@ -119,9 +119,9 @@ async fn all_per_pod() {
     "pod2",
     &BTreeMap::default(),
     btreemap!("cardinality_limit" => "3"),
-    None,
     HashMap::default(),
     "127.0.0.2",
+    vec![],
   ));
   helper.k8s_sender.send(pods_info.clone()).unwrap();
   yield_now().await;

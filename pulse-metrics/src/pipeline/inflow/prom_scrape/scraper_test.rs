@@ -5,7 +5,7 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
-use super::{Scraper, Stats, Ticker};
+use super::{PromEndpoint, Scraper, Stats, Ticker};
 use crate::pipeline::MockPipelineDispatch;
 use crate::pipeline::inflow::prom_scrape::scraper::{EndpointProvider, KubePodTarget};
 use crate::pipeline::time::TestDurationJitter;
@@ -16,12 +16,16 @@ use axum::response::Response;
 use axum::routing::get;
 use bd_shutdown::ComponentShutdownTrigger;
 use http::StatusCode;
+use itertools::Itertools;
+use k8s_prom::kubernetes_prometheus_config::pod::InclusionFilter;
+use k8s_prom::kubernetes_prometheus_config::pod::inclusion_filter::Filter_type;
 use parking_lot::Mutex;
 use prometheus::labels;
 use pulse_common::k8s::pods_info::container::PodsInfo;
-use pulse_common::k8s::pods_info::{PodsInfoSingleton, PromEndpoint};
+use pulse_common::k8s::pods_info::{ContainerPort, PodsInfoSingleton};
 use pulse_common::k8s::test::make_pod_info;
 use pulse_common::metadata::Metadata;
+use pulse_protobuf::protos::pulse::config::inflow::v1::k8s_prom;
 use std::collections::{HashMap, VecDeque};
 use std::future::pending;
 use std::sync::Arc;
@@ -32,41 +36,101 @@ use tokio::sync::mpsc;
 use vrl::{btreemap, path};
 
 #[tokio::test]
-async fn test_kube_pod_target_endpoint() {
+async fn multiple_ports() {
+  let mut initial_state = PodsInfo::default();
+  initial_state.insert(make_pod_info(
+    "some-namespace",
+    "my-awesome-pod",
+    &btreemap!(),
+    btreemap!("prometheus.io/scrape" => "true", "prometheus.io/port" => "123,124"),
+    HashMap::new(),
+    "127.0.0.1",
+    vec![],
+  ));
+  let (_tx, rx) = tokio::sync::watch::channel(initial_state);
+  let pods_info = Arc::new(PodsInfoSingleton::new(rx)).make_owned();
+  let mut target = KubePodTarget {
+    inclusion_filters: vec![],
+    pods_info,
+  };
+  let endpoints = target.get();
+  assert_eq!(
+    endpoints.keys().sorted().collect_vec(),
+    &[
+      "some-namespace//my-awesome-pod/123",
+      "some-namespace//my-awesome-pod/124"
+    ]
+  );
+}
+
+#[tokio::test]
+async fn inclusion_filters() {
   let mut initial_state = PodsInfo::default();
   initial_state.insert(make_pod_info(
     "some-namespace",
     "my-awesome-pod",
     &btreemap!(),
     btreemap!(),
-    Some(PromEndpoint::new(
-      "127.0.0.1".parse().unwrap(),
-      9090,
-      "/metrics",
-      Some(Arc::new(Metadata::new(
-        "some-namespace",
-        "my-awesome-pod",
-        "ip",
-        &btreemap!(),
-        &btreemap!(),
-        Some("some-service"),
-        "node_name",
-        "node_ip",
-        None,
-      ))),
-    )),
     HashMap::new(),
     "127.0.0.1",
+    vec![
+      ContainerPort {
+        name: "scrape_hello".to_string(),
+        port: 123,
+      },
+      ContainerPort {
+        name: "scrape_world".to_string(),
+        port: 124,
+      },
+      ContainerPort {
+        name: "other".to_string(),
+        port: 125,
+      },
+    ],
+  ));
+  let (_tx, rx) = tokio::sync::watch::channel(initial_state);
+  let pods_info = Arc::new(PodsInfoSingleton::new(rx)).make_owned();
+  let mut target = KubePodTarget {
+    inclusion_filters: vec![InclusionFilter {
+      filter_type: Some(Filter_type::ContainerPortNameRegex("scrape_.*".into())),
+      ..Default::default()
+    }],
+    pods_info,
+  };
+  let endpoints = target.get();
+  assert_eq!(
+    endpoints.keys().sorted().collect_vec(),
+    &[
+      "some-namespace//my-awesome-pod/123",
+      "some-namespace//my-awesome-pod/124"
+    ]
+  );
+}
+
+#[tokio::test]
+async fn test_kube_pod_target_endpoint() {
+  let mut initial_state = PodsInfo::default();
+  initial_state.insert(make_pod_info(
+    "some-namespace",
+    "my-awesome-pod",
+    &btreemap!(),
+    btreemap!("prometheus.io/scrape" => "true"),
+    HashMap::new(),
+    "127.0.0.1",
+    vec![],
   ));
 
   let (_tx, rx) = tokio::sync::watch::channel(initial_state);
   let pods_info = Arc::new(PodsInfoSingleton::new(rx)).make_owned();
-  let mut target = KubePodTarget { pods_info };
+  let mut target = KubePodTarget {
+    inclusion_filters: vec![],
+    pods_info,
+  };
   let endpoints = target.get();
   assert_eq!(endpoints.len(), 1);
 
   assert_eq!(
-    endpoints["some-namespace/my-awesome-pod"]
+    endpoints["some-namespace//my-awesome-pod/9090"]
       .metadata
       .as_ref()
       .unwrap()
@@ -78,7 +142,7 @@ async fn test_kube_pod_target_endpoint() {
     "some-namespace"
   );
   assert_eq!(
-    endpoints["some-namespace/my-awesome-pod"]
+    endpoints["some-namespace//my-awesome-pod/9090"]
       .metadata
       .as_ref()
       .unwrap()
@@ -88,18 +152,6 @@ async fn test_kube_pod_target_endpoint() {
       .as_str()
       .unwrap(),
     "my-awesome-pod"
-  );
-  assert_eq!(
-    endpoints["some-namespace/my-awesome-pod"]
-      .metadata
-      .as_ref()
-      .unwrap()
-      .value()
-      .get(path!("k8s", "service", "name"))
-      .unwrap()
-      .as_str()
-      .unwrap(),
-    "some-service"
   );
 }
 

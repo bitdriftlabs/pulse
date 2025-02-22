@@ -5,7 +5,7 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
-use super::pods_info::{PodInfo, PromEndpoint, ServiceInfo};
+use super::pods_info::{ContainerPort, PodInfo, ServiceInfo};
 use crate::metadata::Metadata;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
@@ -17,9 +17,9 @@ pub fn make_pod_info(
   name: &str,
   labels: &BTreeMap<String, String>,
   annotations: BTreeMap<String, String>,
-  prom_endpoint: Option<PromEndpoint>,
   services: HashMap<String, Arc<ServiceInfo>>,
   ip: &str,
+  container_ports: Vec<ContainerPort>,
 ) -> PodInfo {
   let metadata = Arc::new(Metadata::new(
     namespace,
@@ -33,15 +33,15 @@ pub fn make_pod_info(
     None,
   ));
   PodInfo {
-    name: name.to_string().into(),
-    namespace: namespace.to_string().into(),
-    prom_endpoint,
+    name: name.to_string(),
+    namespace: namespace.to_string(),
     services,
     ip: ip.parse().unwrap(),
-    annotations: annotations
-      .into_iter()
-      .map(|(k, v)| (k.into(), v.into()))
-      .collect(),
+    labels: labels.clone(),
+    annotations,
     metadata,
+    container_ports,
+    node_name: "node".to_string(),
+    node_ip: "node_ip".to_string(),
   }
 }

@@ -412,9 +412,9 @@ async fn all() {
       "service_instance" => "production",
       "ec2_region_shortname" => "xyz"
     ),
-    None,
     HashMap::default(),
     "127.0.0.1",
+    vec![],
   ));
   let (_pods_tx, pods_rx) = watch::channel(pods_info);
   let az_env_var = Uuid::new_v4().to_string();

@@ -17,7 +17,7 @@ message KubernetesPrometheusConfig {
   // How often eligible Prometheus endpoints are scraped.
   google.protobuf.Duration scrape_interval = 1 [(validate.rules).message.required = true];
 
-  // Scrapes metrics from Prometheues endpoints defined on pods via associated service annotations.
+  // Scrapes metrics from Prometheus endpoints defined on pods via associated service annotations.
   // Resolves to all pod-local endpoints using the service annotations to infer path, port, etc.
   message Endpoint {
   }
@@ -31,6 +31,20 @@ message KubernetesPrometheusConfig {
 
   // Scrapes metrics from Prometheus endpoints defined on pods via pod annotations.
   message Pod {
+    message InclusionFilter {
+      oneof filter_type {
+        option (validate.required) = true;
+
+        // Apply the following regex to each container port name to determine if it should be
+        // scraped. If the regex is a match, the container port will be scraped.
+        string container_port_name_regex = 1;
+      }
+    }
+
+    // Inclusion filters can be used to include pods to be scraped even if they do not have the
+    // standard Prometheus annotations. An inclusion filter if successful will result in a container
+    // port to be scraped.
+    repeated InclusionFilter inclusion_filters = 1;
   }
 
   oneof target {
