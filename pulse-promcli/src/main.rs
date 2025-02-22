@@ -9,9 +9,9 @@ use anyhow::bail;
 use clap::Parser;
 use itertools::Itertools;
 use pulse_metrics::clients::prom::{
-  compress_write_request,
   HyperPromRemoteWriteClient,
   PromRemoteWriteClient,
+  compress_write_request,
 };
 use pulse_metrics::protos::metric::{
   DownstreamId,
@@ -23,10 +23,10 @@ use pulse_metrics::protos::metric::{
   TagValue,
 };
 use pulse_metrics::protos::prom::{
-  to_write_request,
   ChangedTypeTracker,
   MetadataType,
   ToWriteRequestOptions,
+  to_write_request,
 };
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use time::ext::NumericalDuration;

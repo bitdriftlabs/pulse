@@ -7,7 +7,7 @@
 
 use super::filter::{MetricFilter, MetricFilterDecision};
 use crate::admin::server::{Admin, AdminHandlerHandle};
-use crate::file_watcher::{get_file_watcher, DynamicFileWatcher};
+use crate::file_watcher::{DynamicFileWatcher, get_file_watcher};
 use crate::protos::metric::{Metric, MetricType, MetricValue};
 use axum::response::Response;
 use bd_server_stats::stats::Scope;

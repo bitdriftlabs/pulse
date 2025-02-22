@@ -28,6 +28,7 @@ use self::reservoir_timer::ReservoirTimerAggregation;
 use self::summary::SummaryAggregation;
 use self::timer::TimerAggregation;
 use super::{PipelineProcessor, ProcessorFactoryContext};
+use crate::pipeline::PipelineDispatch;
 use crate::pipeline::metric_cache::{
   CachedMetric,
   GetOrInitResult,
@@ -35,10 +36,8 @@ use crate::pipeline::metric_cache::{
   MetricKey,
   StateSlotHandle,
 };
-use crate::pipeline::time::{next_flush_interval, DurationJitter, TimeProvider};
-use crate::pipeline::PipelineDispatch;
+use crate::pipeline::time::{DurationJitter, TimeProvider, next_flush_interval};
 use crate::protos::metric::{
-  default_timestamp,
   CounterType,
   DownstreamId,
   Metric,
@@ -48,6 +47,7 @@ use crate::protos::metric::{
   MetricValue,
   ParsedMetric,
   TagValue,
+  default_timestamp,
 };
 #[cfg(test)]
 use crate::test::thread_synchronizer::ThreadSynchronizer;
@@ -62,15 +62,15 @@ use futures::FutureExt;
 use parking_lot::{Mutex, RwLock};
 use prometheus::{Histogram, IntCounter};
 use pulse_common::proto::ProtoDurationToStdDuration;
+use pulse_protobuf::protos::pulse::config::processor::v1::aggregation::AggregationConfig;
 use pulse_protobuf::protos::pulse::config::processor::v1::aggregation::aggregation_config::{
   QuantileTimers,
   Timer_type,
 };
-use pulse_protobuf::protos::pulse::config::processor::v1::aggregation::AggregationConfig;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use time::ext::NumericalDuration;
+use std::sync::atomic::{AtomicU64, Ordering};
 use time::Duration;
+use time::ext::NumericalDuration;
 use tokio::time::{Instant, MissedTickBehavior};
 
 const fn default_aggregation_timer_eps() -> f64 {
@@ -568,9 +568,11 @@ impl AggregationProcessor {
       );
       locked_per_metric_state.current_snapshot_generation = current_snapshot.generation;
       let mut active_metrics = current_snapshot.active_metrics.lock();
-      debug_assert!(!active_metrics
-        .iter()
-        .any(|metric| metric.metric_key == per_metric_state.metric_key));
+      debug_assert!(
+        !active_metrics
+          .iter()
+          .any(|metric| metric.metric_key == per_metric_state.metric_key)
+      );
       active_metrics.push(per_metric_state.clone());
     }
   }
@@ -776,7 +778,7 @@ impl LockedPerMetricAggregationState {
       Timer_type::QuantileTimers(_) => {
         let aggregation = aggregation_to_fill
           .get_or_insert_with(|| AggregationType::QuantileTimer(TimerAggregation::new(config)));
-        let AggregationType::QuantileTimer(ref mut timer_aggregation) = aggregation else {
+        let AggregationType::QuantileTimer(timer_aggregation) = aggregation else {
           return Err(AggregationError::ChangedType);
         };
         timer_aggregation.aggregate(value, sample_rate.unwrap_or(1.0));
@@ -788,7 +790,7 @@ impl LockedPerMetricAggregationState {
             r.emit_as_bulk_timer,
           ))
         });
-        let AggregationType::ReservoirTimer(ref mut timer_aggregation) = aggregation else {
+        let AggregationType::ReservoirTimer(timer_aggregation) = aggregation else {
           return Err(AggregationError::ChangedType);
         };
         timer_aggregation.aggregate(value, sample_rate.unwrap_or(1.0));
@@ -847,7 +849,7 @@ impl LockedPerMetricAggregationState {
       Some(MetricType::Counter(CounterType::Delta)) => {
         let aggregation = aggregation_to_fill
           .get_or_insert_with(|| AggregationType::DeltaCounter(DeltaCounterAggregation::default()));
-        let AggregationType::DeltaCounter(ref mut counter_aggregation) = aggregation else {
+        let AggregationType::DeltaCounter(counter_aggregation) = aggregation else {
           return Err(AggregationError::ChangedType);
         };
         counter_aggregation.aggregate(
@@ -859,7 +861,7 @@ impl LockedPerMetricAggregationState {
         let aggregation = aggregation_to_fill.get_or_insert_with(|| {
           AggregationType::AbsoluteCounter(AbsoluteCounterAggregation::default())
         });
-        let AggregationType::AbsoluteCounter(ref mut counter_aggregation) = aggregation else {
+        let AggregationType::AbsoluteCounter(counter_aggregation) = aggregation else {
           return Err(AggregationError::ChangedType);
         };
         counter_aggregation.aggregate(
@@ -871,7 +873,7 @@ impl LockedPerMetricAggregationState {
       Some(MetricType::Gauge) => {
         let aggregation = aggregation_to_fill
           .get_or_insert_with(|| AggregationType::Gauge(GaugeAggregation::default()));
-        let AggregationType::Gauge(ref mut gauge_aggregation) = aggregation else {
+        let AggregationType::Gauge(gauge_aggregation) = aggregation else {
           return Err(AggregationError::ChangedType);
         };
         gauge_aggregation.aggregate(
@@ -884,7 +886,7 @@ impl LockedPerMetricAggregationState {
       Some(MetricType::DeltaGauge) => {
         let aggregation = aggregation_to_fill
           .get_or_insert_with(|| AggregationType::DeltaGauge(GaugeAggregation::default()));
-        let AggregationType::DeltaGauge(ref mut gauge_aggregation) = aggregation else {
+        let AggregationType::DeltaGauge(gauge_aggregation) = aggregation else {
           return Err(AggregationError::ChangedType);
         };
         gauge_aggregation.aggregate(
@@ -897,7 +899,7 @@ impl LockedPerMetricAggregationState {
       Some(MetricType::DirectGauge) => {
         let aggregation = aggregation_to_fill
           .get_or_insert_with(|| AggregationType::DirectGauge(DirectGaugeAggregation::default()));
-        let AggregationType::DirectGauge(ref mut gauge_aggregation) = aggregation else {
+        let AggregationType::DirectGauge(gauge_aggregation) = aggregation else {
           return Err(AggregationError::ChangedType);
         };
         gauge_aggregation.aggregate(sample.metric().value.to_simple());
@@ -905,7 +907,7 @@ impl LockedPerMetricAggregationState {
       Some(MetricType::Histogram) => {
         let aggregation = aggregation_to_fill
           .get_or_insert_with(|| AggregationType::Histogram(HistogramAggregation::default()));
-        let AggregationType::Histogram(ref mut histogram_aggregation) = aggregation else {
+        let AggregationType::Histogram(histogram_aggregation) = aggregation else {
           return Err(AggregationError::ChangedType);
         };
 
@@ -932,7 +934,7 @@ impl LockedPerMetricAggregationState {
       Some(MetricType::Summary) => {
         let aggregation = aggregation_to_fill
           .get_or_insert_with(|| AggregationType::Summary(SummaryAggregation::default()));
-        let AggregationType::Summary(ref mut summary_aggregation) = aggregation else {
+        let AggregationType::Summary(summary_aggregation) = aggregation else {
           return Err(AggregationError::ChangedType);
         };
 

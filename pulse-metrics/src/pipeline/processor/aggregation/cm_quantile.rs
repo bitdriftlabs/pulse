@@ -20,8 +20,8 @@ use adapter::SampleAdapter;
 use intrusive_collections::linked_list::Cursor;
 use intrusive_collections::{LinkedList, LinkedListLink};
 use std::cmp::Reverse;
-use std::collections::binary_heap::PeekMut;
 use std::collections::BinaryHeap;
+use std::collections::binary_heap::PeekMut;
 use std::ptr;
 
 //
@@ -72,7 +72,7 @@ impl Ord for Sample {
 #[allow(clippy::expl_impl_clone_on_copy)]
 mod adapter {
   use super::Sample;
-  use intrusive_collections::{intrusive_adapter, LinkedListLink};
+  use intrusive_collections::{LinkedListLink, intrusive_adapter};
 
   intrusive_adapter!(pub(super) SampleAdapter = Box<Sample>: Sample { link: LinkedListLink });
 }

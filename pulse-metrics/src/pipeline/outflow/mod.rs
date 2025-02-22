@@ -16,8 +16,8 @@ use bd_server_stats::stats::Scope;
 use bd_shutdown::ComponentShutdownTriggerHandle;
 use bd_time::ProtoDurationExt;
 use prometheus::{Histogram, IntCounter};
-use pulse_protobuf::protos::pulse::config::outflow::v1::outflow::outflow_config::Config_type;
 use pulse_protobuf::protos::pulse::config::outflow::v1::outflow::OutflowConfig;
+use pulse_protobuf::protos::pulse::config::outflow::v1::outflow::outflow_config::Config_type;
 use pulse_protobuf::protos::pulse::config::outflow::v1::wire::{
   CommonWireClientConfig,
   NullClientConfig,

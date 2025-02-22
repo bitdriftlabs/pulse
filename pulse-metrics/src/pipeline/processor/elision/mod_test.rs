@@ -9,10 +9,10 @@ use super::*;
 use crate::pipeline::metric_cache::MetricCache;
 use crate::protos::metric::DownstreamId;
 use crate::test::{
+  ProcessorFactoryContextHelper,
   make_carbon_wire_protocol,
   parse_carbon_metrics,
   processor_factory_context_for_test,
-  ProcessorFactoryContextHelper,
 };
 use bd_test_helpers::make_mut;
 use matches::assert_matches;
@@ -239,9 +239,11 @@ fn get_override() {
   ];
   let override_config = OverrideConfig::new(&regex_overrides).unwrap();
 
-  assert!(override_config
-    .get_override(b"staging.app.something")
-    .is_none());
+  assert!(
+    override_config
+      .get_override(b"staging.app.something")
+      .is_none()
+  );
   assert_eq!(
     &make_emit_ratio(0.2),
     override_config.get_override(b"node_tests.sum").unwrap()

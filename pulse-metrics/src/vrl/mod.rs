@@ -10,7 +10,6 @@ use anyhow::{anyhow, bail};
 use pulse_common::metadata::Metadata;
 use vrl::compiler::state::{ExternalEnv, RuntimeState};
 use vrl::compiler::{
-  compile_with_external,
   CompileConfig,
   Context,
   OwnedValueOrRef,
@@ -19,6 +18,7 @@ use vrl::compiler::{
   SecretTarget,
   Target,
   TimeZone,
+  compile_with_external,
 };
 use vrl::diagnostic::Formatter;
 use vrl::path::{OwnedTargetPath, PathPrefix};

@@ -8,8 +8,8 @@
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use std::cell::RefCell;
-use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicI64, Ordering};
 use time::{Duration, OffsetDateTime};
 
 // Determine a next flush interval pegged against wall clock time.

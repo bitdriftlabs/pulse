@@ -5,9 +5,9 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
-use super::util::{parse_lines, process_buffer_newlines, PreBufferConfig, PreBufferWrapper};
-use crate::pipeline::inflow::wire::util::bind_k8s_metadata;
+use super::util::{PreBufferConfig, PreBufferWrapper, parse_lines, process_buffer_newlines};
 use crate::pipeline::inflow::PipelineInflow;
+use crate::pipeline::inflow::wire::util::bind_k8s_metadata;
 use crate::pipeline::{ComponentShutdown, InflowFactoryContext, PipelineDispatch};
 use crate::protos::metric::DownstreamId;
 use ahash::AHashMap;
@@ -30,7 +30,7 @@ use std::time::Instant;
 use time::Duration;
 use tokio::net::UdpSocket;
 use tokio::sync::mpsc;
-use tokio::time::{sleep, Instant as TokioInstant};
+use tokio::time::{Instant as TokioInstant, sleep};
 use tokio::{pin, select};
 
 struct Shared {

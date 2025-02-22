@@ -12,11 +12,11 @@ use aws_config::sts::AssumeRoleProvider;
 use aws_config::{BehaviorVersion, SdkConfig};
 use aws_credential_types::provider::SharedCredentialsProvider;
 use aws_sigv4::http_request::{
-  sign,
   SignableBody,
   SignableRequest,
   SigningInstructions,
   SigningSettings,
+  sign,
 };
 use aws_sigv4::sign::v4::SigningParams;
 use aws_smithy_async::rt::sleep::default_async_sleep;
@@ -36,24 +36,24 @@ use axum::http::{HeaderMap, Request, StatusCode};
 use bd_proto::protos::prometheus::prompb::remote::WriteRequest;
 use bd_time::TimeDurationExt;
 use bytes::Bytes;
-use http::header::{CONTENT_ENCODING, CONTENT_TYPE};
 use http::Method;
+use http::header::{CONTENT_ENCODING, CONTENT_TYPE};
 use http_body_util::BodyExt;
 use hyper_rustls::HttpsConnector;
-use hyper_util::client::legacy::connect::HttpConnector;
 use hyper_util::client::legacy::Client;
+use hyper_util::client::legacy::connect::HttpConnector;
 use hyper_util::rt::TokioExecutor;
-use prom_remote_write::prom_remote_write_auth_config::{aws_auth_config, Auth_type};
-use prom_remote_write::prom_remote_write_client_config::request_header::Value_type;
-use prom_remote_write::prom_remote_write_client_config::RequestHeader;
 use prom_remote_write::PromRemoteWriteAuthConfig;
+use prom_remote_write::prom_remote_write_auth_config::{Auth_type, aws_auth_config};
+use prom_remote_write::prom_remote_write_client_config::RequestHeader;
+use prom_remote_write::prom_remote_write_client_config::request_header::Value_type;
 use protobuf::Message;
-use pulse_common::proto::{env_or_inline_to_string, CONTENT_TYPE_PROTOBUF};
+use pulse_common::proto::{CONTENT_TYPE_PROTOBUF, env_or_inline_to_string};
 use pulse_protobuf::protos::pulse::config::common::v1::common::bearer_token_config::Token_type;
 use pulse_protobuf::protos::pulse::config::outflow::v1::prom_remote_write;
 use std::time::{SystemTime, UNIX_EPOCH};
-use time::ext::NumericalDuration;
 use time::Duration;
+use time::ext::NumericalDuration;
 
 #[derive(thiserror::Error, Debug)]
 pub enum PromRemoteWriteError {

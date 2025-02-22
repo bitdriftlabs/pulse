@@ -11,18 +11,18 @@ mod metric_test;
 
 use super::carbon::to_carbon_line;
 use super::prom::{
+  ChangedTypeTracker,
+  ToWriteRequestOptions,
   f64_or_stale_marker_eq,
   from_write_request,
   to_write_request,
-  ChangedTypeTracker,
-  ToWriteRequestOptions,
 };
 use super::statsd::to_statsd_line;
 use crate::pipeline::metric_cache::{CachedMetric, MetricCache};
 use bd_proto::protos::prometheus::prompb::remote::WriteRequest;
 use bytes::{BufMut, Bytes, BytesMut};
-use config::common::v1::common::wire_protocol::Protocol_type;
 use config::common::v1::common::WireProtocol;
+use config::common::v1::common::wire_protocol::Protocol_type;
 use config::inflow::v1::prom_remote_write::prom_remote_write_server_config::ParseConfig;
 use protobuf::Chars;
 use pulse_common::metadata::Metadata;

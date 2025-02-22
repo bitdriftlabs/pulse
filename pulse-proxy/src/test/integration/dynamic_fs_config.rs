@@ -9,7 +9,7 @@ use crate::test::integration::{FakePromUpstream, Helper, HelperBindResolver, Pro
 use pretty_assertions::assert_eq;
 use prom_remote_write::prom_remote_write_server_config::ParseConfig;
 use prometheus::labels;
-use pulse_metrics::test::{make_abs_counter, FsConfigSwapHelper};
+use pulse_metrics::test::{FsConfigSwapHelper, make_abs_counter};
 use pulse_protobuf::protos::pulse::config::inflow::v1::prom_remote_write;
 use reusable_fmt::{fmt, fmt_reuse};
 

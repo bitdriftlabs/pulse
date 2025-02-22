@@ -6,14 +6,14 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
 use crate::pipeline::metric_cache::{CachedMetric, MetricCache};
-use crate::pipeline::processor::mutate::MutateProcessor;
 use crate::pipeline::processor::PipelineProcessor;
+use crate::pipeline::processor::mutate::MutateProcessor;
 use crate::protos::metric::{EditableParsedMetric, ParsedMetric, TagValue};
 use crate::test::{
+  ProcessorFactoryContextHelper,
   make_abs_counter,
   make_abs_counter_with_metadata,
   processor_factory_context_for_test,
-  ProcessorFactoryContextHelper,
 };
 use assert_matches::assert_matches;
 use bd_server_stats::stats::Collector;
@@ -215,7 +215,9 @@ async fn test_transformation_kubernetes_service_name() {
     "#,
   );
 
-  std::env::set_var("TEST", "prod");
+  unsafe {
+    std::env::set_var("TEST", "prod");
+  }
 
   helper
     .expect_send_and_receive(
@@ -278,7 +280,9 @@ async fn test_transformation_kubernetes_namespace() {
     "#,
   );
 
-  std::env::set_var("TEST", "prod");
+  unsafe {
+    std::env::set_var("TEST", "prod");
+  }
 
   helper
     .expect_send_and_receive(

@@ -17,9 +17,9 @@ use crate::protos::metric::{
   SummaryData,
 };
 use bytes::Bytes;
+use elision_config::ZeroElisionConfig;
 use elision_config::zero_elision_config::counters::AbsoluteCounters;
 use elision_config::zero_elision_config::{Counters, Histograms};
-use elision_config::ZeroElisionConfig;
 use pulse_protobuf::protos::pulse::config::processor::v1::elision::elision_config;
 
 fn mock_metric(metric_value: MetricValue, mtype: Option<MetricType>) -> Metric {

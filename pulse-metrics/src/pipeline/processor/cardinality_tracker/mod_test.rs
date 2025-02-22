@@ -6,14 +6,14 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
 use crate::admin::test::MockAdmin;
-use crate::pipeline::processor::cardinality_tracker::CardinalityTrackerProcessor;
 use crate::pipeline::processor::PipelineProcessor;
+use crate::pipeline::processor::cardinality_tracker::CardinalityTrackerProcessor;
 use crate::test::{make_metric, processor_factory_context_for_test};
 use bd_test_helpers::make_mut;
+use cardinality_tracker::CardinalityTrackerConfig;
 use cardinality_tracker::cardinality_tracker_config::top_k::{Group_by, TagList};
 use cardinality_tracker::cardinality_tracker_config::tracking_type::Type;
 use cardinality_tracker::cardinality_tracker_config::{Count, TopK, TrackingType};
-use cardinality_tracker::CardinalityTrackerConfig;
 use http_body_util::BodyExt;
 use pretty_assertions::assert_eq;
 use pulse_protobuf::protos::pulse::config::processor::v1::cardinality_tracker;

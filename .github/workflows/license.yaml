@@ -10,6 +10,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - uses: EmbarkStudios/cargo-deny-action@v2.0.1
+    - uses: EmbarkStudios/cargo-deny-action@v2.0.5
       with:
+        rust-version: 1.85.0
         command: check licenses

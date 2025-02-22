@@ -6,9 +6,9 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
 use super::{Scraper, Stats, Ticker};
+use crate::pipeline::MockPipelineDispatch;
 use crate::pipeline::inflow::prom_scrape::scraper::{EndpointProvider, KubePodTarget};
 use crate::pipeline::time::TestDurationJitter;
-use crate::pipeline::MockPipelineDispatch;
 use async_trait::async_trait;
 use axum::body::Body;
 use axum::extract::State;
@@ -24,8 +24,8 @@ use pulse_common::k8s::test::make_pod_info;
 use pulse_common::metadata::Metadata;
 use std::collections::{HashMap, VecDeque};
 use std::future::pending;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use time::ext::NumericalDuration;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;

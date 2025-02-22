@@ -9,8 +9,8 @@ use super::*;
 use crate::pipeline::metric_cache::MetricKey;
 use crate::protos::metric::MetricId;
 use crate::test::make_metric_id;
-use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
+use std::sync::atomic::AtomicU64;
 
 type TestMap = LruMap<Arc<MetricKey>, String, ahash::RandomState>;
 

@@ -23,19 +23,19 @@ use cardinality_limiter_config::{GlobalLimit, Limit_type, PerPodLimit};
 use cuckoofilter::CuckooFilter;
 use parking_lot::{Mutex, RwLock};
 use prometheus::IntCounter;
-use pulse_common::k8s::pods_info::container::PodsInfo;
 use pulse_common::k8s::pods_info::OwnedPodsInfoSingleton;
+use pulse_common::k8s::pods_info::container::PodsInfo;
 use pulse_common::metadata::Metadata;
 use pulse_common::proto::ProtoDurationToStdDuration;
 use pulse_protobuf::protos::pulse::config::processor::v1::cardinality_limiter::{
-  cardinality_limiter_config,
   CardinalityLimiterConfig,
+  cardinality_limiter_config,
 };
 use std::collections::VecDeque;
 use std::hash::Hasher;
 use std::sync::Arc;
-use time::ext::NumericalDuration;
 use time::Duration;
+use time::ext::NumericalDuration;
 use tokio::time::MissedTickBehavior;
 use vrl::core::Value;
 

@@ -6,10 +6,10 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
 use crate::admin::test::MockAdmin;
+use crate::pipeline::MockPipelineDispatch;
 use crate::pipeline::metric_cache::MetricCache;
 use crate::pipeline::processor::ProcessorFactoryContext;
 use crate::pipeline::time::TestTimeProvider;
-use crate::pipeline::MockPipelineDispatch;
 use crate::protos::metric::{
   CounterType,
   DownstreamId,
@@ -27,15 +27,15 @@ use bd_server_stats::test::util::stats::Helper as StatsHelper;
 use bd_shutdown::ComponentShutdownTrigger;
 use futures_util::FutureExt;
 use pulse_common::bind_resolver::MockBindResolver;
-use pulse_common::k8s::pods_info::container::PodsInfo;
 use pulse_common::k8s::pods_info::PodsInfoSingleton;
+use pulse_common::k8s::pods_info::container::PodsInfo;
 use pulse_common::metadata::Metadata;
 use pulse_common::singleton::SingletonManager;
+use pulse_protobuf::protos::pulse::config::common::v1::common::WireProtocol;
 use pulse_protobuf::protos::pulse::config::common::v1::common::wire_protocol::{
   Carbon,
   Protocol_type,
 };
-use pulse_protobuf::protos::pulse::config::common::v1::common::WireProtocol;
 use std::fs;
 use std::io::Write;
 use std::os::unix::fs as os_fs;
@@ -293,8 +293,8 @@ pub struct ProcessorFactoryContextHelper {
 }
 
 #[must_use]
-pub fn processor_factory_context_for_test(
-) -> (ProcessorFactoryContextHelper, ProcessorFactoryContext) {
+pub fn processor_factory_context_for_test()
+-> (ProcessorFactoryContextHelper, ProcessorFactoryContext) {
   let stats_helper = StatsHelper::default();
   let shutdown_trigger = ComponentShutdownTrigger::default();
   let shutdown_trigger_handle = shutdown_trigger.make_handle();

@@ -9,7 +9,7 @@
 #[path = "./mod_test.rs"]
 mod mod_test;
 
-use self::config::{check_routes, PipelineComponent, PipelineComponentType, PipelineRouteType};
+use self::config::{PipelineComponent, PipelineComponentType, PipelineRouteType, check_routes};
 use self::inflow::{DynamicPipelineInflow, InflowFactoryContext, PipelineInflow};
 use self::metric_cache::MetricCache;
 use self::outflow::{DynamicPipelineOutflow, OutflowFactoryContext, OutflowStats, PipelineOutflow};
@@ -22,8 +22,8 @@ use async_trait::async_trait;
 use bd_proto_util::proto::hash_message;
 use bd_server_stats::stats::Scope;
 use bd_shutdown::{ComponentShutdown, ComponentShutdownTrigger};
-use futures::stream::FuturesUnordered;
 use futures::StreamExt;
+use futures::stream::FuturesUnordered;
 use futures_util::future::BoxFuture;
 use itertools::Itertools;
 use mockall::automock;

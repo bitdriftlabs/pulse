@@ -78,7 +78,7 @@ fn add_loop_rev_query() {
 }
 
 // See the C file for why this exists.
-extern "C" {
+unsafe extern "C" {
   fn cm_quantile_test_initialize_c();
   fn cm_quantile_test_random_c() -> u64;
 }

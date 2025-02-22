@@ -8,7 +8,7 @@
 use anyhow::anyhow;
 use socket2::{Domain, Socket, Type};
 use std::net::SocketAddr;
-use tokio::net::{lookup_host, TcpListener, TcpSocket, UdpSocket};
+use tokio::net::{TcpListener, TcpSocket, UdpSocket, lookup_host};
 
 pub struct BoundTcpSocket {
   socket: TcpSocket,

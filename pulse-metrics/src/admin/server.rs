@@ -10,31 +10,31 @@ use crate::clients::client::ConnectTo;
 use crate::clients::client_pool;
 use crate::clients::client_pool::Pool;
 use crate::clients::prom::{
-  compress_write_request,
-  should_retry,
   HyperPromRemoteWriteClient,
   PromRemoteWriteClient,
+  compress_write_request,
+  should_retry,
 };
 use crate::pipeline::config::DEFAULT_REQUEST_TIMEOUT;
-use crate::pipeline::time::{next_flush_interval, RealTimeProvider};
+use crate::pipeline::time::{RealTimeProvider, next_flush_interval};
 use anyhow::bail;
 use async_trait::async_trait;
+use axum::Router;
 use axum::extract::{Query, Request, State};
 use axum::http::StatusCode;
 use axum::response::Response;
 use axum::routing::{get, post};
-use axum::Router;
-use backoff::future::retry;
 use backoff::ExponentialBackoffBuilder;
+use backoff::future::retry;
 use bd_log::SwapLogger;
 use bd_server_stats::stats::Collector;
 use bd_shutdown::ComponentShutdown;
 use bd_time::TimeDurationExt;
 use bytes::Bytes;
-use config::bootstrap::v1::bootstrap::meta_stats::meta_protocol::Protocol;
 use config::bootstrap::v1::bootstrap::meta_stats::MetaProtocol;
-use config::common::v1::common::wire_protocol::Protocol_type;
+use config::bootstrap::v1::bootstrap::meta_stats::meta_protocol::Protocol;
 use config::common::v1::common::WireProtocol;
+use config::common::v1::common::wire_protocol::Protocol_type;
 use futures::Future;
 use log::{info, warn};
 use parking_lot::RwLock;
@@ -47,8 +47,8 @@ use std::io::{Error, ErrorKind};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::SystemTime;
-use time::ext::NumericalStdDuration;
 use time::Duration;
+use time::ext::NumericalStdDuration;
 
 //
 // Admin

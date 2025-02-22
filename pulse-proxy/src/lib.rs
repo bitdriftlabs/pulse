@@ -20,7 +20,7 @@ use log::info;
 use prometheus::IntCounter;
 use pulse_common::bind_resolver::BindResolver;
 use pulse_common::k8s::pods_info::PodsInfoSingleton;
-use pulse_common::proto::{env_or_inline_to_string, ProtoDurationToStdDuration};
+use pulse_common::proto::{ProtoDurationToStdDuration, env_or_inline_to_string};
 use pulse_common::singleton::SingletonManager;
 use pulse_metrics::admin::server::{AdminState, MetaStatsEmitter};
 use pulse_metrics::admin::stats::StatsProvider;

@@ -18,8 +18,8 @@ use bd_time::ToProtoDuration;
 use bytes::Bytes;
 use mockall::predicate::{always, eq};
 use pulse_protobuf::protos::pulse::config::common::v1::retry::RetryOffloadQueue;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use time::ext::NumericalDuration;
 use tokio::sync::mpsc;
 

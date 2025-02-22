@@ -40,7 +40,7 @@ bd-test-helpers        = { git = "https://github.com/bitdriftlabs/shared-core.gi
 bd-time                = { git = "https://github.com/bitdriftlabs/shared-core.git" }
 built                  = { version = "0.7", features = ["git2"] }
 bytes                  = "1"
-cc                     = "1.2.14"
+cc                     = "1.2.15"
 clap                   = { version = "4.5.30", features = ["derive", "env"] }
 comfy-table            = "7.1.4"
 console-subscriber     = "0.4.1"
@@ -125,7 +125,7 @@ topological-sort           = "0.2.2"
 tracing                    = "0.1.41"
 unwrap-infallible          = "0.1.5"
 url                        = "2.5.4"
-uuid                       = { version = "1.13.2", features = ["v4"] }
+uuid                       = { version = "1.14.0", features = ["v4"] }
 
 vrl = { git = "https://github.com/mattklein123/vrl.git", branch = "performance-20240826", default-features = false, features = [
   "compiler",

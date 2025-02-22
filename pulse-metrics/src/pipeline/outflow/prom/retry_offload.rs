@@ -9,13 +9,13 @@
 #[path = "./retry_offload_test.rs"]
 mod retry_offload_test;
 
-use crate::clients::prom::{should_retry, PromRemoteWriteError};
+use crate::clients::prom::{PromRemoteWriteError, should_retry};
 use crate::pipeline::time::TimeProvider;
 use async_trait::async_trait;
 use aws_config::BehaviorVersion;
+use aws_sdk_sqs::Client;
 use aws_sdk_sqs::config::StalledStreamProtectionConfig;
 use aws_sdk_sqs::types::DeleteMessageBatchRequestEntry;
-use aws_sdk_sqs::Client;
 use base64ct::{Base64Unpadded, Encoding};
 use bd_log::warn_every;
 use bytes::Bytes;
@@ -32,7 +32,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use time::ext::NumericalDuration;
 use time::{Duration, OffsetDateTime};
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::{Mutex, mpsc};
 
 //
 // SerializedOffloadRequest

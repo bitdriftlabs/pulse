@@ -61,16 +61,20 @@ fn reuse_slots() {
   let handle2 = metric_cache.state_slot_handle();
 
   // Even though index 0 previously had data it should not now since the id has changed.
-  assert!(metric1
-    .cached_metric()
-    .state_slots()
-    .get::<u64>(&handle1)
-    .is_none());
-  assert!(metric1
-    .cached_metric()
-    .state_slots()
-    .get::<u64>(&handle2)
-    .is_none());
+  assert!(
+    metric1
+      .cached_metric()
+      .state_slots()
+      .get::<u64>(&handle1)
+      .is_none()
+  );
+  assert!(
+    metric1
+      .cached_metric()
+      .state_slots()
+      .get::<u64>(&handle2)
+      .is_none()
+  );
 
   // Even though index 0 previously had data it should reinitialize since the id has changed.
   assert_matches!(
@@ -90,16 +94,20 @@ fn slots() {
   let now = Instant::now();
   let metric1 = make_metric("metric1", &metric_cache, now);
 
-  assert!(metric1
-    .cached_metric()
-    .state_slots()
-    .get::<u64>(&handle1)
-    .is_none());
-  assert!(metric1
-    .cached_metric()
-    .state_slots()
-    .get::<u64>(&handle2)
-    .is_none());
+  assert!(
+    metric1
+      .cached_metric()
+      .state_slots()
+      .get::<u64>(&handle1)
+      .is_none()
+  );
+  assert!(
+    metric1
+      .cached_metric()
+      .state_slots()
+      .get::<u64>(&handle2)
+      .is_none()
+  );
 
   assert_matches!(
     metric1

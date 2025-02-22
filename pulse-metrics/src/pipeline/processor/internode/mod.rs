@@ -6,27 +6,27 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
 use self::convert::proto_metric_to_parsed_metric;
-use self::shard_map::{shardmap_from_config, ShardMap};
+use self::shard_map::{ShardMap, shardmap_from_config};
 use super::elision::get_last_elided::GetLastElided;
 use super::{PipelineProcessor, ProcessorFactoryContext};
 use crate::admin::server::Admin;
 use crate::clients::retry::Retry;
-use crate::pipeline::processor::internode::shard_map::peer_list_is_match;
 use crate::pipeline::PipelineDispatch;
+use crate::pipeline::processor::internode::shard_map::peer_list_is_match;
 use crate::protos::metric::ParsedMetric;
 use anyhow::bail;
 use async_trait::async_trait;
-use axum::http::Extensions;
 use axum::Router;
+use axum::http::Extensions;
 use backoff::ExponentialBackoffBuilder;
 use bd_grpc::compression::Compression;
 use bd_grpc::service::ServiceMethod;
-use bd_grpc::{make_unary_router, Handler};
+use bd_grpc::{Handler, make_unary_router};
 use bd_log::warn_every;
 use bd_server_stats::stats::{AutoGauge, Scope};
 use bd_shutdown::{ComponentShutdown, ComponentShutdownTriggerHandle};
-use futures::stream::FuturesUnordered;
 use futures::StreamExt;
+use futures::stream::FuturesUnordered;
 use http::HeaderMap;
 use hyper_util::client::legacy::connect::HttpConnector;
 use log::{debug, error, info, trace, warn};
@@ -36,8 +36,8 @@ use protobuf::Chars;
 use pulse_common::bind_resolver::BoundTcpSocket;
 use pulse_common::proto::ProtoDurationToStdDuration;
 use pulse_common::singleton::SingletonManager;
-use pulse_protobuf::protos::pulse::config::processor::v1::internode::internode_config::NodeConfig;
 use pulse_protobuf::protos::pulse::config::processor::v1::internode::InternodeConfig;
+use pulse_protobuf::protos::pulse::config::processor::v1::internode::internode_config::NodeConfig;
 use pulse_protobuf::protos::pulse::internode::v1::internode::{
   InternodeMetricsRequest,
   InternodeMetricsResponse,
@@ -48,8 +48,8 @@ use pulse_protobuf::protos::pulse::internode::v1::internode::{
 };
 use std::collections::HashMap;
 use std::sync::Arc;
-use time::ext::NumericalDuration;
 use time::Duration;
+use time::ext::NumericalDuration;
 use tokio::sync::Semaphore;
 
 mod convert;

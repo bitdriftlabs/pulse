@@ -5,13 +5,13 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
+use crate::pipeline::inflow::PipelineInflow;
 use crate::pipeline::inflow::wire::util::{
   PreBufferConfig,
   SocketHandler,
   SocketHandlerConfig,
   SocketServerStats,
 };
-use crate::pipeline::inflow::PipelineInflow;
 use crate::pipeline::{ComponentShutdown, InflowFactoryContext, PipelineDispatch};
 use crate::protos::metric::DownstreamId;
 use async_trait::async_trait;

@@ -15,13 +15,13 @@ use crate::protos::metric::ParsedMetric;
 use async_trait::async_trait;
 use bd_log::warn_every;
 use bd_shutdown::ComponentShutdown;
-use event_listener::{listener, Event};
+use event_listener::{Event, listener};
 use parking_lot::Mutex;
 use prometheus::IntCounter;
 use pulse_protobuf::protos::pulse::config::processor::v1::buffer::BufferConfig;
 use std::collections::VecDeque;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use time::ext::NumericalDuration;
 
 //

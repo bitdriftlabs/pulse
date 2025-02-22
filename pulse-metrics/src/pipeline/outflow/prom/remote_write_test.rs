@@ -8,7 +8,7 @@
 use super::*;
 use crate::clients::prom::{MockPromRemoteWriteClient, PromRemoteWriteError};
 use crate::protos::metric::DownstreamId;
-use crate::test::{make_carbon_wire_protocol, TestDownstreamIdProvider};
+use crate::test::{TestDownstreamIdProvider, make_carbon_wire_protocol};
 use bd_proto::protos::prometheus::prompb::remote::WriteRequest;
 use bd_server_stats::stats::Collector;
 use bd_shutdown::ComponentShutdownTrigger;

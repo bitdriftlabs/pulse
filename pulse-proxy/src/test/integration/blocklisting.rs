@@ -6,12 +6,12 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
 use crate::test::integration::{
-  make_admin_request,
-  write_all,
   FakeRemoteFileSource,
   FakeWireUpstream,
   Helper,
   HelperBindResolver,
+  make_admin_request,
+  write_all,
 };
 use itertools::Itertools;
 use pretty_assertions::assert_eq;

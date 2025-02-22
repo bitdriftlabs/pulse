@@ -9,16 +9,16 @@
 #[path = "./remote_write_test.rs"]
 mod remote_write_test;
 
-use super::retry_offload::{create_offload_queue, OffloadQueue, SerializedOffloadRequest};
+use super::retry_offload::{OffloadQueue, SerializedOffloadRequest, create_offload_queue};
 use crate::batch::{Batch, BatchBuilder};
 use crate::clients::prom::{
-  compress_write_request,
-  should_retry,
   HyperPromRemoteWriteClient,
   PromRemoteWriteClient,
+  compress_write_request,
+  should_retry,
 };
 use crate::clients::retry::Retry;
-use crate::pipeline::config::{default_max_in_flight, DEFAULT_REQUEST_TIMEOUT};
+use crate::pipeline::config::{DEFAULT_REQUEST_TIMEOUT, default_max_in_flight};
 use crate::pipeline::outflow::prom::retry_offload::maybe_queue_for_retry;
 use crate::pipeline::outflow::{OutflowFactoryContext, OutflowStats, PipelineOutflow};
 use crate::pipeline::time::RealTimeProvider;
@@ -26,8 +26,8 @@ use crate::protos::metric::ParsedMetric;
 use crate::protos::prom::{ChangedTypeTracker, MetadataType, ToWriteRequestOptions};
 use async_trait::async_trait;
 use axum::http::HeaderValue;
-use backoff::backoff::Backoff;
 use backoff::ExponentialBackoffBuilder;
+use backoff::backoff::Backoff;
 use bd_log::warn_every;
 use bd_server_stats::stats::{AutoGauge, Scope};
 use bd_shutdown::{ComponentShutdown, ComponentStatus};
