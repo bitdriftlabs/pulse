@@ -10,7 +10,7 @@ use crate::build_stats_provider;
 use config::bootstrap::v1::bootstrap::KubernetesBootstrapConfig;
 use config::inflow::v1::inflow::inflow_config::Config_type as InflowConfigType;
 use config::outflow::v1::outflow::outflow_config::Config_type as OutflowConfigType;
-use pulse_common::bind_resolver::{make_reuse_port_tcp_socket, BindResolver, BoundTcpSocket};
+use pulse_common::bind_resolver::{BindResolver, BoundTcpSocket, make_reuse_port_tcp_socket};
 use pulse_metrics::admin::test::MockAdmin;
 use pulse_metrics::pipeline::{MetricPipeline, RealItemFactory};
 use pulse_protobuf::protos::pulse::config;

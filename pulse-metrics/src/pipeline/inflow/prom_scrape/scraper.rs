@@ -9,10 +9,10 @@
 #[path = "./scraper_test.rs"]
 mod scraper_test;
 
+use crate::pipeline::PipelineDispatch;
 use crate::pipeline::inflow::prom_scrape::parser::parse_as_metrics;
 use crate::pipeline::inflow::{DynamicPipelineInflow, InflowFactoryContext, PipelineInflow};
 use crate::pipeline::time::{DurationJitter, RealDurationJitter};
-use crate::pipeline::PipelineDispatch;
 use crate::protos::metric::default_timestamp;
 use async_trait::async_trait;
 use bd_log::warn_every;
@@ -23,20 +23,20 @@ use futures_util::future::{join_all, pending};
 use parking_lot::Mutex;
 use prometheus::IntCounter;
 use pulse_common::k8s::pods_info::{OwnedPodsInfoSingleton, PromEndpoint};
-use pulse_common::k8s::{missing_node_name_error, NodeInfo};
+use pulse_common::k8s::{NodeInfo, missing_node_name_error};
 use pulse_common::proto::env_or_inline_to_string;
 use pulse_protobuf::protos::pulse::config::bootstrap::v1::bootstrap::KubernetesBootstrapConfig;
+use pulse_protobuf::protos::pulse::config::inflow::v1::k8s_prom::KubernetesPrometheusConfig;
 use pulse_protobuf::protos::pulse::config::inflow::v1::k8s_prom::kubernetes_prometheus_config::{
   self,
   Target,
 };
-use pulse_protobuf::protos::pulse::config::inflow::v1::k8s_prom::KubernetesPrometheusConfig;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::time::Instant;
-use time::ext::NumericalDuration;
 use time::Duration;
+use time::ext::NumericalDuration;
 use tokio::time::MissedTickBehavior;
 
 //

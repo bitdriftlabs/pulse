@@ -9,7 +9,7 @@
 #[path = "./carbon_test.rs"]
 mod carbon_test;
 
-use super::metric::{unwrap_timestamp, Metric, MetricId, MetricValue, TagValue};
+use super::metric::{Metric, MetricId, MetricValue, TagValue, unwrap_timestamp};
 use crate::protos::metric;
 use nom::branch::alt;
 use nom::bytes::complete::{escaped, is_not, tag, take_while1};
@@ -43,8 +43,8 @@ fn escaped_string<'a, E: ParseError<&'a [u8]>>(
   )
 }
 
-fn non_escaped_string<'a, E: ParseError<&'a [u8]>>(
-) -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], &'a [u8], E> {
+fn non_escaped_string<'a, E: ParseError<&'a [u8]>>()
+-> impl FnMut(&'a [u8]) -> IResult<&'a [u8], &'a [u8], E> {
   take_while1(|c: u8| {
     c.is_ascii_lowercase()
       || c.is_ascii_uppercase()

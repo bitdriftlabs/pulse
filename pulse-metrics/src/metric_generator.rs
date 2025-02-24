@@ -14,12 +14,12 @@ use crate::protos::metric::{
   ParsedMetric,
   TagValue,
 };
-use pulse_protobuf::protos::pulse::config::common::v1::common::wire_protocol::Protocol_type;
 use pulse_protobuf::protos::pulse::config::common::v1::common::WireProtocol;
-use rand::seq::IndexedRandom;
+use pulse_protobuf::protos::pulse::config::common::v1::common::wire_protocol::Protocol_type;
 use rand::Rng;
-use rand_xoshiro::rand_core::SeedableRng;
+use rand::seq::IndexedRandom;
 use rand_xoshiro::Xoroshiro128StarStar;
+use rand_xoshiro::rand_core::SeedableRng;
 use std::time::Instant;
 
 const WORDS: &[&str] = &[

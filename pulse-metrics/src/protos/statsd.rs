@@ -10,7 +10,6 @@
 mod statsd_test;
 
 use super::metric::{
-  default_timestamp,
   CounterType,
   Metric,
   MetricId,
@@ -18,6 +17,7 @@ use super::metric::{
   MetricValue,
   ParseError,
   TagValue,
+  default_timestamp,
 };
 use memchr::{memchr, memchr2, memmem, memrchr};
 use std::vec;

@@ -6,7 +6,7 @@
 # but in this case there's honestly not a lot to configure that _isn't_
 # behind the `unstable_features` gate, unfortunately.
 
-edition           = "2021"
+edition           = "2024"
 unstable_features = true
 
 # Try to use inline annotations before using this -- disabling autoformatting

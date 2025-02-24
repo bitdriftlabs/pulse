@@ -9,9 +9,9 @@
 #[path = "./util_test.rs"]
 mod util_test;
 
+use crate::pipeline::PipelineDispatch;
 use crate::pipeline::inflow::wire::pre_buffer::PreBuffer;
 use crate::pipeline::time::{DurationJitter, RealDurationJitter};
-use crate::pipeline::PipelineDispatch;
 use crate::protos::metric::{DownstreamId, ParsedMetric};
 use bd_log::warn_every;
 use bd_server_stats::stats::{AutoGauge, Scope};
@@ -29,10 +29,10 @@ use std::io::ErrorKind;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Instant;
-use time::ext::{NumericalDuration, NumericalStdDuration};
 use time::Duration;
+use time::ext::{NumericalDuration, NumericalStdDuration};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
-use tokio::time::{timeout, Sleep};
+use tokio::time::{Sleep, timeout};
 use tokio::{pin, select};
 
 const fn default_idle_timeout() -> Duration {

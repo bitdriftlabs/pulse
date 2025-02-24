@@ -56,11 +56,13 @@ async fn meta_stats() {
   .await;
 
   let metric = upstream.wait_for_metrics().await;
-  assert!(metric[0]
-    .metric()
-    .get_id()
-    .name()
-    .starts_with(b"pulse_proxy."));
+  assert!(
+    metric[0]
+      .metric()
+      .get_id()
+      .name()
+      .starts_with(b"pulse_proxy.")
+  );
 
   helper.shutdown().await;
 }
@@ -111,11 +113,13 @@ async fn prefix() {
   .await;
 
   let metric = upstream.wait_for_metrics().await;
-  assert!(metric[0]
-    .metric()
-    .get_id()
-    .name()
-    .starts_with(b"production.app.pulse."));
+  assert!(
+    metric[0]
+      .metric()
+      .get_id()
+      .name()
+      .starts_with(b"production.app.pulse.")
+  );
   assert_eq!(
     metric[0].metric().get_id().tags()[0],
     make_tag("source", "node-1")

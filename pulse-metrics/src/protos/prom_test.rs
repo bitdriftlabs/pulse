@@ -18,15 +18,15 @@ use crate::protos::metric::{
   SummaryData,
 };
 use crate::protos::prom::{
-  from_write_request,
-  make_label,
-  make_timeseries,
-  to_write_request,
   ChangedTypeTracker,
   HistogramBucket,
   MetadataType,
   SummaryBucket,
   ToWriteRequestOptions,
+  from_write_request,
+  make_label,
+  make_timeseries,
+  to_write_request,
 };
 use assert_matches::assert_matches;
 use bd_proto::protos::prometheus::prompb;
@@ -34,8 +34,8 @@ use config::inflow::v1::prom_remote_write::prom_remote_write_server_config::Pars
 use itertools::Itertools;
 use pretty_assertions::assert_eq;
 use prompb::remote::WriteRequest;
-use prompb::types::metric_metadata::MetricType as PromMetricType;
 use prompb::types::MetricMetadata;
+use prompb::types::metric_metadata::MetricType as PromMetricType;
 use pulse_protobuf::protos::pulse::config;
 use std::time::Instant;
 

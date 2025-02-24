@@ -110,7 +110,7 @@ async fn absolute_emit_as_delta() {
     .recv(vec![helper.make_abs_counter("hello", 101.0, "127.0.0.1")])
     .await;
   helper.expect_dispatch(vec![
-    helper.expect_dcounter("counters.hello", 0.016_666_666_666_666_666)
+    helper.expect_dcounter("counters.hello", 0.016_666_666_666_666_666),
   ]);
   61.seconds().sleep().await;
 }

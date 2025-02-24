@@ -9,8 +9,8 @@
 mod test;
 
 use anyhow::{anyhow, bail};
-use cardinality_limiter::cardinality_limiter_config::per_pod_limit::Override_limit_location;
 use cardinality_limiter::cardinality_limiter_config::Limit_type;
+use cardinality_limiter::cardinality_limiter_config::per_pod_limit::Override_limit_location;
 use config::bootstrap::v1::bootstrap::Config;
 use config::processor::v1::processor::processor_config::Processor_type;
 use pretty_assertions::Comparison;
@@ -132,7 +132,9 @@ fn run_test_case(test_case: VrlTestCase, proxy_config: Option<&Config>) -> anyho
     });
 
   for (key, value) in test_case.environment {
-    std::env::set_var(key, value);
+    unsafe {
+      std::env::set_var(key, value);
+    }
   }
 
   for transform in test_case.transforms {

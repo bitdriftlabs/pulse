@@ -36,7 +36,9 @@ pub fn global_initialize() {
   // We don't control the environment where the proxy is run so for now just force LOG_PANIC on
   // release builds.
   #[cfg(not(debug_assertions))]
-  std::env::set_var("LOG_PANIC", "true");
+  unsafe {
+    std::env::set_var("LOG_PANIC", "true");
+  }
 
   if std::env::var("ENABLE_TOKIO_CONSOLE").is_ok() {
     console_subscriber::init();

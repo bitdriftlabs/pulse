@@ -14,12 +14,12 @@ use pulse_common::global_initialize;
 use pulse_common::k8s::pods_info::PodsInfoSingleton;
 use pulse_common::singleton::SingletonManager;
 use pulse_protobuf::protos::pulse::config::bootstrap::v1::bootstrap::Config;
-use pulse_proxy::{run_server, ServerHooks};
+use pulse_proxy::{ServerHooks, run_server};
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 use tikv_jemallocator::Jemalloc;
 use tokio::select;
-use tokio::signal::unix::{signal, SignalKind};
+use tokio::signal::unix::{SignalKind, signal};
 use tokio::time::Duration;
 
 #[global_allocator]

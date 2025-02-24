@@ -10,9 +10,9 @@
 mod mod_test;
 
 use super::{PipelineProcessor, ProcessorFactoryContext};
+use crate::pipeline::PipelineDispatch;
 use crate::pipeline::metric_cache::{CachedMetric, GetOrInitResult, MetricCache, StateSlotHandle};
 use crate::pipeline::time::DurationJitter;
-use crate::pipeline::PipelineDispatch;
 use crate::protos::metric::ParsedMetric;
 use async_trait::async_trait;
 use bd_server_stats::stats::Scope;

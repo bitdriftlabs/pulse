@@ -418,7 +418,9 @@ async fn all() {
   ));
   let (_pods_tx, pods_rx) = watch::channel(pods_info);
   let az_env_var = Uuid::new_v4().to_string();
-  std::env::set_var(&az_env_var, "us-east-1b");
+  unsafe {
+    std::env::set_var(&az_env_var, "us-east-1b");
+  }
   let helper = Helper::new_with_k8s(
     &fmt!(
       COMPLEX_CONFIG,

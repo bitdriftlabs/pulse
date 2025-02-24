@@ -5,8 +5,8 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
-use crate::pipeline::processor::cardinality_limiter::CardinalityLimiterProcessor;
 use crate::pipeline::processor::PipelineProcessor;
+use crate::pipeline::processor::cardinality_limiter::CardinalityLimiterProcessor;
 use crate::test::{make_metric, make_metric_with_metadata, processor_factory_context_for_test};
 use bd_test_helpers::make_mut;
 use cardinality_limiter_config::per_pod_limit::Override_limit_location;
@@ -16,8 +16,8 @@ use pulse_common::k8s::pods_info::container::PodsInfo;
 use pulse_common::k8s::test::make_pod_info;
 use pulse_common::metadata::Metadata;
 use pulse_protobuf::protos::pulse::config::processor::v1::cardinality_limiter::{
-  cardinality_limiter_config,
   CardinalityLimiterConfig,
+  cardinality_limiter_config,
 };
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;

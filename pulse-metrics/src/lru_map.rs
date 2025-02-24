@@ -9,15 +9,15 @@
 #[path = "./lru_map_test.rs"]
 mod lru_map_test;
 
-use hashbrown::hash_map::RawEntryMut;
 use hashbrown::HashMap;
-use intrusive_collections::{intrusive_adapter, LinkedList, LinkedListLink, UnsafeRef};
+use hashbrown::hash_map::RawEntryMut;
+use intrusive_collections::{LinkedList, LinkedListLink, UnsafeRef, intrusive_adapter};
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use std::collections::hash_map::RandomState;
 use std::hash::{BuildHasher, Hash};
 use std::marker::PhantomPinned;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::OnceLock;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 //
 // MapKey

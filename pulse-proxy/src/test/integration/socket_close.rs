@@ -5,7 +5,7 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
-use crate::test::integration::{write_all, FakeWireUpstream, Helper, HelperBindResolver};
+use crate::test::integration::{FakeWireUpstream, Helper, HelperBindResolver, write_all};
 use pretty_assertions::assert_eq;
 use pulse_metrics::test::parse_carbon_metrics;
 use reusable_fmt::{fmt, fmt_reuse};

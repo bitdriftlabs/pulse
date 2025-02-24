@@ -18,10 +18,10 @@ use crate::protos::metric::{
 };
 use crate::test::thread_synchronizer::ThreadSynchronizer;
 use crate::test::{
+  ProcessorFactoryContextHelper,
   clean_timestamps,
   make_metric_ex,
   processor_factory_context_for_test,
-  ProcessorFactoryContextHelper,
 };
 use aggregation_config::counters::{AbsoluteCounters, Extended as ExtendedCounters};
 use aggregation_config::gauges::Extended as ExtendedGauges;
@@ -36,12 +36,12 @@ use pulse_protobuf::protos::pulse::config::processor::v1::aggregation::aggregati
   Timer_type,
 };
 use pulse_protobuf::protos::pulse::config::processor::v1::aggregation::{
-  aggregation_config,
   AggregationConfig,
+  aggregation_config,
 };
 use std::sync::Arc;
-use time::ext::NumericalDuration;
 use time::Duration;
+use time::ext::NumericalDuration;
 
 #[derive(Copy, Clone)]
 pub enum TimerType {

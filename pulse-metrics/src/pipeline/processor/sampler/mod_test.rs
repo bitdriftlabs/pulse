@@ -26,8 +26,8 @@ use bd_time::{TimeDurationExt, ToProtoDuration};
 use bytes::Bytes;
 use pulse_protobuf::protos::pulse::config::processor::v1::sampler::SamplerConfig;
 use std::sync::Arc;
-use time::ext::{NumericalDuration, NumericalStdDuration};
 use time::Duration;
+use time::ext::{NumericalDuration, NumericalStdDuration};
 use tokio::time::Instant;
 
 fn make_metric(

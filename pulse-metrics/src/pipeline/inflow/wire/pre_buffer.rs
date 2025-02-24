@@ -7,7 +7,6 @@
 
 use crate::pipeline::metric_cache::MetricKey;
 use crate::protos::metric::{
-  default_timestamp,
   CounterType,
   DownstreamId,
   Metric,
@@ -15,6 +14,7 @@ use crate::protos::metric::{
   MetricType,
   MetricValue,
   ParsedMetric,
+  default_timestamp,
 };
 use crate::reservoir_timer::ReservoirTimer;
 use bd_log::warn_every;
@@ -93,19 +93,13 @@ impl PreBuffer {
       };
 
       match (metric, mtype) {
-        (
-          PreBufferMetric::Counter(ref mut counter),
-          Some(MetricType::Counter(CounterType::Delta)),
-        ) => {
+        (PreBufferMetric::Counter(counter), Some(MetricType::Counter(CounterType::Delta))) => {
           *counter += value.to_simple() * (1.0 / sample_rate.unwrap_or(1.0));
         },
-        (
-          PreBufferMetric::Gauge(ref mut gauge),
-          Some(MetricType::Gauge | MetricType::DirectGauge),
-        ) => {
+        (PreBufferMetric::Gauge(gauge), Some(MetricType::Gauge | MetricType::DirectGauge)) => {
           *gauge = value.to_simple();
         },
-        (PreBufferMetric::Gauge(ref mut gauge), Some(MetricType::DeltaGauge)) => {
+        (PreBufferMetric::Gauge(gauge), Some(MetricType::DeltaGauge)) => {
           *gauge += value.to_simple();
         },
         (PreBufferMetric::Timer(timer), Some(MetricType::Timer)) => {

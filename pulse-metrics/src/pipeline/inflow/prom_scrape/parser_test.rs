@@ -7,7 +7,6 @@
 
 use crate::pipeline::inflow::prom_scrape::parser::parse_as_metrics;
 use crate::protos::metric::{
-  default_timestamp,
   DownstreamId,
   HistogramBucket,
   HistogramData,
@@ -16,6 +15,7 @@ use crate::protos::metric::{
   MetricValue,
   SummaryBucket,
   SummaryData,
+  default_timestamp,
 };
 use crate::test::{make_abs_counter_with_metadata, make_gauge_with_metadata, make_metric_ex};
 use pretty_assertions::assert_eq;
@@ -23,8 +23,8 @@ use pulse_common::metadata::Metadata;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::Instant;
-use time::macros::datetime;
 use time::OffsetDateTime;
+use time::macros::datetime;
 
 const TIMESTAMP: OffsetDateTime = datetime!(2021-02-04 04:05:06 UTC);
 
@@ -232,11 +232,13 @@ fn test_summary() {
 
 #[test]
 fn test_invalid() {
-  assert!(parse_as_metrics(
-    "not prom",
-    default_timestamp(),
-    Instant::now(),
-    Some(&test_metadata())
-  )
-  .is_err());
+  assert!(
+    parse_as_metrics(
+      "not prom",
+      default_timestamp(),
+      Instant::now(),
+      Some(&test_metadata())
+    )
+    .is_err()
+  );
 }

@@ -17,8 +17,8 @@ use parking_lot::Mutex;
 use prometheus::{IntCounter, IntGauge};
 use std::any::Any;
 use std::hash::Hash;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
 //

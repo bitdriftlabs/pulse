@@ -14,17 +14,17 @@ use super::missing_node_name_error;
 use crate::proto::env_or_inline_to_string;
 use crate::singleton::{SingletonHandle, SingletonManager};
 use futures_util::future::BoxFuture;
-use futures_util::{pin_mut, Stream, TryStreamExt};
+use futures_util::{Stream, TryStreamExt, pin_mut};
 use k8s_openapi::api::core::v1::{Pod, Service};
 use kube::core::ObjectMeta;
 use kube::runtime::watcher::Event;
-use kube::runtime::{watcher, WatchStreamExt};
+use kube::runtime::{WatchStreamExt, watcher};
 use kube::{Api, ResourceExt};
 use parking_lot::RwLock;
 use protobuf::Chars;
 use pulse_protobuf::protos::pulse::config::bootstrap::v1::bootstrap::KubernetesBootstrapConfig;
-use reqwest::header::{ACCEPT, AUTHORIZATION};
 use reqwest::StatusCode;
+use reqwest::header::{ACCEPT, AUTHORIZATION};
 use std::collections::{BTreeMap, HashMap};
 use std::net::IpAddr;
 use std::sync::{Arc, OnceLock};
@@ -190,12 +190,12 @@ impl PromEndpoint {
 }
 
 pub mod container {
-  use super::{make_namespace_and_name, PodInfo, PromEndpoint, ServiceMonitor};
-  use crate::k8s::pods_info::{object_namespace, ServiceInfo, BITDRIFT_ANNOTATION};
+  use super::{PodInfo, PromEndpoint, ServiceMonitor, make_namespace_and_name};
+  use crate::k8s::pods_info::{BITDRIFT_ANNOTATION, ServiceInfo, object_namespace};
   use bd_log::warn_every;
+  use k8s_openapi::Metadata;
   use k8s_openapi::api::core::v1::Pod;
   use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
-  use k8s_openapi::Metadata;
   use kube::ResourceExt;
   use std::collections::{BTreeMap, HashMap};
   use std::net::IpAddr;

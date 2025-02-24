@@ -12,7 +12,6 @@
 mod prom_test;
 
 use super::metric::{
-  unwrap_timestamp,
   CounterType,
   HistogramBucket,
   HistogramData,
@@ -26,6 +25,7 @@ use super::metric::{
   SummaryBucket,
   SummaryData,
   TagValue,
+  unwrap_timestamp,
 };
 use bd_log::warn_every;
 use bd_proto::protos::prometheus::prompb;
@@ -40,8 +40,8 @@ use prompb::types::metric_metadata::MetricType as PromMetricType;
 use prompb::types::{Label, MetricMetadata, Sample, TimeSeries};
 use protobuf::{Chars, EnumOrUnknown};
 use pulse_protobuf::protos::pulse::config;
-use std::collections::hash_map::Entry;
 use std::collections::BTreeMap;
+use std::collections::hash_map::Entry;
 use time::ext::NumericalDuration;
 
 type HashMap<Key, Value> = std::collections::HashMap<Key, Value, ahash::RandomState>;
@@ -607,7 +607,7 @@ fn timeseries_to_metrics(
     Some(InProgressMetric::Histogram(_) | InProgressMetric::Summary(_)) => {
       return Err(ParseError::PromRemoteWrite(
         "invalid histogram or summary timeseries",
-      ))
+      ));
     },
   };
 

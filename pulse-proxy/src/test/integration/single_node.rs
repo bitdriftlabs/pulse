@@ -6,11 +6,11 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
 use crate::test::integration::{
-  current_time,
-  write_all,
   FakeWireUpstream,
   Helper,
   HelperBindResolver,
+  current_time,
+  write_all,
 };
 use itertools::Itertools;
 use pretty_assertions::assert_eq;

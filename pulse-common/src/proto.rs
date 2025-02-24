@@ -8,9 +8,9 @@
 use protobuf::MessageFull;
 use pulse_protobuf::protos::pulse::config::common::v1::common::env_or_inline::Data_type;
 use pulse_protobuf::protos::pulse::config::common::v1::common::{
-  env_inline_or_file,
   EnvInlineOrFile,
   EnvOrInline,
+  env_inline_or_file,
 };
 use time::Duration;
 

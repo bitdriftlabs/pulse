@@ -6,11 +6,11 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
 use crate::test::integration::{
-  make_admin_request,
-  write_all,
   FakeWireUpstream,
   Helper,
   HelperBindResolver,
+  make_admin_request,
+  write_all,
 };
 use pretty_assertions::assert_eq;
 use pulse_metrics::test::{clean_timestamps, parse_carbon_metrics};

@@ -18,13 +18,14 @@ use crate::filters::fst::FstFilterProvider;
 use crate::filters::poll_filter::PollFilter;
 use crate::filters::regex::RegexFilterProvider;
 use crate::filters::zero::ZeroFilter;
-use crate::pipeline::processor::ProcessorFactoryContext;
 use crate::pipeline::PipelineDispatch;
+use crate::pipeline::processor::ProcessorFactoryContext;
 use crate::protos::metric::ParsedMetric;
 use anyhow::bail;
 use async_trait::async_trait;
 use bd_server_stats::stats::Scope;
 use bd_shutdown::ComponentShutdownTriggerHandle;
+use elision::ElisionConfig;
 use elision::elision_config::emit_config::Emit_type;
 use elision::elision_config::{
   BlocklistConfig,
@@ -32,14 +33,13 @@ use elision::elision_config::{
   RegexOverrideConfig,
   ZeroElisionConfig,
 };
-use elision::ElisionConfig;
 use log::{error, trace};
 use parking_lot::Mutex;
 use prometheus::IntCounter;
 use pulse_common::singleton::SingletonManager;
 use pulse_protobuf::protos::pulse::config::processor::v1::elision;
-use regex::bytes::RegexSet;
 use regex::Regex;
+use regex::bytes::RegexSet;
 use std::collections::HashMap;
 use std::sync::Arc;
 

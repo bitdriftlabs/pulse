@@ -7,11 +7,11 @@
 
 use super::cm_quantile::Quantile;
 use super::{
+  WrappedConfig,
   default_aggregation_flush_interval,
   default_aggregation_timer_eps,
   make_metric,
   make_name,
-  WrappedConfig,
 };
 use crate::protos::metric::{CounterType, MetricId, MetricType, MetricValue, ParsedMetric};
 use crate::protos::prom::prom_stale_marker;

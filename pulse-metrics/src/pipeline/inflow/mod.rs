@@ -18,8 +18,8 @@ use pulse_common::bind_resolver::BindResolver;
 use pulse_common::k8s::pods_info::K8sWatchFactory;
 use pulse_common::singleton::SingletonManager;
 use pulse_protobuf::protos::pulse::config::bootstrap::v1::bootstrap::KubernetesBootstrapConfig;
-use pulse_protobuf::protos::pulse::config::inflow::v1::inflow::inflow_config::Config_type;
 use pulse_protobuf::protos::pulse::config::inflow::v1::inflow::InflowConfig;
+use pulse_protobuf::protos::pulse::config::inflow::v1::inflow::inflow_config::Config_type;
 use std::sync::Arc;
 
 mod metric_generator;

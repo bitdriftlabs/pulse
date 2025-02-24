@@ -5,8 +5,8 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
-use crate::pipeline::processor::regex::RegexProcessor;
 use crate::pipeline::processor::PipelineProcessor;
+use crate::pipeline::processor::regex::RegexProcessor;
 use crate::test::{make_metric, processor_factory_context_for_test};
 use bd_test_helpers::make_mut;
 use prometheus::labels;

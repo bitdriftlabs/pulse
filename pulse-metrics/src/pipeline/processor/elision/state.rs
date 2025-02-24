@@ -13,15 +13,15 @@ use crate::filters::filter::{DynamicMetricFilter, MetricFilterDecision};
 use crate::pipeline::metric_cache::{CachedMetric, GetOrInitResult, MetricCache, StateSlotHandle};
 use crate::protos::metric::{Metric, MetricType, MetricValue, ParsedMetric};
 use bd_server_stats::stats::Scope;
-use elision::elision_config::emit_config::Emit_type;
 use elision::elision_config::EmitConfig;
+use elision::elision_config::emit_config::Emit_type;
 use parking_lot::Mutex;
 use prometheus::{Histogram, IntCounter};
 use pulse_protobuf::protos::pulse::config::processor::v1::elision;
 use std::cmp::max;
 use std::hash::Hash;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 /// State associated with [FilterDecision::PeriodicOutput] that is used to determine the
 /// corresponding [SkipDecision].

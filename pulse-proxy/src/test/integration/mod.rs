@@ -5,7 +5,7 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
-use crate::{run_server, ServerHooks};
+use crate::{ServerHooks, run_server};
 use axum::extract::{Request, State};
 use axum::handler::Handler;
 use axum::response::Response;
@@ -25,31 +25,31 @@ use parking_lot::Mutex;
 use prom_remote_write::prom_remote_write_server_config::ParseConfig;
 use protobuf::Message;
 use pulse_common::bind_resolver::{
-  make_reuse_port_tcp_socket,
-  make_reuse_port_udp_socket,
   BindResolver,
   BoundTcpSocket,
+  make_reuse_port_tcp_socket,
+  make_reuse_port_udp_socket,
 };
-use pulse_common::k8s::pods_info::container::PodsInfo;
 use pulse_common::k8s::pods_info::PodsInfoSingleton;
+use pulse_common::k8s::pods_info::container::PodsInfo;
 use pulse_common::proto::yaml_to_proto;
 use pulse_common::singleton::SingletonManager;
 use pulse_metrics::clients::prom::{
-  compress_write_request,
   HyperPromRemoteWriteClient,
   PromRemoteWriteClient,
+  compress_write_request,
 };
+use pulse_metrics::pipeline::MockPipelineDispatch;
 use pulse_metrics::pipeline::inflow::wire::tcp::TcpInflow;
 use pulse_metrics::pipeline::inflow::{InflowFactoryContext, PipelineInflow};
-use pulse_metrics::pipeline::MockPipelineDispatch;
 use pulse_metrics::protos::metric::ParsedMetric;
 use pulse_metrics::protos::prom::{
-  to_write_request,
   ChangedTypeTracker,
   MetadataType,
   ToWriteRequestOptions,
+  to_write_request,
 };
-use pulse_metrics::test::{make_carbon_wire_protocol, TestDownstreamIdProvider};
+use pulse_metrics::test::{TestDownstreamIdProvider, make_carbon_wire_protocol};
 use pulse_protobuf::protos::pulse::config::bootstrap::v1::bootstrap::KubernetesBootstrapConfig;
 use pulse_protobuf::protos::pulse::config::inflow::v1::prom_remote_write;
 use pulse_protobuf::protos::pulse::config::inflow::v1::wire::TcpServerConfig;

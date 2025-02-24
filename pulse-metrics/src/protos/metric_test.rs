@@ -6,7 +6,7 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
 use super::*;
-use crate::protos::prom::{make_label, MetadataType};
+use crate::protos::prom::{MetadataType, make_label};
 use crate::test::make_tag;
 use anyhow::bail;
 use bd_proto::protos::prometheus::prompb;

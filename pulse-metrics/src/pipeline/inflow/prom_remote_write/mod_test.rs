@@ -10,8 +10,8 @@ use crate::protos::metric::{DownstreamId, DownstreamIdProvider, MetricId};
 use crate::test::make_metric_id;
 use axum::extract::Request;
 use prom_remote_write::prom_remote_write_server_config;
-use prom_remote_write_server_config::downstream_id_source::Source_type;
 use prom_remote_write_server_config::DownstreamIdSource;
+use prom_remote_write_server_config::downstream_id_source::Source_type;
 use pulse_protobuf::protos::pulse::config::inflow::v1::prom_remote_write;
 
 #[test]
