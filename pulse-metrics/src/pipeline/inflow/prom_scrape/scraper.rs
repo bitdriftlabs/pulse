@@ -20,24 +20,192 @@ use bd_server_stats::stats::Scope;
 use bd_shutdown::{ComponentShutdown, ComponentShutdownTrigger, ComponentShutdownTriggerHandle};
 use bd_time::{ProtoDurationExt, TimeDurationExt};
 use futures_util::future::{join_all, pending};
+use http::StatusCode;
+use http::header::{ACCEPT, AUTHORIZATION};
+use itertools::Itertools;
+use k8s_prom::KubernetesPrometheusConfig;
+use k8s_prom::kubernetes_prometheus_config::pod::InclusionFilter;
+use k8s_prom::kubernetes_prometheus_config::pod::inclusion_filter::Filter_type;
+use k8s_prom::kubernetes_prometheus_config::{self, Target};
 use parking_lot::Mutex;
 use prometheus::IntCounter;
-use pulse_common::k8s::pods_info::{OwnedPodsInfoSingleton, PromEndpoint};
+use pulse_common::k8s::pods_info::{OwnedPodsInfoSingleton, PodInfo};
 use pulse_common::k8s::{NodeInfo, missing_node_name_error};
+use pulse_common::metadata::Metadata;
 use pulse_common::proto::env_or_inline_to_string;
 use pulse_protobuf::protos::pulse::config::bootstrap::v1::bootstrap::KubernetesBootstrapConfig;
-use pulse_protobuf::protos::pulse::config::inflow::v1::k8s_prom::KubernetesPrometheusConfig;
-use pulse_protobuf::protos::pulse::config::inflow::v1::k8s_prom::kubernetes_prometheus_config::{
-  self,
-  Target,
-};
-use std::collections::HashMap;
+use pulse_protobuf::protos::pulse::config::inflow::v1::k8s_prom;
+use regex::Regex;
+use std::collections::{BTreeMap, HashMap};
+use std::iter::empty;
 use std::marker::PhantomData;
+use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::Instant;
 use time::Duration;
 use time::ext::NumericalDuration;
 use tokio::time::MissedTickBehavior;
+
+fn process_inclusion_filters(
+  inclusion_filters: &[InclusionFilter],
+  pod_info: &PodInfo,
+) -> Vec<i32> {
+  inclusion_filters
+    .iter()
+    .flat_map(
+      |inclusion_filter| match inclusion_filter.filter_type.as_ref().expect("pgv") {
+        Filter_type::ContainerPortNameRegex(regex) => Regex::new(regex).ok().map_or_else(
+          || empty().collect(),
+          |regex| {
+            pod_info
+              .container_ports
+              .iter()
+              .filter_map(|port| {
+                if regex.is_match(&port.name) {
+                  Some(port.port)
+                } else {
+                  None
+                }
+              })
+              .collect_vec()
+          },
+        ),
+      },
+    )
+    .collect()
+}
+
+fn create_endpoints(
+  inclusion_filters: &[InclusionFilter],
+  pod_info: &PodInfo,
+  service_name: Option<&str>,
+  maybe_service_port: Option<i32>,
+  prom_annotations: &BTreeMap<String, String>,
+) -> Vec<(String, PromEndpoint)> {
+  let included_ports = process_inclusion_filters(inclusion_filters, pod_info);
+  if prom_annotations
+    .get("prometheus.io/scrape")
+    .map(String::as_str)
+    != Some("true")
+    && included_ports.is_empty()
+  {
+    return Vec::new();
+  }
+
+  let prom_namespace = prom_annotations
+    .get("prometheus.io/namespace")
+    .cloned()
+    .unwrap_or_else(|| pod_info.namespace.to_string());
+
+  let prom_endpoint_path = prom_annotations
+    .get("prometheus.io/path")
+    .cloned()
+    .unwrap_or_else(|| "/metrics".to_string());
+
+  // We attempt the resolve the prom endpoint by considering (in order):
+  // 1. A service annotation that specifies valid port number(s) via prometheus.io/port
+  // 2. A a service port on the service. We use the first port mapping present on the svc object.
+  // 3. A default of port 9090 if 1 & 2 are not present.
+  let ports: Vec<i32> = prom_annotations
+    .get("prometheus.io/port")
+    .into_iter()
+    .flat_map(|port| port.split(',').filter_map(|p| p.parse().ok()))
+    .chain(included_ports)
+    .unique()
+    .collect_vec();
+
+  let ports = match (maybe_service_port, ports.is_empty()) {
+    (_, false) => ports,
+    (Some(service_port), true) => vec![service_port],
+    (None, true) => vec![9090],
+  };
+
+  ports
+    .iter()
+    .map(|port| {
+      (
+        format!(
+          "{}/{}/{}/{}",
+          prom_namespace,
+          service_name.unwrap_or_default(),
+          pod_info.name,
+          port
+        ),
+        PromEndpoint::new(
+          pod_info.ip,
+          *port,
+          &prom_endpoint_path,
+          Some(Arc::new(Metadata::new(
+            &prom_namespace,
+            &pod_info.name,
+            &pod_info.ip.to_string(),
+            &pod_info.labels,
+            &pod_info.annotations,
+            service_name,
+            &pod_info.node_name,
+            &pod_info.node_ip,
+            Some(format!("{}:{port}", pod_info.ip)),
+          ))),
+        ),
+      )
+    })
+    .collect()
+}
+
+//
+// PromEndpoint
+//
+
+/// When scraping prometheus metrics, we think of an endpoint as a single source to scrape metrics
+/// from with attached metadata that may be used to enrich or modify the scraped metrics.
+///
+/// In k8s parlance each endpoint maps to a single pod, augmented by service annotations that came
+/// from the service that spawned the endpoint.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PromEndpoint {
+  pub url: String,
+  pub metadata: Option<Arc<Metadata>>,
+}
+
+impl PromEndpoint {
+  #[must_use]
+  pub fn new(address: IpAddr, port: i32, path: &str, metadata: Option<Arc<Metadata>>) -> Self {
+    Self {
+      url: format!("http://{address}:{port}{path}"),
+      metadata,
+    }
+  }
+
+  #[must_use]
+  pub const fn metadata(&self) -> Option<&Arc<Metadata>> {
+    self.metadata.as_ref()
+  }
+
+  pub async fn scrape(
+    &self,
+    client: &reqwest::Client,
+    k8s_service_account: bool,
+  ) -> anyhow::Result<(String, StatusCode)> {
+    let mut request = client.get(&self.url).header(ACCEPT, "text/plain");
+
+    if k8s_service_account {
+      request = request.header(
+        AUTHORIZATION,
+        format!(
+          "Bearer {}",
+          std::str::from_utf8(&std::fs::read(
+            "/var/run/secrets/kubernetes.io/serviceaccount/token"
+          )?)?
+        ),
+      );
+    }
+    let response = request.send().await?;
+
+    let status = response.status();
+
+    Ok((response.text().await?, status))
+  }
+}
 
 //
 // Stats
@@ -347,12 +515,13 @@ pub async fn make(
     Box::new(scrape_interval.interval(MissedTickBehavior::Delay)) as Box<dyn Ticker>
   });
   match config.target.expect("pgv") {
-    Target::Pod(_) => Scraper::<_, RealDurationJitter>::create(
+    Target::Pod(pod_config) => Scraper::<_, RealDurationJitter>::create(
       context.name,
       stats,
       context.dispatcher,
       context.shutdown_trigger_handle,
       KubePodTarget {
+        inclusion_filters: pod_config.inclusion_filters,
         pods_info: (context.k8s_watch_factory)().await?.make_owned(),
       },
       false,
@@ -405,6 +574,7 @@ pub trait EndpointProvider: Send + Sync {
 
 /// Resolves prom endpoints via node-local Kubernetes pods.
 struct KubePodTarget {
+  inclusion_filters: Vec<InclusionFilter>,
   pods_info: OwnedPodsInfoSingleton,
 }
 
@@ -415,11 +585,14 @@ impl EndpointProvider for KubePodTarget {
       .pods_info
       .borrow_and_update()
       .pods()
-      .filter_map(|(pod, pod_info)| {
-        pod_info
-          .prom_endpoint
-          .as_ref()
-          .map(|prom_endpoint| (pod.to_string(), prom_endpoint.clone()))
+      .flat_map(|(_, pod_info)| {
+        create_endpoints(
+          &self.inclusion_filters,
+          pod_info,
+          None,
+          None,
+          &pod_info.annotations,
+        )
       })
       .collect::<HashMap<String, PromEndpoint>>()
   }
@@ -442,15 +615,16 @@ struct KubeEndpointsTarget {
 impl EndpointProvider for KubeEndpointsTarget {
   fn get(&mut self) -> HashMap<String, PromEndpoint> {
     let mut endpoints = HashMap::new();
-
     let pods = self.pods_info.borrow_and_update();
-
-    for (pod, pod_info) in pods.pods() {
-      for (name, service) in &pod_info.services {
-        if let Some(prom_endpoint) = &service.prom_endpoint {
-          let endpoint_id = format!("{name}/{pod}");
-          endpoints.insert(endpoint_id, prom_endpoint.clone());
-        }
+    for (_, pod_info) in pods.pods() {
+      for service in pod_info.services.values() {
+        endpoints.extend(create_endpoints(
+          &[],
+          pod_info,
+          Some(&service.name),
+          service.maybe_service_port,
+          &service.annotations,
+        ));
       }
     }
 

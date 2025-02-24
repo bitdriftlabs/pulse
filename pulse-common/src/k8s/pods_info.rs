@@ -16,22 +16,18 @@ use crate::singleton::{SingletonHandle, SingletonManager};
 use futures_util::future::BoxFuture;
 use futures_util::{Stream, TryStreamExt, pin_mut};
 use k8s_openapi::api::core::v1::{Pod, Service};
+use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
 use kube::core::ObjectMeta;
 use kube::runtime::watcher::Event;
 use kube::runtime::{WatchStreamExt, watcher};
 use kube::{Api, ResourceExt};
 use parking_lot::RwLock;
-use protobuf::Chars;
 use pulse_protobuf::protos::pulse::config::bootstrap::v1::bootstrap::KubernetesBootstrapConfig;
-use reqwest::StatusCode;
-use reqwest::header::{ACCEPT, AUTHORIZATION};
 use std::collections::{BTreeMap, HashMap};
 use std::net::IpAddr;
 use std::sync::{Arc, OnceLock};
 use tokio::sync::oneshot;
 use tokio::sync::watch::{self, Ref};
-
-const BITDRIFT_ANNOTATION: &str = "bitdrift.io/";
 
 pub type K8sWatchFactory =
   Arc<dyn Fn() -> BoxFuture<'static, anyhow::Result<Arc<PodsInfoSingleton>>> + Send + Sync>;
@@ -129,75 +125,13 @@ impl PodsInfoSingleton {
   }
 }
 
-//
-// PromEndpoint
-//
-
-/// When scraping prometheus metrics, we think of an endpoint as a single source to scrape metrics
-/// from with attached metadata that may be used to enrich or modify the scraped metrics.
-///
-/// In k8s parlance each endpoint maps to a single pod, augmented by service annotations that came
-/// from the service that spawned the endpoint.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PromEndpoint {
-  pub url: String,
-  pub metadata: Option<Arc<crate::metadata::Metadata>>,
-}
-
-impl PromEndpoint {
-  #[must_use]
-  pub fn new(
-    address: IpAddr,
-    port: i32,
-    path: &str,
-    metadata: Option<Arc<crate::metadata::Metadata>>,
-  ) -> Self {
-    Self {
-      url: format!("http://{address}:{port}{path}"),
-      metadata,
-    }
-  }
-
-  #[must_use]
-  pub const fn metadata(&self) -> Option<&Arc<crate::metadata::Metadata>> {
-    self.metadata.as_ref()
-  }
-
-  pub async fn scrape(
-    &self,
-    client: &reqwest::Client,
-    k8s_service_account: bool,
-  ) -> anyhow::Result<(String, StatusCode)> {
-    let mut request = client.get(&self.url).header(ACCEPT, "text/plain");
-
-    if k8s_service_account {
-      request = request.header(
-        AUTHORIZATION,
-        format!(
-          "Bearer {}",
-          std::str::from_utf8(&std::fs::read(
-            "/var/run/secrets/kubernetes.io/serviceaccount/token"
-          )?)?
-        ),
-      );
-    }
-    let response = request.send().await?;
-
-    let status = response.status();
-
-    Ok((response.text().await?, status))
-  }
-}
-
 pub mod container {
-  use super::{PodInfo, PromEndpoint, ServiceMonitor, make_namespace_and_name};
-  use crate::k8s::pods_info::{BITDRIFT_ANNOTATION, ServiceInfo, object_namespace};
+  use super::{PodInfo, ServiceMonitor, make_namespace_and_name};
+  use crate::k8s::pods_info::object_namespace;
   use bd_log::warn_every;
-  use k8s_openapi::Metadata;
   use k8s_openapi::api::core::v1::Pod;
-  use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
   use kube::ResourceExt;
-  use std::collections::{BTreeMap, HashMap};
+  use std::collections::HashMap;
   use std::net::IpAddr;
   use std::sync::Arc;
   use time::ext::NumericalDuration;
@@ -305,6 +239,24 @@ pub mod container {
         return false;
       };
 
+      let mut container_ports = vec![];
+      for container in pod
+        .spec
+        .as_ref()
+        .map_or(&[][..], |spec| spec.containers.as_slice())
+      {
+        for port in container
+          .ports
+          .as_ref()
+          .map_or(&[][..], |ports| ports.as_slice())
+        {
+          container_ports.push(super::ContainerPort {
+            name: port.name.clone().unwrap_or_default(),
+            port: port.container_port,
+          });
+        }
+      }
+
       let namespace = object_namespace(&pod.metadata);
 
       // TODO(mattklein123): Potentially move this into the field selector query?
@@ -327,14 +279,10 @@ pub mod container {
       } else {
         PodInfo {
           services: HashMap::new(),
-          namespace: namespace.to_string().into(),
-          name: pod_name.to_string().into(),
-          annotations: pod
-            .annotations()
-            .iter()
-            .map(|(k, v)| (k.clone().into(), v.clone().into()))
-            .collect(),
-          prom_endpoint: None,
+          namespace: namespace.to_string(),
+          name: pod_name.to_string(),
+          labels: pod.labels().clone(),
+          annotations: pod.annotations().clone(),
           metadata: Arc::new(crate::metadata::Metadata::new(
             namespace,
             pod_name,
@@ -347,79 +295,16 @@ pub mod container {
             None,
           )),
           ip: pod_ip,
+          container_ports,
+          node_name: node_name.to_string(),
+          node_ip: host_ip.clone(),
         }
       };
-
-      // This is mostly used when a pod doesn't have a service associated with it
-      // For instance, if it is a cron job. In this case, we can still scrape the pod
-      // Caveat here is that cron job pods are not guaranteed to be up, to ensure that we can scrape
-      // them we need to add a delay to the job that aligns with the scraper interval.
-      if Self::has_prom_endpoint(pod.annotations()) {
-        pod_info.prom_endpoint = Some(Self::create_endpoint(
-          pod_name,
-          pod_ip_string,
-          pod_ip,
-          None,
-          None,
-          namespace,
-          pod.labels(),
-          pod.annotations(),
-          pod.annotations(),
-          node_name,
-          host_ip,
-        ));
-      }
 
       if let Some(service_cache) = service_cache {
         let services = service_cache.find_services(pod);
         for service in services {
-          let service_name = service.metadata.name.as_ref().unwrap();
-          let mut service_info = ServiceInfo {
-            name: service_name.clone().into(),
-            prom_endpoint: None,
-            annotations: service
-              .metadata
-              .annotations
-              .clone()
-              .unwrap_or_default()
-              .into_iter()
-              .filter_map(|(key, value)| {
-                if key.starts_with(BITDRIFT_ANNOTATION) {
-                  Some((key.into(), value.into()))
-                } else {
-                  None
-                }
-              })
-              .collect(),
-          };
-
-          if Self::has_prom_endpoint(service.annotations()) {
-            log::trace!("eligible pod found");
-            let maybe_service_port = service.spec.as_ref().and_then(|spec| {
-              Some(match spec.ports.as_ref()?.first()?.target_port.as_ref()? {
-                IntOrString::Int(i) => *i,
-                IntOrString::String(s) => s.parse().ok()?,
-              })
-            });
-            let service_name = service.metadata().name.as_ref().unwrap();
-            service_info.prom_endpoint = Some(Self::create_endpoint(
-              pod_name,
-              pod_ip_string,
-              pod_ip,
-              Some(service_name),
-              maybe_service_port,
-              namespace,
-              pod.labels(),
-              pod.annotations(),
-              service.annotations(),
-              node_name,
-              host_ip,
-            ));
-          }
-
-          let previous = pod_info
-            .services
-            .insert(service_name.clone(), Arc::new(service_info));
+          let previous = pod_info.services.insert(service.name.clone(), service);
           debug_assert!(previous.is_none());
         }
       }
@@ -427,79 +312,29 @@ pub mod container {
       self.insert(pod_info);
       true
     }
-
-    fn has_prom_endpoint(annotations: &BTreeMap<String, String>) -> bool {
-      annotations.get("prometheus.io/scrape").map(String::as_str) == Some("true")
-    }
-
-    fn create_endpoint(
-      pod_name: &str,
-      pod_ip_string: &str,
-      pod_ip: IpAddr,
-      service_name: Option<&str>,
-      maybe_service_port: Option<i32>,
-      namespace: &str,
-      pod_labels: &BTreeMap<String, String>,
-      pod_annotations: &BTreeMap<String, String>,
-      prom_annotations: &BTreeMap<String, String>,
-      node_name: &str,
-      node_ip: &str,
-    ) -> PromEndpoint {
-      let prom_namespace = prom_annotations
-        .get("prometheus.io/namespace")
-        .cloned()
-        .unwrap_or_else(|| namespace.to_string());
-
-      let prom_endpoint_path = prom_annotations
-        .get("prometheus.io/path")
-        .cloned()
-        .unwrap_or_else(|| "/metrics".to_string());
-
-      // We attempt the resolve the prom endpoint by considering (in order):
-      // 1. A service annotation that specifies a valid port number via prometheus.io/port
-      // 2. A a service port on the service. We use the first port mapping present on the svc
-      //    object.
-      // 3. A default of port 9090 if 1 & 2 are not present.
-      let port_annotation: Option<i32> = prom_annotations
-        .get("prometheus.io/port")
-        .and_then(|port| port.parse().ok());
-
-      let prom_port = match (maybe_service_port, port_annotation) {
-        (_, Some(port_annotation)) => port_annotation,
-        (Some(service_port), None) => service_port,
-        (None, None) => 9090,
-      };
-
-      PromEndpoint::new(
-        pod_ip,
-        prom_port,
-        &prom_endpoint_path,
-        Some(Arc::new(crate::metadata::Metadata::new(
-          &prom_namespace,
-          pod_name,
-          pod_ip_string,
-          pod_labels,
-          pod_annotations,
-          service_name,
-          node_name,
-          node_ip,
-          Some(format!("{pod_ip}:{prom_port}")),
-        ))),
-      )
-    }
   }
 }
 
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
+pub struct ContainerPort {
+  pub name: String,
+  pub port: i32,
+}
+
+#[derive(Debug, Clone)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct PodInfo {
-  pub namespace: Chars,
-  pub name: Chars,
-  pub annotations: BTreeMap<Chars, Chars>,
-  pub prom_endpoint: Option<PromEndpoint>,
+  pub namespace: String,
+  pub name: String,
+  pub labels: BTreeMap<String, String>,
+  pub annotations: BTreeMap<String, String>,
   pub services: HashMap<String, Arc<ServiceInfo>>,
   pub metadata: Arc<crate::metadata::Metadata>,
   pub ip: IpAddr,
+  pub container_ports: Vec<ContainerPort>,
+  pub node_name: String,
+  pub node_ip: String,
 }
 
 impl PodInfo {
@@ -512,9 +347,10 @@ impl PodInfo {
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct ServiceInfo {
-  pub name: Chars,
-  pub annotations: Vec<(Chars, Chars)>,
-  pub prom_endpoint: Option<PromEndpoint>,
+  pub name: String,
+  pub annotations: BTreeMap<String, String>,
+  pub selector: BTreeMap<String, String>,
+  pub maybe_service_port: Option<i32>,
 }
 
 pub async fn service_watch_stream() -> anyhow::Result<
@@ -672,18 +508,33 @@ impl PodsInfoCache {
 
 #[derive(Default)]
 struct ServiceCache {
-  services_by_namespace: HashMap<String, HashMap<String, Service>>,
+  services_by_namespace: HashMap<String, HashMap<String, Arc<ServiceInfo>>>,
 }
 
 impl ServiceCache {
   fn apply_service(&mut self, service: Service) {
+    let maybe_service_port = service.spec.as_ref().and_then(|spec| {
+      Some(match spec.ports.as_ref()?.first()?.target_port.as_ref()? {
+        IntOrString::Int(i) => *i,
+        IntOrString::String(s) => s.parse().ok()?,
+      })
+    });
+
     self
       .services_by_namespace
       .entry(object_namespace(&service.metadata).to_string())
       .or_default()
       .insert(
         service.metadata.name.as_deref().unwrap().to_string(),
-        service,
+        Arc::new(ServiceInfo {
+          name: service.metadata.name.clone().unwrap_or_default(),
+          annotations: service.annotations().clone(),
+          selector: service
+            .spec
+            .and_then(|spec| spec.selector)
+            .unwrap_or_default(),
+          maybe_service_port,
+        }),
       );
   }
 
@@ -772,7 +623,7 @@ impl ServiceMonitor {
 
   /// Attempts to resolve an active service for the provided pod. This is done by attempting to
   /// match the pod against all active services in the namespace of the pod.
-  fn find_services(&self, pod: &Pod) -> Vec<Service> {
+  fn find_services(&self, pod: &Pod) -> Vec<Arc<ServiceInfo>> {
     let cache = self.cache.read();
 
     let Some(services) = cache
@@ -787,7 +638,7 @@ impl ServiceMonitor {
     services
       .iter()
       .filter_map(|(_, service)| {
-        if matching_label_selector(service.spec.as_ref()?.selector.as_ref()?, pod.labels()) {
+        if matching_label_selector(&service.selector, pod.labels()) {
           Some(service)
         } else {
           None

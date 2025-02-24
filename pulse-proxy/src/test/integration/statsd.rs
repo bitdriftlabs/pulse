@@ -124,9 +124,9 @@ async fn udp_k8s_pod_metadata() {
     "pod_a",
     &btreemap!("foo" => "bar"),
     btreemap!("foo" => "baz"),
-    None,
     HashMap::default(),
     "127.0.0.1",
+    vec![],
   ));
   let (_pods_tx, pods_rx) = watch::channel(pods_info);
 
@@ -202,9 +202,9 @@ async fn udp_k8s_pre_buffer() {
     "pod_a",
     &btreemap!("foo" => "bar"),
     btreemap!("foo" => "baz"),
-    None,
     HashMap::default(),
     "127.0.0.1",
+    vec![],
   ));
   let (_pods_tx, pods_rx) = watch::channel(pods_info);
 
@@ -296,9 +296,9 @@ async fn tcp_k8s_pod_metadata() {
     "pod_a",
     &btreemap!("foo" => "bar"),
     btreemap!("foo" => "baz"),
-    None,
     HashMap::default(),
     "127.0.0.1",
+    vec![],
   ));
   let (_pods_tx, pods_rx) = watch::channel(pods_info);
 
@@ -401,9 +401,9 @@ async fn tcp_k8s_prebuffer() {
     "pod_a",
     &btreemap!("foo" => "bar"),
     btreemap!("foo" => "baz"),
-    None,
     HashMap::default(),
     "127.0.0.1",
+    vec![],
   ));
   let (_pods_tx, pods_rx) = watch::channel(pods_info);
 
@@ -474,9 +474,9 @@ async fn tcp_k8s_prebuffer_early_shutdown() {
     "pod_a",
     &btreemap!("foo" => "bar"),
     btreemap!("foo" => "baz"),
-    None,
     HashMap::default(),
     "127.0.0.1",
+    vec![],
   ));
   let (_pods_tx, pods_rx) = watch::channel(pods_info);
 
@@ -565,9 +565,9 @@ async fn tcp_k8s_always_prebuffer() {
     "pod_a",
     &btreemap!("foo" => "bar"),
     btreemap!("foo" => "baz"),
-    None,
     HashMap::default(),
     "127.0.0.1",
+    vec![],
   ));
   let (_pods_tx, pods_rx) = watch::channel(pods_info);
 
