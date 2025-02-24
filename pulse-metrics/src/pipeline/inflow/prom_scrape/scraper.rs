@@ -13,7 +13,17 @@ use crate::pipeline::PipelineDispatch;
 use crate::pipeline::inflow::prom_scrape::parser::parse_as_metrics;
 use crate::pipeline::inflow::{DynamicPipelineInflow, InflowFactoryContext, PipelineInflow};
 use crate::pipeline::time::{DurationJitter, RealDurationJitter};
-use crate::protos::metric::default_timestamp;
+use crate::protos::metric::{
+  DownstreamId,
+  Metric,
+  MetricId,
+  MetricSource,
+  MetricType,
+  MetricValue,
+  ParsedMetric,
+  TagValue,
+  default_timestamp,
+};
 use async_trait::async_trait;
 use bd_log::warn_every;
 use bd_server_stats::stats::Scope;
@@ -39,7 +49,6 @@ use regex::Regex;
 use std::collections::{BTreeMap, HashMap};
 use std::iter::empty;
 use std::marker::PhantomData;
-use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::Instant;
 use time::Duration;
@@ -132,7 +141,8 @@ fn create_endpoints(
           port
         ),
         PromEndpoint::new(
-          pod_info.ip,
+          "http",
+          pod_info.ip.to_string(),
           *port,
           &prom_endpoint_path,
           Some(Arc::new(Metadata::new(
@@ -162,26 +172,35 @@ fn create_endpoints(
 /// In k8s parlance each endpoint maps to a single pod, augmented by service annotations that came
 /// from the service that spawned the endpoint.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PromEndpoint {
-  pub url: String,
-  pub metadata: Option<Arc<Metadata>>,
+struct PromEndpoint {
+  address: String,
+  port: i32,
+  url: String,
+  metadata: Option<Arc<Metadata>>,
 }
 
 impl PromEndpoint {
-  #[must_use]
-  pub fn new(address: IpAddr, port: i32, path: &str, metadata: Option<Arc<Metadata>>) -> Self {
+  fn new(
+    scheme: &str,
+    address: String,
+    port: i32,
+    path: &str,
+    metadata: Option<Arc<Metadata>>,
+  ) -> Self {
+    let url = format!("{scheme}://{address}:{port}{path}");
     Self {
-      url: format!("http://{address}:{port}{path}"),
+      address,
+      port,
+      url,
       metadata,
     }
   }
 
-  #[must_use]
-  pub const fn metadata(&self) -> Option<&Arc<Metadata>> {
+  const fn metadata(&self) -> Option<&Arc<Metadata>> {
     self.metadata.as_ref()
   }
 
-  pub async fn scrape(
+  async fn scrape(
     &self,
     client: &reqwest::Client,
     k8s_service_account: bool,
@@ -237,7 +256,7 @@ impl Stats {
 /// Monitors Prometheus endpoints and collects metrics from each active endpoint. The main loop
 /// awaits changes to the watched pod set, which then spawns tasks that are responsible for polling
 /// the relevant endpoints at the correct frequency.
-pub struct Scraper<Provider: EndpointProvider, Jitter: DurationJitter> {
+struct Scraper<Provider: EndpointProvider, Jitter: DurationJitter> {
   name: String,
   stats: Stats,
   dispatcher: Arc<dyn PipelineDispatch>,
@@ -248,6 +267,7 @@ pub struct Scraper<Provider: EndpointProvider, Jitter: DurationJitter> {
   client: reqwest::Client,
   ticker_factory: Box<dyn Fn() -> Box<dyn Ticker> + Send + Sync>,
   jitter: PhantomData<Jitter>,
+  emit_up_metric: bool,
 }
 
 impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
@@ -262,6 +282,7 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
     k8s_service_account_caller: bool,
     scrape_interval: Duration,
     ticker_factory: Box<dyn Fn() -> Box<dyn Ticker> + Send + Sync>,
+    emit_up_metric: bool,
   ) -> anyhow::Result<DynamicPipelineInflow> {
     let client = if k8s_service_account_caller {
       reqwest::Client::builder()
@@ -285,6 +306,7 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
       shutdown_trigger_handle,
       ticker_factory,
       jitter: PhantomData,
+      emit_up_metric,
     }))
   }
 
@@ -338,7 +360,9 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
         .await
       {
         Ok((lines, status)) => {
-          if status != 200 {
+          if status == 200 {
+            Some(lines)
+          } else {
             warn_every!(
               1.minutes(),
               "failed to scrape prometheus endpoint {}, got {} code",
@@ -346,10 +370,8 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
               status
             );
             self.stats.scrape_failure.inc();
-            continue;
+            None
           }
-
-          lines
         },
         Err(e) => {
           warn_every!(
@@ -359,30 +381,61 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
             e
           );
           self.stats.scrape_failure.inc();
-          continue;
+          None
         },
       };
 
-      let parsed_metrics = match parse_as_metrics(
-        &lines,
-        default_timestamp(),
-        Instant::now(),
-        prom_endpoint.metadata(),
-      ) {
-        Ok(metrics) => metrics,
-        Err(e) => {
-          warn_every!(
-            1.minutes(),
-            "failed to parse prom response from {}: {}",
-            id,
-            e
-          );
-          self.stats.parse_failure.inc();
-          continue;
-        },
-      };
+      let timestamp = default_timestamp();
+      let now = Instant::now();
+      let parsed_metrics = lines.and_then(|lines| {
+        match parse_as_metrics(&lines, timestamp, now, prom_endpoint.metadata()) {
+          Ok(metrics) => {
+            self.stats.scrape_complete.inc();
+            Some(metrics)
+          },
+          Err(e) => {
+            warn_every!(
+              1.minutes(),
+              "failed to parse prom response from {}: {}",
+              id,
+              e
+            );
+            self.stats.parse_failure.inc();
+            None
+          },
+        }
+      });
 
-      self.stats.scrape_complete.inc();
+      let success = parsed_metrics.is_some();
+      let mut parsed_metrics = parsed_metrics.unwrap_or_default();
+      if self.emit_up_metric {
+        let mut metric = ParsedMetric::new(
+          Metric::new(
+            MetricId::new(
+              "up".into(),
+              Some(MetricType::Gauge),
+              vec![TagValue {
+                tag: "instance".into(),
+                value: format!("{}:{}", prom_endpoint.address, prom_endpoint.port).into(),
+              }],
+              false,
+            )
+            .unwrap(),
+            None,
+            timestamp,
+            if success {
+              MetricValue::Simple(1.0)
+            } else {
+              MetricValue::Simple(0.0)
+            },
+          ),
+          MetricSource::PromRemoteWrite,
+          now,
+          DownstreamId::LocalOrigin,
+        );
+        metric.set_metadata(prom_endpoint.metadata().cloned());
+        parsed_metrics.push(metric);
+      }
 
       if !parsed_metrics.is_empty() {
         self.dispatcher.send(parsed_metrics).await;
@@ -527,6 +580,7 @@ pub async fn make(
       false,
       scrape_interval,
       ticker_factory,
+      config.emit_up_metric,
     ),
     Target::Endpoint(_) => Scraper::<_, RealDurationJitter>::create(
       context.name,
@@ -539,6 +593,7 @@ pub async fn make(
       false,
       scrape_interval,
       ticker_factory,
+      config.emit_up_metric,
     ),
     Target::Node(details) => Scraper::<_, RealDurationJitter>::create(
       context.name,
@@ -549,6 +604,7 @@ pub async fn make(
       true,
       scrape_interval,
       ticker_factory,
+      config.emit_up_metric,
     ),
   }
 }
@@ -556,11 +612,11 @@ pub async fn make(
 // TODO(snowp): At the moment the scraper and the pod watcher is oddly coupled together, see if we
 // can make this better. For example, if we want to match what prom can do we'd want to have the
 // pod cache store all annotations have the per scraper configuration decide which annotations
-// should be used to constuct the url.
+// should be used to construct the url.
 
 /// Abstraction around a source of endpoints that can be scraped.
 #[async_trait]
-pub trait EndpointProvider: Send + Sync {
+trait EndpointProvider: Send + Sync {
   /// Retrieves the current set of endpoints from this provider, keyed by some unique id.
   fn get(&mut self) -> HashMap<String, PromEndpoint>;
 
@@ -662,14 +718,14 @@ impl NodeEndpointsTarget {
     Ok(Self {
       endpoints: HashMap::from([(
         node_name.to_string(),
-        PromEndpoint {
-          url: format!(
-            "https://{}:{}{}",
-            node_name, node_info.kubelet_port, details.path
-          ),
-          // TODO(mattklein123): Potentially merge in node level metadata?
-          metadata: None,
-        },
+        // TODO(mattklein123): Potentially merge in node level metadata?
+        PromEndpoint::new(
+          "https",
+          node_name,
+          node_info.kubelet_port,
+          &details.path,
+          None,
+        ),
       )]),
     })
   }

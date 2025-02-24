@@ -54,4 +54,10 @@ message KubernetesPrometheusConfig {
     Node node = 3;
     Pod pod = 4;
   }
+
+  // Whether to emit the synthetic "up" metric as per
+  // https://prometheus.io/docs/concepts/jobs_instances/. If true, for each scrape target "up" will
+  // be a gauge set to 0 or 1 depending on whether the scrape was successful. The "instance" tag
+  // will be set to the target's address. The "job" tag will not currently be set.
+  bool emit_up_metric = 5;
 }
