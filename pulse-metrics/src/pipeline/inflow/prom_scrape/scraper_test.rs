@@ -15,6 +15,7 @@ use axum::extract::State;
 use axum::response::Response;
 use axum::routing::get;
 use bd_shutdown::ComponentShutdownTrigger;
+use bd_test_helpers::make_mut;
 use http::StatusCode;
 use itertools::Itertools;
 use k8s_prom::kubernetes_prometheus_config::pod::InclusionFilter;
@@ -157,7 +158,15 @@ async fn test_kube_pod_target_endpoint() {
 
 #[tokio::test]
 async fn test_unavailable() {
-  let mut setup = Setup::new(false, false, false).await;
+  let mut setup = Setup::new(false, false, false, true).await;
+
+  make_mut(&mut setup.dispatcher)
+    .expect_send()
+    .times(2)
+    .returning(|samples| {
+      assert_eq!(samples[0].metric().get_id().name(), "up");
+      assert_eq!(samples[0].metric().value.to_simple(), 0.0);
+    });
 
   setup.tick_tx.send(()).await.unwrap();
 
@@ -178,7 +187,7 @@ async fn test_unavailable() {
 
 #[tokio::test]
 async fn test_invalid_status_code() {
-  let mut setup = Setup::new(true, true, false).await;
+  let mut setup = Setup::new(true, true, false, false).await;
 
   setup.tick_tx.send(()).await.unwrap();
 
@@ -211,7 +220,7 @@ async fn test_invalid_status_code() {
 
 #[tokio::test]
 async fn test_invalid_body() {
-  let mut setup = Setup::new(true, false, true).await;
+  let mut setup = Setup::new(true, false, true, false).await;
 
   setup.tick_tx.send(()).await.unwrap();
 
@@ -244,9 +253,17 @@ async fn test_invalid_body() {
 
 #[tokio::test]
 async fn test_calls() {
-  let mut setup = Setup::new(true, false, false).await;
+  let mut setup = Setup::new(true, false, false, true).await;
 
   setup.tick_tx.send(()).await.unwrap();
+
+  make_mut(&mut setup.dispatcher)
+    .expect_send()
+    .times(2)
+    .returning(|samples| {
+      assert_eq!(samples[0].metric().get_id().name(), "up");
+      assert_eq!(samples[0].metric().value.to_simple(), 1.0);
+    });
 
   setup
     .stats_helper
@@ -316,12 +333,16 @@ impl EndpointProvider for FakeEndpointProvider {
   fn get(&mut self) -> HashMap<String, PromEndpoint> {
     [(
       "foo".to_string(),
-      PromEndpoint {
-        url: format!(
-          "http://localhost:{}",
-          if self.target_server { self.port } else { 1234 }
-        ),
-        metadata: Some(Arc::new(Metadata::new(
+      PromEndpoint::new(
+        "http",
+        "localhost".to_string(),
+        if self.target_server {
+          self.port.into()
+        } else {
+          1234
+        },
+        "",
+        Some(Arc::new(Metadata::new(
           "namespace",
           "pod",
           "ip",
@@ -332,7 +353,7 @@ impl EndpointProvider for FakeEndpointProvider {
           "node_ip",
           None,
         ))),
-      },
+      ),
     )]
     .into()
   }
@@ -352,10 +373,17 @@ struct Setup {
   shutdown_trigger: Option<ComponentShutdownTrigger>,
   server: (u16, Arc<AtomicU64>),
   shutdown_called: bool,
+  dispatcher: Arc<MockPipelineDispatch>,
 }
 
 impl Setup {
-  async fn new(target_server: bool, invalid_status_code: bool, invalid_body: bool) -> Self {
+  #[allow(clippy::fn_params_excessive_bools)]
+  async fn new(
+    target_server: bool,
+    invalid_status_code: bool,
+    invalid_body: bool,
+    emit_up_metric: bool,
+  ) -> Self {
     let stats_helper = bd_server_stats::test::util::stats::Helper::new();
     let stats = Stats::new(&stats_helper.collector().scope("test"));
     let (tick_tx, tick_rx) = tokio::sync::mpsc::channel(1);
@@ -377,10 +405,11 @@ impl Setup {
     .await;
 
     let shutdown_trigger = ComponentShutdownTrigger::default();
+    let dispatcher = Arc::new(MockPipelineDispatch::new());
     let scraper = Scraper::<_, TestDurationJitter>::create(
       "test".to_string(),
       stats,
-      Arc::new(MockPipelineDispatch::new()),
+      dispatcher.clone(),
       shutdown_trigger.make_handle(),
       FakeEndpointProvider {
         target_server,
@@ -389,6 +418,7 @@ impl Setup {
       false,
       0.seconds(),
       Box::new(move || ticker_factory.make_ticker()),
+      emit_up_metric,
     )
     .unwrap();
     scraper.start().await;
@@ -399,6 +429,7 @@ impl Setup {
       server,
       shutdown_trigger: Some(shutdown_trigger),
       shutdown_called: false,
+      dispatcher,
     }
   }
 

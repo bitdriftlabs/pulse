@@ -37,6 +37,8 @@ pub struct KubernetesPrometheusConfig {
     // message fields
     // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.scrape_interval)
     pub scrape_interval: ::protobuf::MessageField<::protobuf::well_known_types::duration::Duration>,
+    // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.emit_up_metric)
+    pub emit_up_metric: bool,
     // message oneof groups
     pub target: ::std::option::Option<kubernetes_prometheus_config::Target>,
     // special fields
@@ -203,7 +205,7 @@ impl KubernetesPrometheusConfig {
     }
 
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(4);
+        let mut fields = ::std::vec::Vec::with_capacity(5);
         let mut oneofs = ::std::vec::Vec::with_capacity(1);
         fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, ::protobuf::well_known_types::duration::Duration>(
             "scrape_interval",
@@ -230,6 +232,11 @@ impl KubernetesPrometheusConfig {
             KubernetesPrometheusConfig::pod,
             KubernetesPrometheusConfig::mut_pod,
             KubernetesPrometheusConfig::set_pod,
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+            "emit_up_metric",
+            |m: &KubernetesPrometheusConfig| { &m.emit_up_metric },
+            |m: &mut KubernetesPrometheusConfig| { &mut m.emit_up_metric },
         ));
         oneofs.push(kubernetes_prometheus_config::Target::generated_oneof_descriptor_data());
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<KubernetesPrometheusConfig>(
@@ -262,6 +269,9 @@ impl ::protobuf::Message for KubernetesPrometheusConfig {
                 34 => {
                     self.target = ::std::option::Option::Some(kubernetes_prometheus_config::Target::Pod(is.read_message()?));
                 },
+                40 => {
+                    self.emit_up_metric = is.read_bool()?;
+                },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                 },
@@ -277,6 +287,9 @@ impl ::protobuf::Message for KubernetesPrometheusConfig {
         if let Some(v) = self.scrape_interval.as_ref() {
             let len = v.compute_size();
             my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+        }
+        if self.emit_up_metric != false {
+            my_size += 1 + 1;
         }
         if let ::std::option::Option::Some(ref v) = self.target {
             match v {
@@ -302,6 +315,9 @@ impl ::protobuf::Message for KubernetesPrometheusConfig {
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
         if let Some(v) = self.scrape_interval.as_ref() {
             ::protobuf::rt::write_message_field_with_cached_size(1, v, os)?;
+        }
+        if self.emit_up_metric != false {
+            os.write_bool(5, self.emit_up_metric)?;
         }
         if let ::std::option::Option::Some(ref v) = self.target {
             match v {
@@ -337,12 +353,14 @@ impl ::protobuf::Message for KubernetesPrometheusConfig {
         self.target = ::std::option::Option::None;
         self.target = ::std::option::Option::None;
         self.target = ::std::option::Option::None;
+        self.emit_up_metric = false;
         self.special_fields.clear();
     }
 
     fn default_instance() -> &'static KubernetesPrometheusConfig {
         static instance: KubernetesPrometheusConfig = KubernetesPrometheusConfig {
             scrape_interval: ::protobuf::MessageField::none(),
+            emit_up_metric: false,
             target: ::std::option::Option::None,
             special_fields: ::protobuf::SpecialFields::new(),
         };
@@ -958,20 +976,21 @@ pub mod kubernetes_prometheus_config {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n%pulse/config/inflow/v1/k8s_prom.proto\x12\x16pulse.config.inflow.v1\
     \x1a\x1egoogle/protobuf/duration.proto\x1a\x17validate/validate.proto\"\
-    \x81\x05\n\x1aKubernetesPrometheusConfig\x12L\n\x0fscrape_interval\x18\
+    \xa7\x05\n\x1aKubernetesPrometheusConfig\x12L\n\x0fscrape_interval\x18\
     \x01\x20\x01(\x0b2\x19.google.protobuf.DurationR\x0escrapeIntervalB\x08\
     \xfaB\x05\x8a\x01\x02\x10\x01\x12Y\n\x08endpoint\x18\x02\x20\x01(\x0b2;.\
     pulse.config.inflow.v1.KubernetesPrometheusConfig.EndpointH\0R\x08endpoi\
     nt\x12M\n\x04node\x18\x03\x20\x01(\x0b27.pulse.config.inflow.v1.Kubernet\
     esPrometheusConfig.NodeH\0R\x04node\x12J\n\x03pod\x18\x04\x20\x01(\x0b26\
-    .pulse.config.inflow.v1.KubernetesPrometheusConfig.PodH\0R\x03pod\x1a\n\
-    \n\x08Endpoint\x1a#\n\x04Node\x12\x1b\n\x04path\x18\x01\x20\x01(\tR\x04p\
-    athB\x07\xfaB\x04r\x02\x10\x01\x1a\xde\x01\n\x03Pod\x12s\n\x11inclusion_\
-    filters\x18\x01\x20\x03(\x0b2F.pulse.config.inflow.v1.KubernetesPromethe\
-    usConfig.Pod.InclusionFilterR\x10inclusionFilters\x1ab\n\x0fInclusionFil\
-    ter\x12;\n\x19container_port_name_regex\x18\x01\x20\x01(\tH\0R\x16contai\
-    nerPortNameRegexB\x12\n\x0bfilter_type\x12\x03\xf8B\x01B\r\n\x06target\
-    \x12\x03\xf8B\x01b\x06proto3\
+    .pulse.config.inflow.v1.KubernetesPrometheusConfig.PodH\0R\x03pod\x12$\n\
+    \x0eemit_up_metric\x18\x05\x20\x01(\x08R\x0cemitUpMetric\x1a\n\n\x08Endp\
+    oint\x1a#\n\x04Node\x12\x1b\n\x04path\x18\x01\x20\x01(\tR\x04pathB\x07\
+    \xfaB\x04r\x02\x10\x01\x1a\xde\x01\n\x03Pod\x12s\n\x11inclusion_filters\
+    \x18\x01\x20\x03(\x0b2F.pulse.config.inflow.v1.KubernetesPrometheusConfi\
+    g.Pod.InclusionFilterR\x10inclusionFilters\x1ab\n\x0fInclusionFilter\x12\
+    ;\n\x19container_port_name_regex\x18\x01\x20\x01(\tH\0R\x16containerPort\
+    NameRegexB\x12\n\x0bfilter_type\x12\x03\xf8B\x01B\r\n\x06target\x12\x03\
+    \xf8B\x01b\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
