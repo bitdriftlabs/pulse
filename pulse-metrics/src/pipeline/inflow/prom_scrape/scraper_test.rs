@@ -7,7 +7,11 @@
 
 use super::{PromEndpoint, Scraper, Stats, Ticker};
 use crate::pipeline::MockPipelineDispatch;
-use crate::pipeline::inflow::prom_scrape::scraper::{EndpointProvider, KubePodTarget};
+use crate::pipeline::inflow::prom_scrape::scraper::{
+  EndpointProvider,
+  KubePodTarget,
+  create_endpoints,
+};
 use crate::pipeline::time::TestDurationJitter;
 use async_trait::async_trait;
 use axum::body::Body;
@@ -18,8 +22,13 @@ use bd_shutdown::ComponentShutdownTrigger;
 use bd_test_helpers::make_mut;
 use http::StatusCode;
 use itertools::Itertools;
-use k8s_prom::kubernetes_prometheus_config::pod::InclusionFilter;
 use k8s_prom::kubernetes_prometheus_config::pod::inclusion_filter::Filter_type;
+use k8s_prom::kubernetes_prometheus_config::pod::use_k8s_https_service_auth_matcher::Auth_matcher;
+use k8s_prom::kubernetes_prometheus_config::pod::{
+  InclusionFilter,
+  KeyValue,
+  UseK8sHttpsServiceAuthMatcher,
+};
 use parking_lot::Mutex;
 use prometheus::labels;
 use pulse_common::k8s::pods_info::container::PodsInfo;
@@ -37,6 +46,65 @@ use tokio::sync::mpsc;
 use vrl::{btreemap, path};
 
 #[tokio::test]
+async fn create_endpoint() {
+  let pod_info = make_pod_info(
+    "some-namespace",
+    "my-awesome-pod",
+    &btreemap!(),
+    btreemap!("prometheus.io/scrape" => "true", "prometheus.io/port" => "123"),
+    HashMap::new(),
+    "127.0.0.1",
+    vec![],
+  );
+  let endpoints = create_endpoints(
+    &[],
+    &[UseK8sHttpsServiceAuthMatcher {
+      auth_matcher: Some(Auth_matcher::AnnotationMatcher(KeyValue {
+        key: "metrics/https".into(),
+        ..Default::default()
+      })),
+      ..Default::default()
+    }],
+    &pod_info,
+    None,
+    None,
+    &pod_info.annotations,
+  );
+  assert_eq!(endpoints.len(), 1);
+  assert!(!endpoints[0].1.use_https_k8s_service_auth);
+
+  let pod_info = make_pod_info(
+    "some-namespace",
+    "my-awesome-pod",
+    &btreemap!(),
+    btreemap!(
+      "prometheus.io/scrape" => "true",
+      "prometheus.io/port" => "123",
+      "metrics/https" => "true"
+    ),
+    HashMap::new(),
+    "127.0.0.1",
+    vec![],
+  );
+  let endpoints = create_endpoints(
+    &[],
+    &[UseK8sHttpsServiceAuthMatcher {
+      auth_matcher: Some(Auth_matcher::AnnotationMatcher(KeyValue {
+        key: "metrics/https".into(),
+        ..Default::default()
+      })),
+      ..Default::default()
+    }],
+    &pod_info,
+    None,
+    None,
+    &pod_info.annotations,
+  );
+  assert_eq!(endpoints.len(), 1);
+  assert!(endpoints[0].1.use_https_k8s_service_auth);
+}
+
+#[tokio::test]
 async fn multiple_ports() {
   let mut initial_state = PodsInfo::default();
   initial_state.insert(make_pod_info(
@@ -52,6 +120,7 @@ async fn multiple_ports() {
   let pods_info = Arc::new(PodsInfoSingleton::new(rx)).make_owned();
   let mut target = KubePodTarget {
     inclusion_filters: vec![],
+    use_k8s_https_service_auth_matchers: vec![],
     pods_info,
   };
   let endpoints = target.get();
@@ -96,6 +165,7 @@ async fn inclusion_filters() {
       filter_type: Some(Filter_type::ContainerPortNameRegex("scrape_.*".into())),
       ..Default::default()
     }],
+    use_k8s_https_service_auth_matchers: vec![],
     pods_info,
   };
   let endpoints = target.get();
@@ -125,6 +195,7 @@ async fn test_kube_pod_target_endpoint() {
   let pods_info = Arc::new(PodsInfoSingleton::new(rx)).make_owned();
   let mut target = KubePodTarget {
     inclusion_filters: vec![],
+    use_k8s_https_service_auth_matchers: vec![],
     pods_info,
   };
   let endpoints = target.get();
@@ -334,14 +405,13 @@ impl EndpointProvider for FakeEndpointProvider {
     [(
       "foo".to_string(),
       PromEndpoint::new(
-        "http",
         "localhost".to_string(),
         if self.target_server {
           self.port.into()
         } else {
           1234
         },
-        "",
+        String::new(),
         Some(Arc::new(Metadata::new(
           "namespace",
           "pod",
@@ -353,6 +423,7 @@ impl EndpointProvider for FakeEndpointProvider {
           "node_ip",
           None,
         ))),
+        false,
       ),
     )]
     .into()
@@ -415,7 +486,6 @@ impl Setup {
         target_server,
         port: server.0,
       },
-      false,
       0.seconds(),
       Box::new(move || ticker_factory.make_ticker()),
       emit_up_metric,

@@ -41,10 +41,29 @@ message KubernetesPrometheusConfig {
       }
     }
 
+    message KeyValue {
+      string key = 1 [(validate.rules).string = {min_len: 1}];
+      // If not supplied, the value is ignored and only key presence is checked.
+      optional string value = 2;
+    }
+
+    message UseK8sHttpsServiceAuthMatcher {
+      oneof auth_matcher {
+        option (validate.required) = true;
+
+        // Matches if the supplied key/value pair is present in the pod's annotations.
+        KeyValue annotation_matcher = 1;
+      }
+    }
+
     // Inclusion filters can be used to include pods to be scraped even if they do not have the
     // standard Prometheus annotations. An inclusion filter if successful will result in a container
     // port to be scraped.
     repeated InclusionFilter inclusion_filters = 1;
+
+    // If any of the optionally provided matchers matches, HTTPS K8s service auth will be used
+    // against the scrape target.
+    repeated UseK8sHttpsServiceAuthMatcher use_k8s_https_service_auth_matchers = 2;
   }
 
   oneof target {
