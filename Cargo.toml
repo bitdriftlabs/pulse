@@ -15,9 +15,9 @@ ahash                  = "0.8"
 anyhow                 = "1"
 assert_matches         = "1.5.0"
 async-trait            = "0.1"
-aws-config             = "1.5.16"
+aws-config             = "1.5.17"
 aws-credential-types   = "1.2.1"
-aws-sdk-sqs            = "1.59.0"
+aws-sdk-sqs            = "1.60.0"
 aws-sigv4              = "1.2.9"
 aws-smithy-async       = "1.2.4"
 aws-smithy-http        = "0.60.12"
@@ -41,7 +41,7 @@ bd-time                = { git = "https://github.com/bitdriftlabs/shared-core.gi
 built                  = { version = "0.7", features = ["git2"] }
 bytes                  = "1"
 cc                     = "1.2.15"
-clap                   = { version = "4.5.30", features = ["derive", "env"] }
+clap                   = { version = "4.5.31", features = ["derive", "env"] }
 comfy-table            = "7.1.4"
 console-subscriber     = "0.4.1"
 criterion              = { version = "0.5", features = ["html_reports"] }

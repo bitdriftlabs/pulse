@@ -34,8 +34,9 @@ use http::StatusCode;
 use http::header::{ACCEPT, AUTHORIZATION};
 use itertools::Itertools;
 use k8s_prom::KubernetesPrometheusConfig;
-use k8s_prom::kubernetes_prometheus_config::pod::InclusionFilter;
 use k8s_prom::kubernetes_prometheus_config::pod::inclusion_filter::Filter_type;
+use k8s_prom::kubernetes_prometheus_config::pod::use_k8s_https_service_auth_matcher::Auth_matcher;
+use k8s_prom::kubernetes_prometheus_config::pod::{InclusionFilter, UseK8sHttpsServiceAuthMatcher};
 use k8s_prom::kubernetes_prometheus_config::{self, Target};
 use parking_lot::Mutex;
 use prometheus::IntCounter;
@@ -84,8 +85,28 @@ fn process_inclusion_filters(
     .collect()
 }
 
+fn process_k8s_https_service_auth_matchers(
+  use_k8s_https_service_auth_matchers: &[UseK8sHttpsServiceAuthMatcher],
+  pod_info: &PodInfo,
+) -> bool {
+  use_k8s_https_service_auth_matchers.iter().any(|matcher| {
+    match matcher.auth_matcher.as_ref().expect("pgv") {
+      Auth_matcher::AnnotationMatcher(matcher) => pod_info
+        .annotations
+        .get(matcher.key.as_str())
+        .is_some_and(|value| {
+          matcher
+            .value
+            .as_ref()
+            .is_none_or(|expected_value| value.as_str() == expected_value.as_str())
+        }),
+    }
+  })
+}
+
 fn create_endpoints(
   inclusion_filters: &[InclusionFilter],
+  use_k8s_https_service_auth_matchers: &[UseK8sHttpsServiceAuthMatcher],
   pod_info: &PodInfo,
   service_name: Option<&str>,
   maybe_service_port: Option<i32>,
@@ -129,6 +150,9 @@ fn create_endpoints(
     (None, true) => vec![9090],
   };
 
+  let use_k8s_https_service_auth =
+    process_k8s_https_service_auth_matchers(use_k8s_https_service_auth_matchers, pod_info);
+
   ports
     .iter()
     .map(|port| {
@@ -141,10 +165,9 @@ fn create_endpoints(
           port
         ),
         PromEndpoint::new(
-          "http",
           pod_info.ip.to_string(),
           *port,
-          &prom_endpoint_path,
+          prom_endpoint_path.clone(),
           Some(Arc::new(Metadata::new(
             &prom_namespace,
             &pod_info.name,
@@ -156,6 +179,7 @@ fn create_endpoints(
             &pod_info.node_ip,
             Some(format!("{}:{port}", pod_info.ip)),
           ))),
+          use_k8s_https_service_auth,
         ),
       )
     })
@@ -175,24 +199,25 @@ fn create_endpoints(
 struct PromEndpoint {
   address: String,
   port: i32,
-  url: String,
+  path: String,
   metadata: Option<Arc<Metadata>>,
+  use_https_k8s_service_auth: bool,
 }
 
 impl PromEndpoint {
-  fn new(
-    scheme: &str,
+  const fn new(
     address: String,
     port: i32,
-    path: &str,
+    path: String,
     metadata: Option<Arc<Metadata>>,
+    use_https_k8s_service_auth: bool,
   ) -> Self {
-    let url = format!("{scheme}://{address}:{port}{path}");
     Self {
       address,
       port,
-      url,
+      path,
       metadata,
+      use_https_k8s_service_auth,
     }
   }
 
@@ -200,14 +225,23 @@ impl PromEndpoint {
     self.metadata.as_ref()
   }
 
-  async fn scrape(
-    &self,
-    client: &reqwest::Client,
-    k8s_service_account: bool,
-  ) -> anyhow::Result<(String, StatusCode)> {
-    let mut request = client.get(&self.url).header(ACCEPT, "text/plain");
+  async fn scrape(&self, client: &reqwest::Client) -> anyhow::Result<(String, StatusCode)> {
+    let mut request = client
+      .get(format!(
+        "{}://{}:{}{}",
+        if self.use_https_k8s_service_auth {
+          "https"
+        } else {
+          "http"
+        },
+        self.address,
+        self.port,
+        self.path
+      ))
+      .header(ACCEPT, "text/plain");
 
-    if k8s_service_account {
+    if self.use_https_k8s_service_auth {
+      // TODO(mattklein123): Read this once on startup.
       request = request.header(
         AUTHORIZATION,
         format!(
@@ -262,9 +296,8 @@ struct Scraper<Provider: EndpointProvider, Jitter: DurationJitter> {
   dispatcher: Arc<dyn PipelineDispatch>,
   shutdown_trigger_handle: ComponentShutdownTriggerHandle,
   endpoints: Mutex<Option<Provider>>,
-  k8s_service_account: bool,
   scrape_interval: Duration,
-  client: reqwest::Client,
+  http_client: reqwest::Client,
   ticker_factory: Box<dyn Fn() -> Box<dyn Ticker> + Send + Sync>,
   jitter: PhantomData<Jitter>,
   emit_up_metric: bool,
@@ -279,29 +312,34 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
     dispatcher: Arc<dyn PipelineDispatch>,
     shutdown_trigger_handle: ComponentShutdownTriggerHandle,
     endpoints: Provider,
-    k8s_service_account_caller: bool,
     scrape_interval: Duration,
     ticker_factory: Box<dyn Fn() -> Box<dyn Ticker> + Send + Sync>,
     emit_up_metric: bool,
   ) -> anyhow::Result<DynamicPipelineInflow> {
-    let client = if k8s_service_account_caller {
-      reqwest::Client::builder()
-        .add_root_certificate(reqwest::Certificate::from_pem(&std::fs::read(
-          "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
-        )?)?)
-        .danger_accept_invalid_certs(true)
-        .build()?
-    } else {
-      reqwest::Client::new()
-    };
+    fn make_https_client() -> anyhow::Result<reqwest::Client> {
+      Ok(
+        reqwest::Client::builder()
+          .add_root_certificate(reqwest::Certificate::from_pem(&std::fs::read(
+            "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+          )?)?)
+          .build()?,
+      )
+    }
+
+    // In practice we should always have a valid CA cert, but this won't work in tests, so we
+    // fall back to a basic client if we can't find it.
+    let http_client = make_https_client()
+      .inspect_err(|e| {
+        log::warn!("could not create K8s service account HTTPS client, falling back to basic: {e}");
+      })
+      .or_else(|_| Ok::<_, anyhow::Error>(reqwest::Client::new()))?;
 
     Ok(Arc::new(Self {
       name,
       stats,
       dispatcher,
-      client,
+      http_client,
       endpoints: Mutex::new(Some(endpoints)),
-      k8s_service_account: k8s_service_account_caller,
       scrape_interval,
       shutdown_trigger_handle,
       ticker_factory,
@@ -355,10 +393,7 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
 
       log::debug!("performing scrape");
       self.stats.scrape_attempt.inc();
-      let lines = match prom_endpoint
-        .scrape(&self.client, self.k8s_service_account)
-        .await
-      {
+      let lines = match prom_endpoint.scrape(&self.http_client).await {
         Ok((lines, status)) => {
           if status == 200 {
             Some(lines)
@@ -575,9 +610,9 @@ pub async fn make(
       context.shutdown_trigger_handle,
       KubePodTarget {
         inclusion_filters: pod_config.inclusion_filters,
+        use_k8s_https_service_auth_matchers: pod_config.use_k8s_https_service_auth_matchers,
         pods_info: (context.k8s_watch_factory)().await?.make_owned(),
       },
-      false,
       scrape_interval,
       ticker_factory,
       config.emit_up_metric,
@@ -590,7 +625,6 @@ pub async fn make(
       KubeEndpointsTarget {
         pods_info: (context.k8s_watch_factory)().await?.make_owned(),
       },
-      false,
       scrape_interval,
       ticker_factory,
       config.emit_up_metric,
@@ -601,7 +635,6 @@ pub async fn make(
       context.dispatcher,
       context.shutdown_trigger_handle,
       NodeEndpointsTarget::new(context.k8s_config, details).await?,
-      true,
       scrape_interval,
       ticker_factory,
       config.emit_up_metric,
@@ -631,6 +664,7 @@ trait EndpointProvider: Send + Sync {
 /// Resolves prom endpoints via node-local Kubernetes pods.
 struct KubePodTarget {
   inclusion_filters: Vec<InclusionFilter>,
+  use_k8s_https_service_auth_matchers: Vec<UseK8sHttpsServiceAuthMatcher>,
   pods_info: OwnedPodsInfoSingleton,
 }
 
@@ -644,6 +678,7 @@ impl EndpointProvider for KubePodTarget {
       .flat_map(|(_, pod_info)| {
         create_endpoints(
           &self.inclusion_filters,
+          &self.use_k8s_https_service_auth_matchers,
           pod_info,
           None,
           None,
@@ -675,6 +710,7 @@ impl EndpointProvider for KubeEndpointsTarget {
     for (_, pod_info) in pods.pods() {
       for service in pod_info.services.values() {
         endpoints.extend(create_endpoints(
+          &[],
           &[],
           pod_info,
           Some(&service.name),
@@ -720,11 +756,11 @@ impl NodeEndpointsTarget {
         node_name.to_string(),
         // TODO(mattklein123): Potentially merge in node level metadata?
         PromEndpoint::new(
-          "https",
           node_name,
           node_info.kubelet_port,
-          &details.path,
+          details.path.to_string(),
           None,
+          true,
         ),
       )]),
     })
