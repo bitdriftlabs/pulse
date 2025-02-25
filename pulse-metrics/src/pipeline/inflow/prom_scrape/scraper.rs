@@ -322,6 +322,11 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
           .add_root_certificate(reqwest::Certificate::from_pem(&std::fs::read(
             "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
           )?)?)
+          // TODO(mattklein123): This was here for a while, and then I removed it thinking that it
+          // shouldn't be needed, but connections to K8s APIs still fail without it. We should
+          // investigate why this is actually required since AFAICT the public cert above should
+          // allow for validation of the server cert.
+          .danger_accept_invalid_certs(true)
           .build()?,
       )
     }
