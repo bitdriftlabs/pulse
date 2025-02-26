@@ -339,8 +339,8 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
         )?)?);
 
       if let (Some(cert_file), Some(key_file)) = (client_cert_file, client_key_file) {
-        let cert = std::fs::read(cert_path)?;
-        let key = std::fs::read(key_path)?;
+        let cert = std::fs::read(cert_file)?;
+        let key = std::fs::read(key_file)?;
         builder = builder.identity(reqwest::Identity::from_pem(&[cert, key].concat())?);
       }
 
