@@ -104,8 +104,8 @@ async fn create_endpoint() {
   assert!(endpoints[0].1.use_https_k8s_service_auth);
 }
 
-#[test]
-fn scrape_path() {
+#[tokio::test]
+async fn scrape_path() {
   let pod_info = make_pod_info(
     "some-namespace",
     "my-awesome-pod",
