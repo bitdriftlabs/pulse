@@ -130,6 +130,13 @@ fn create_endpoints(
   let prom_endpoint_path = prom_annotations
     .get("prometheus.io/path")
     .cloned()
+    .map(|path| {
+      if path.starts_with('/') {
+        path
+      } else {
+        format!("/{}", path)
+      }
+    })
     .unwrap_or_else(|| "/metrics".to_string());
 
   // We attempt the resolve the prom endpoint by considering (in order):
