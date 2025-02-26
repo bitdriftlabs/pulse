@@ -139,7 +139,7 @@ fn create_endpoints(
   let ports: Vec<i32> = prom_annotations
     .get("prometheus.io/port")
     .into_iter()
-    .flat_map(|port| port.split(',').filter_map(|p| p.parse().ok()))
+    .flat_map(|port| port.split(',').map(str::trim).filter_map(|p| p.parse().ok()))
     .chain(included_ports)
     .unique()
     .collect_vec();

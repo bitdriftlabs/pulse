@@ -134,6 +134,35 @@ async fn multiple_ports() {
 }
 
 #[tokio::test]
+async fn multiple_ports_with_space() {
+  let mut initial_state = PodsInfo::default();
+  initial_state.insert(make_pod_info(
+    "some-namespace",
+    "my-awesome-pod",
+    &btreemap!(),
+    btreemap!("prometheus.io/scrape" => "true", "prometheus.io/port" => "123, 124"),
+    HashMap::new(),
+    "127.0.0.1",
+    vec![],
+  ));
+  let (_tx, rx) = tokio::sync::watch::channel(initial_state);
+  let pods_info = Arc::new(PodsInfoSingleton::new(rx)).make_owned();
+  let mut target = KubePodTarget {
+    inclusion_filters: vec![],
+    use_k8s_https_service_auth_matchers: vec![],
+    pods_info,
+  };
+  let endpoints = target.get();
+  assert_eq!(
+    endpoints.keys().sorted().collect_vec(),
+    &[
+      "some-namespace//my-awesome-pod/123",
+      "some-namespace//my-awesome-pod/124"
+    ]
+  );
+}
+
+#[tokio::test]
 async fn inclusion_filters() {
   let mut initial_state = PodsInfo::default();
   initial_state.insert(make_pod_info(
