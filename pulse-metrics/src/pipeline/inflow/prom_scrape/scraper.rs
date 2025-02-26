@@ -329,25 +329,34 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
     scrape_interval: Duration,
     ticker_factory: Box<dyn Fn() -> Box<dyn Ticker> + Send + Sync>,
     emit_up_metric: bool,
+    cert_file: String,
+    key_file: String,
   ) -> anyhow::Result<DynamicPipelineInflow> {
-    fn make_https_client() -> anyhow::Result<reqwest::Client> {
-      Ok(
-        reqwest::Client::builder()
-          .add_root_certificate(reqwest::Certificate::from_pem(&std::fs::read(
-            "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
-          )?)?)
-          // TODO(mattklein123): This was here for a while, and then I removed it thinking that it
-          // shouldn't be needed, but connections to K8s APIs still fail without it. We should
-          // investigate why this is actually required since AFAICT the public cert above should
-          // allow for validation of the server cert.
-          .danger_accept_invalid_certs(true)
-          .build()?,
-      )
+    fn make_https_client(client_cert_file: Option<&str>, client_key_file: Option<&str>) -> anyhow::Result<reqwest::Client> {
+      let mut builder = reqwest::Client::builder()
+        .add_root_certificate(reqwest::Certificate::from_pem(&std::fs::read(
+          "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+        )?)?);
+
+      if let (Some(cert_file), Some(key_file)) = (client_cert_file, client_key_file) {
+        let cert = std::fs::read(cert_path)?;
+        let key = std::fs::read(key_path)?;
+        builder = builder.identity(reqwest::Identity::from_pem(&[cert, key].concat())?);
+      }
+
+      // TODO(mattklein123): This was here for a while, and then I removed it thinking that it
+      // shouldn't be needed, but connections to K8s APIs still fail without it. We should
+      // investigate why this is actually required since AFAICT the public cert above should
+      // allow for validation of the server cert.
+      Ok(builder.danger_accept_invalid_certs(true).build()?)
     }
 
     // In practice we should always have a valid CA cert, but this won't work in tests, so we
     // fall back to a basic client if we can't find it.
-    let http_client = make_https_client()
+    let http_client = make_https_client(
+      if !cert_file.is_empty() { Some(&cert_file) } else { None },
+      if !key_file.is_empty() { Some(&key_file) } else { None },
+    )
       .inspect_err(|e| {
         log::warn!("could not create K8s service account HTTPS client, falling back to basic: {e}");
       })
@@ -635,6 +644,8 @@ pub async fn make(
       scrape_interval,
       ticker_factory,
       config.emit_up_metric,
+      config.tls_server_config.as_ref().map_or(String::new(), |tls| tls.cert_file.clone().unwrap_or_default()),
+      config.tls_server_config.as_ref().map_or(String::new(), |tls| tls.key_file.clone().unwrap_or_default())
     ),
     Target::Endpoint(_) => Scraper::<_, RealDurationJitter>::create(
       context.name,
@@ -647,6 +658,8 @@ pub async fn make(
       scrape_interval,
       ticker_factory,
       config.emit_up_metric,
+      config.tls_server_config.as_ref().map_or(String::new(), |tls| tls.cert_file.clone().unwrap_or_default()),
+      config.tls_server_config.as_ref().map_or(String::new(), |tls| tls.key_file.clone().unwrap_or_default())
     ),
     Target::Node(details) => Scraper::<_, RealDurationJitter>::create(
       context.name,
@@ -657,6 +670,8 @@ pub async fn make(
       scrape_interval,
       ticker_factory,
       config.emit_up_metric,
+      config.tls_server_config.as_ref().map_or(String::new(), |tls| tls.cert_file.clone().unwrap_or_default()),
+      config.tls_server_config.as_ref().map_or(String::new(), |tls| tls.key_file.clone().unwrap_or_default())
     ),
   }
 }
