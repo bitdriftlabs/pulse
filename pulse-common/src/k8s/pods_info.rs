@@ -259,8 +259,11 @@ pub mod container {
 
       let namespace = object_namespace(&pod.metadata);
 
+      // We include both pending and running pods currently, as long as the pod has an IP address
+      // and the other above requirements. Pending is primarily useful if emitting the "up" metric
+      // during scraping for pods that might be stuck in pending.
       // TODO(mattklein123): Potentially move this into the field selector query?
-      if phase != "Running" {
+      if phase != "Running" && phase != "Pending" {
         if self.remove(namespace, pod_name) {
           log::trace!(
             "removing pod {}, no longer running",
