@@ -12,6 +12,7 @@ import "pulse/config/inflow/v1/k8s_prom.proto";
 import "pulse/config/inflow/v1/metric_generator.proto";
 import "pulse/config/inflow/v1/prom_remote_write.proto";
 import "pulse/config/inflow/v1/wire.proto";
+import "pulse/config/inflow/v1/otlp.proto";
 import "validate/validate.proto";
 
 // Configuration for an individual inflow.
@@ -28,5 +29,6 @@ message InflowConfig {
     UdpServerConfig udp = 5;
     UnixServerConfig unix = 6;
     KubernetesPrometheusConfig k8s_prom = 7;
+    OtlpServerConfig otlp = 8;
   }
 }

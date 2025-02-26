@@ -9,3 +9,4 @@ pub mod carbon;
 pub mod metric;
 pub mod prom;
 pub mod statsd;
+pub mod otlp;

@@ -8,3 +8,4 @@
 pub mod config;
 pub mod internode;
 pub mod vrl_tester;
+pub mod otlp;
