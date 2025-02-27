@@ -39,8 +39,8 @@ pub struct KubernetesPrometheusConfig {
     pub scrape_interval: ::protobuf::MessageField<::protobuf::well_known_types::duration::Duration>,
     // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.emit_up_metric)
     pub emit_up_metric: bool,
-    // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.tls_server_config)
-    pub tls_server_config: ::protobuf::MessageField<kubernetes_prometheus_config::TLS>,
+    // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.tls_config)
+    pub tls_config: ::protobuf::MessageField<kubernetes_prometheus_config::TLS>,
     // message oneof groups
     pub target: ::std::option::Option<kubernetes_prometheus_config::Target>,
     // special fields
@@ -241,9 +241,9 @@ impl KubernetesPrometheusConfig {
             |m: &mut KubernetesPrometheusConfig| { &mut m.emit_up_metric },
         ));
         fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, kubernetes_prometheus_config::TLS>(
-            "tls_server_config",
-            |m: &KubernetesPrometheusConfig| { &m.tls_server_config },
-            |m: &mut KubernetesPrometheusConfig| { &mut m.tls_server_config },
+            "tls_config",
+            |m: &KubernetesPrometheusConfig| { &m.tls_config },
+            |m: &mut KubernetesPrometheusConfig| { &mut m.tls_config },
         ));
         oneofs.push(kubernetes_prometheus_config::Target::generated_oneof_descriptor_data());
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<KubernetesPrometheusConfig>(
@@ -280,7 +280,7 @@ impl ::protobuf::Message for KubernetesPrometheusConfig {
                     self.emit_up_metric = is.read_bool()?;
                 },
                 50 => {
-                    ::protobuf::rt::read_singular_message_into_field(is, &mut self.tls_server_config)?;
+                    ::protobuf::rt::read_singular_message_into_field(is, &mut self.tls_config)?;
                 },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
@@ -301,7 +301,7 @@ impl ::protobuf::Message for KubernetesPrometheusConfig {
         if self.emit_up_metric != false {
             my_size += 1 + 1;
         }
-        if let Some(v) = self.tls_server_config.as_ref() {
+        if let Some(v) = self.tls_config.as_ref() {
             let len = v.compute_size();
             my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
         }
@@ -333,7 +333,7 @@ impl ::protobuf::Message for KubernetesPrometheusConfig {
         if self.emit_up_metric != false {
             os.write_bool(5, self.emit_up_metric)?;
         }
-        if let Some(v) = self.tls_server_config.as_ref() {
+        if let Some(v) = self.tls_config.as_ref() {
             ::protobuf::rt::write_message_field_with_cached_size(6, v, os)?;
         }
         if let ::std::option::Option::Some(ref v) = self.target {
@@ -371,7 +371,7 @@ impl ::protobuf::Message for KubernetesPrometheusConfig {
         self.target = ::std::option::Option::None;
         self.target = ::std::option::Option::None;
         self.emit_up_metric = false;
-        self.tls_server_config.clear();
+        self.tls_config.clear();
         self.special_fields.clear();
     }
 
@@ -379,7 +379,7 @@ impl ::protobuf::Message for KubernetesPrometheusConfig {
         static instance: KubernetesPrometheusConfig = KubernetesPrometheusConfig {
             scrape_interval: ::protobuf::MessageField::none(),
             emit_up_metric: false,
-            tls_server_config: ::protobuf::MessageField::none(),
+            tls_config: ::protobuf::MessageField::none(),
             target: ::std::option::Option::None,
             special_fields: ::protobuf::SpecialFields::new(),
         };
@@ -1503,33 +1503,33 @@ pub mod kubernetes_prometheus_config {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n%pulse/config/inflow/v1/k8s_prom.proto\x12\x16pulse.config.inflow.v1\
     \x1a\x1egoogle/protobuf/duration.proto\x1a\x17validate/validate.proto\"\
-    \x88\n\n\x1aKubernetesPrometheusConfig\x12L\n\x0fscrape_interval\x18\x01\
+    \xfb\t\n\x1aKubernetesPrometheusConfig\x12L\n\x0fscrape_interval\x18\x01\
     \x20\x01(\x0b2\x19.google.protobuf.DurationR\x0escrapeIntervalB\x08\xfaB\
     \x05\x8a\x01\x02\x10\x01\x12Y\n\x08endpoint\x18\x02\x20\x01(\x0b2;.pulse\
     .config.inflow.v1.KubernetesPrometheusConfig.EndpointH\0R\x08endpoint\
     \x12M\n\x04node\x18\x03\x20\x01(\x0b27.pulse.config.inflow.v1.Kubernetes\
     PrometheusConfig.NodeH\0R\x04node\x12J\n\x03pod\x18\x04\x20\x01(\x0b26.p\
     ulse.config.inflow.v1.KubernetesPrometheusConfig.PodH\0R\x03pod\x12$\n\
-    \x0eemit_up_metric\x18\x05\x20\x01(\x08R\x0cemitUpMetric\x12b\n\x11tls_s\
-    erver_config\x18\x06\x20\x01(\x0b26.pulse.config.inflow.v1.KubernetesPro\
-    metheusConfig.TLSR\x0ftlsServerConfig\x1a\n\n\x08Endpoint\x1a#\n\x04Node\
-    \x12\x1b\n\x04path\x18\x01\x20\x01(\tR\x04pathB\x07\xfaB\x04r\x02\x10\
-    \x01\x1a\xf7\x04\n\x03Pod\x12s\n\x11inclusion_filters\x18\x01\x20\x03(\
-    \x0b2F.pulse.config.inflow.v1.KubernetesPrometheusConfig.Pod.InclusionFi\
-    lterR\x10inclusionFilters\x12\xa1\x01\n#use_k8s_https_service_auth_match\
-    ers\x18\x02\x20\x03(\x0b2T.pulse.config.inflow.v1.KubernetesPrometheusCo\
-    nfig.Pod.UseK8sHttpsServiceAuthMatcherR\x1euseK8sHttpsServiceAuthMatcher\
-    s\x1ab\n\x0fInclusionFilter\x12;\n\x19container_port_name_regex\x18\x01\
-    \x20\x01(\tH\0R\x16containerPortNameRegexB\x12\n\x0bfilter_type\x12\x03\
-    \xf8B\x01\x1aJ\n\x08KeyValue\x12\x19\n\x03key\x18\x01\x20\x01(\tR\x03key\
-    B\x07\xfaB\x04r\x02\x10\x01\x12\x19\n\x05value\x18\x02\x20\x01(\tH\0R\
-    \x05value\x88\x01\x01B\x08\n\x06_value\x1a\xa6\x01\n\x1dUseK8sHttpsServi\
-    ceAuthMatcher\x12p\n\x12annotation_matcher\x18\x01\x20\x01(\x0b2?.pulse.\
-    config.inflow.v1.KubernetesPrometheusConfig.Pod.KeyValueH\0R\x11annotati\
-    onMatcherB\x13\n\x0cauth_matcher\x12\x03\xf8B\x01\x1ab\n\x03TLS\x12\x20\
-    \n\tcert_file\x18\x01\x20\x01(\tH\0R\x08certFile\x88\x01\x01\x12\x1e\n\
-    \x08key_file\x18\x02\x20\x01(\tH\x01R\x07keyFile\x88\x01\x01B\x0c\n\n_ce\
-    rt_fileB\x0b\n\t_key_fileB\r\n\x06target\x12\x03\xf8B\x01b\x06proto3\
+    \x0eemit_up_metric\x18\x05\x20\x01(\x08R\x0cemitUpMetric\x12U\n\ntls_con\
+    fig\x18\x06\x20\x01(\x0b26.pulse.config.inflow.v1.KubernetesPrometheusCo\
+    nfig.TLSR\ttlsConfig\x1a\n\n\x08Endpoint\x1a#\n\x04Node\x12\x1b\n\x04pat\
+    h\x18\x01\x20\x01(\tR\x04pathB\x07\xfaB\x04r\x02\x10\x01\x1a\xf7\x04\n\
+    \x03Pod\x12s\n\x11inclusion_filters\x18\x01\x20\x03(\x0b2F.pulse.config.\
+    inflow.v1.KubernetesPrometheusConfig.Pod.InclusionFilterR\x10inclusionFi\
+    lters\x12\xa1\x01\n#use_k8s_https_service_auth_matchers\x18\x02\x20\x03(\
+    \x0b2T.pulse.config.inflow.v1.KubernetesPrometheusConfig.Pod.UseK8sHttps\
+    ServiceAuthMatcherR\x1euseK8sHttpsServiceAuthMatchers\x1ab\n\x0fInclusio\
+    nFilter\x12;\n\x19container_port_name_regex\x18\x01\x20\x01(\tH\0R\x16co\
+    ntainerPortNameRegexB\x12\n\x0bfilter_type\x12\x03\xf8B\x01\x1aJ\n\x08Ke\
+    yValue\x12\x19\n\x03key\x18\x01\x20\x01(\tR\x03keyB\x07\xfaB\x04r\x02\
+    \x10\x01\x12\x19\n\x05value\x18\x02\x20\x01(\tH\0R\x05value\x88\x01\x01B\
+    \x08\n\x06_value\x1a\xa6\x01\n\x1dUseK8sHttpsServiceAuthMatcher\x12p\n\
+    \x12annotation_matcher\x18\x01\x20\x01(\x0b2?.pulse.config.inflow.v1.Kub\
+    ernetesPrometheusConfig.Pod.KeyValueH\0R\x11annotationMatcherB\x13\n\x0c\
+    auth_matcher\x12\x03\xf8B\x01\x1ab\n\x03TLS\x12\x20\n\tcert_file\x18\x01\
+    \x20\x01(\tH\0R\x08certFile\x88\x01\x01\x12\x1e\n\x08key_file\x18\x02\
+    \x20\x01(\tH\x01R\x07keyFile\x88\x01\x01B\x0c\n\n_cert_fileB\x0b\n\t_key\
+    _fileB\r\n\x06target\x12\x03\xf8B\x01b\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file

@@ -628,7 +628,7 @@ pub async fn make(
   let ticker_factory = Box::new(move || {
     Box::new(scrape_interval.interval(MissedTickBehavior::Delay)) as Box<dyn Ticker>
   });
-  let tls_config = config.tls_server_config.into_option();
+  let tls_config = config.tls_config.into_option();
   match config.target.expect("pgv") {
     Target::Pod(pod_config) => Scraper::<_, RealDurationJitter>::create(
       context.name,
