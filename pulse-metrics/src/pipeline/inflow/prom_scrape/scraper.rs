@@ -37,7 +37,7 @@ use k8s_prom::KubernetesPrometheusConfig;
 use k8s_prom::kubernetes_prometheus_config::pod::inclusion_filter::Filter_type;
 use k8s_prom::kubernetes_prometheus_config::pod::use_k8s_https_service_auth_matcher::Auth_matcher;
 use k8s_prom::kubernetes_prometheus_config::pod::{InclusionFilter, UseK8sHttpsServiceAuthMatcher};
-use k8s_prom::kubernetes_prometheus_config::{self, Target};
+use k8s_prom::kubernetes_prometheus_config::{self, TLS, Target};
 use parking_lot::Mutex;
 use prometheus::IntCounter;
 use pulse_common::k8s::pods_info::{OwnedPodsInfoSingleton, PodInfo};
@@ -329,25 +329,32 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
     scrape_interval: Duration,
     ticker_factory: Box<dyn Fn() -> Box<dyn Ticker> + Send + Sync>,
     emit_up_metric: bool,
+    tls_config: Option<&TLS>,
   ) -> anyhow::Result<DynamicPipelineInflow> {
-    fn make_https_client() -> anyhow::Result<reqwest::Client> {
-      Ok(
-        reqwest::Client::builder()
-          .add_root_certificate(reqwest::Certificate::from_pem(&std::fs::read(
-            "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
-          )?)?)
-          // TODO(mattklein123): This was here for a while, and then I removed it thinking that it
-          // shouldn't be needed, but connections to K8s APIs still fail without it. We should
-          // investigate why this is actually required since AFAICT the public cert above should
-          // allow for validation of the server cert.
-          .danger_accept_invalid_certs(true)
-          .build()?,
-      )
+    fn make_https_client(tls_config: Option<&TLS>) -> anyhow::Result<reqwest::Client> {
+      let mut builder =
+        reqwest::Client::builder().add_root_certificate(reqwest::Certificate::from_pem(
+          &std::fs::read("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt")?,
+        )?);
+
+      if let Some(tls) = tls_config {
+        if let (Some(cert_file), Some(key_file)) = (tls.cert_file.as_ref(), tls.key_file.as_ref()) {
+          let cert = std::fs::read(cert_file)?;
+          let key = std::fs::read(key_file)?;
+          builder = builder.identity(reqwest::Identity::from_pem(&[cert, key].concat())?);
+        }
+      }
+
+      // TODO(mattklein123): This was here for a while, and then I removed it thinking that it
+      // shouldn't be needed, but connections to K8s APIs still fail without it. We should
+      // investigate why this is actually required since AFAICT the public cert above should
+      // allow for validation of the server cert.
+      Ok(builder.danger_accept_invalid_certs(true).build()?)
     }
 
     // In practice we should always have a valid CA cert, but this won't work in tests, so we
     // fall back to a basic client if we can't find it.
-    let http_client = make_https_client()
+    let http_client = make_https_client(tls_config)
       .inspect_err(|e| {
         log::warn!("could not create K8s service account HTTPS client, falling back to basic: {e}");
       })
@@ -621,6 +628,7 @@ pub async fn make(
   let ticker_factory = Box::new(move || {
     Box::new(scrape_interval.interval(MissedTickBehavior::Delay)) as Box<dyn Ticker>
   });
+  let tls_config = config.tls_config.into_option();
   match config.target.expect("pgv") {
     Target::Pod(pod_config) => Scraper::<_, RealDurationJitter>::create(
       context.name,
@@ -635,6 +643,7 @@ pub async fn make(
       scrape_interval,
       ticker_factory,
       config.emit_up_metric,
+      tls_config.as_ref(),
     ),
     Target::Endpoint(_) => Scraper::<_, RealDurationJitter>::create(
       context.name,
@@ -647,6 +656,7 @@ pub async fn make(
       scrape_interval,
       ticker_factory,
       config.emit_up_metric,
+      tls_config.as_ref(),
     ),
     Target::Node(details) => Scraper::<_, RealDurationJitter>::create(
       context.name,
@@ -657,6 +667,7 @@ pub async fn make(
       scrape_interval,
       ticker_factory,
       config.emit_up_metric,
+      tls_config.as_ref(),
     ),
   }
 }

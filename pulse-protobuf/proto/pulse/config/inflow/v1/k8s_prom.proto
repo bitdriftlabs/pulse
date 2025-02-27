@@ -79,4 +79,13 @@ message KubernetesPrometheusConfig {
   // be a gauge set to 0 or 1 depending on whether the scrape was successful. The "instance" tag
   // will be set to the target's address. The "job" tag will not currently be set.
   bool emit_up_metric = 5;
+
+  message TLS {
+    optional string cert_file = 1;
+    optional string key_file = 2;
+  }
+
+  // Based on https://prometheus.io/docs/prometheus/latest/configuration/https/
+  // allow users to add cert and key files
+  TLS tls_config = 6;
 }
