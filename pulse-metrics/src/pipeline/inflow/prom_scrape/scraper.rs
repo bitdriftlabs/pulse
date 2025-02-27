@@ -130,14 +130,16 @@ fn create_endpoints(
   let prom_endpoint_path = prom_annotations
     .get("prometheus.io/path")
     .cloned()
-    .map(|path| {
-      if path.starts_with('/') {
-        path
-      } else {
-        format!("/{}", path)
+    .map_or_else(
+      || "/metrics".to_string(),
+      |path| {
+        if path.starts_with('/') {
+          path
+        } else {
+          format!("/{path}")
+        }
       }
-    })
-    .unwrap_or_else(|| "/metrics".to_string());
+    );
 
   // We attempt the resolve the prom endpoint by considering (in order):
   // 1. A service annotation that specifies valid port number(s) via prometheus.io/port
