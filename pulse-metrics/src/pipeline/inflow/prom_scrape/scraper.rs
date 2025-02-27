@@ -37,7 +37,7 @@ use k8s_prom::KubernetesPrometheusConfig;
 use k8s_prom::kubernetes_prometheus_config::pod::inclusion_filter::Filter_type;
 use k8s_prom::kubernetes_prometheus_config::pod::use_k8s_https_service_auth_matcher::Auth_matcher;
 use k8s_prom::kubernetes_prometheus_config::pod::{InclusionFilter, UseK8sHttpsServiceAuthMatcher};
-use k8s_prom::kubernetes_prometheus_config::{self, Target};
+use k8s_prom::kubernetes_prometheus_config::{self, Target, };
 use parking_lot::Mutex;
 use prometheus::IntCounter;
 use pulse_common::k8s::pods_info::{OwnedPodsInfoSingleton, PodInfo};
@@ -329,19 +329,20 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
     scrape_interval: Duration,
     ticker_factory: Box<dyn Fn() -> Box<dyn Ticker> + Send + Sync>,
     emit_up_metric: bool,
-    cert_file: String,
-    key_file: String,
+    tls_config: Option<k8s_prom::TLS>,
   ) -> anyhow::Result<DynamicPipelineInflow> {
-    fn make_https_client(client_cert_file: Option<&str>, client_key_file: Option<&str>) -> anyhow::Result<reqwest::Client> {
+    fn make_https_client(tls_config: Option<&k8s_prom::TLS>) -> anyhow::Result<reqwest::Client> {
       let mut builder = reqwest::Client::builder()
         .add_root_certificate(reqwest::Certificate::from_pem(&std::fs::read(
           "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
         )?)?);
 
-      if let (Some(cert_file), Some(key_file)) = (client_cert_file, client_key_file) {
-        let cert = std::fs::read(cert_file)?;
-        let key = std::fs::read(key_file)?;
-        builder = builder.identity(reqwest::Identity::from_pem(&[cert, key].concat())?);
+      if let Some(tls) = tls_config {
+        if let (Some(cert_file), Some(key_file)) = (tls.cert_file.as_ref(), tls.key_file.as_ref()) {
+          let cert = std::fs::read(cert_file.to_string())?;
+          let key = std::fs::read(key_file.to_string())?;
+          builder = builder.identity(reqwest::Identity::from_pem(&[cert, key].concat())?);
+        }
       }
 
       // TODO(mattklein123): This was here for a while, and then I removed it thinking that it
@@ -353,10 +354,7 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
 
     // In practice we should always have a valid CA cert, but this won't work in tests, so we
     // fall back to a basic client if we can't find it.
-    let http_client = make_https_client(
-      if !cert_file.is_empty() { Some(&cert_file) } else { None },
-      if !key_file.is_empty() { Some(&key_file) } else { None },
-    )
+    let http_client = make_https_client(tls_config.as_ref())
       .inspect_err(|e| {
         log::warn!("could not create K8s service account HTTPS client, falling back to basic: {e}");
       })
@@ -644,8 +642,7 @@ pub async fn make(
       scrape_interval,
       ticker_factory,
       config.emit_up_metric,
-      config.tls_server_config.as_ref().map_or(String::new(), |tls| tls.cert_file.clone().unwrap_or_default()),
-      config.tls_server_config.as_ref().map_or(String::new(), |tls| tls.key_file.clone().unwrap_or_default())
+      config.tls_server_config,
     ),
     Target::Endpoint(_) => Scraper::<_, RealDurationJitter>::create(
       context.name,
@@ -658,8 +655,7 @@ pub async fn make(
       scrape_interval,
       ticker_factory,
       config.emit_up_metric,
-      config.tls_server_config.as_ref().map_or(String::new(), |tls| tls.cert_file.clone().unwrap_or_default()),
-      config.tls_server_config.as_ref().map_or(String::new(), |tls| tls.key_file.clone().unwrap_or_default())
+      config.tls_server_config,
     ),
     Target::Node(details) => Scraper::<_, RealDurationJitter>::create(
       context.name,
@@ -670,8 +666,7 @@ pub async fn make(
       scrape_interval,
       ticker_factory,
       config.emit_up_metric,
-      config.tls_server_config.as_ref().map_or(String::new(), |tls| tls.cert_file.clone().unwrap_or_default()),
-      config.tls_server_config.as_ref().map_or(String::new(), |tls| tls.key_file.clone().unwrap_or_default())
+      config.tls_server_config,
     ),
   }
 }
