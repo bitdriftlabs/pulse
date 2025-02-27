@@ -42,7 +42,7 @@ fn make_object_meta(
 fn pod_cache() {
   let (tx, mut rx) = tokio::sync::watch::channel(PodsInfo::default());
 
-  let mut cache = PodsInfoCache::new("node".to_string(), tx);
+  let mut cache = PodsInfoCache::new("node".to_string(), tx, vec![]);
 
   let services = ServiceMonitor::default();
 

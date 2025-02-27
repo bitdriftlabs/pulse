@@ -102,6 +102,13 @@ message KubernetesBootstrapConfig {
   // to be evaluated. If only pod labels/annotations are being used this can be disabled. Defaults
   // to true.
   optional bool evaluate_services = 2;
+
+  // Specified which pod phases should be included in the cache, and as a result scraped, used for
+  // metadata attachment, etc. Defaults to ["Pending", "Running"] if empty. "Pending" is included by
+  // default (as long as there is any attached IP address) so that pulse knows about a pod as soon
+  // as possible and it can also begin scraping to provide an "up" metric if desired. This can be
+  // used to monitor pods stuck in pending if desired.
+  repeated string pod_phases = 3;
 }
 
 // Configuration composed of layers.

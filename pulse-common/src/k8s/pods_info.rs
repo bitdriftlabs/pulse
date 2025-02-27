@@ -22,6 +22,7 @@ use kube::runtime::watcher::Event;
 use kube::runtime::{WatchStreamExt, watcher};
 use kube::{Api, ResourceExt};
 use parking_lot::RwLock;
+use protobuf::Chars;
 use pulse_protobuf::protos::pulse::config::bootstrap::v1::bootstrap::KubernetesBootstrapConfig;
 use std::collections::{BTreeMap, HashMap};
 use std::net::IpAddr;
@@ -110,6 +111,7 @@ impl PodsInfoSingleton {
         let (pods_info_tx, pods_info_rx) = watch::channel(PodsInfo::default());
 
         watch_pods(
+          k8s_config,
           node_name,
           pods_info_tx,
           if load_services {
@@ -131,6 +133,7 @@ pub mod container {
   use bd_log::warn_every;
   use k8s_openapi::api::core::v1::Pod;
   use kube::ResourceExt;
+  use protobuf::Chars;
   use std::collections::HashMap;
   use std::net::IpAddr;
   use std::sync::Arc;
@@ -204,6 +207,7 @@ pub mod container {
       node_name: &str,
       pod: &Pod,
       service_cache: Option<&ServiceMonitor>,
+      pod_phases: &[Chars],
     ) -> bool {
       log::debug!("processing pod candidate");
 
@@ -259,11 +263,11 @@ pub mod container {
 
       let namespace = object_namespace(&pod.metadata);
 
-      // We include both pending and running pods currently, as long as the pod has an IP address
-      // and the other above requirements. Pending is primarily useful if emitting the "up" metric
-      // during scraping for pods that might be stuck in pending.
       // TODO(mattklein123): Potentially move this into the field selector query?
-      if phase != "Running" && phase != "Pending" {
+      if !pod_phases
+        .iter()
+        .any(|phase_char| phase.as_str() == phase_char.as_str())
+      {
         if self.remove(namespace, pod_name) {
           log::trace!(
             "removing pod {}, no longer running",
@@ -368,6 +372,7 @@ pub async fn service_watch_stream() -> anyhow::Result<
 /// Performs a lookup of all eligible prom endpoints for the given k8s node and watches for
 /// changes to this set. The initial state and updates are provided via the watch channel.
 pub async fn watch_pods(
+  config: KubernetesBootstrapConfig,
   node: String,
   update_tx: tokio::sync::watch::Sender<PodsInfo>,
   watch_service_stream: Option<
@@ -397,7 +402,7 @@ pub async fn watch_pods(
   )
   .default_backoff();
 
-  let mut pods_info_cache = PodsInfoCache::new(node, update_tx);
+  let mut pods_info_cache = PodsInfoCache::new(node, update_tx, config.pod_phases);
   let (initial_sync_tx, initial_sync_rx) = oneshot::channel();
 
   tokio::spawn(async move {
@@ -422,6 +427,7 @@ pub async fn watch_pods(
             &pods_info_cache.node_name,
             &pod,
             service_cache.as_deref(),
+            &pods_info_cache.pod_phases,
           );
         },
         watcher::Event::InitDone => {
@@ -466,14 +472,24 @@ struct PodsInfoCache {
   node_name: String,
   state: PodsInfo,
   update_tx: tokio::sync::watch::Sender<PodsInfo>,
+  pod_phases: Vec<Chars>,
 }
 
 impl PodsInfoCache {
-  fn new(node_name: String, update_tx: tokio::sync::watch::Sender<PodsInfo>) -> Self {
+  fn new(
+    node_name: String,
+    update_tx: tokio::sync::watch::Sender<PodsInfo>,
+    pod_phases: Vec<Chars>,
+  ) -> Self {
     Self {
       node_name,
       state: PodsInfo::default(),
       update_tx,
+      pod_phases: if pod_phases.is_empty() {
+        vec!["Pending".into(), "Running".into()]
+      } else {
+        pod_phases
+      },
     }
   }
 
@@ -483,7 +499,10 @@ impl PodsInfoCache {
   }
 
   fn apply_pod(&mut self, pod: &Pod, service_cache: Option<&ServiceMonitor>) {
-    if self.state.apply_pod(&self.node_name, pod, service_cache) {
+    if self
+      .state
+      .apply_pod(&self.node_name, pod, service_cache, &self.pod_phases)
+    {
       self.broadcast();
     }
   }
