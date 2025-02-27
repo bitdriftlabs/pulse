@@ -37,7 +37,7 @@ use k8s_prom::KubernetesPrometheusConfig;
 use k8s_prom::kubernetes_prometheus_config::pod::inclusion_filter::Filter_type;
 use k8s_prom::kubernetes_prometheus_config::pod::use_k8s_https_service_auth_matcher::Auth_matcher;
 use k8s_prom::kubernetes_prometheus_config::pod::{InclusionFilter, UseK8sHttpsServiceAuthMatcher};
-use k8s_prom::kubernetes_prometheus_config::{self, Target, };
+use k8s_prom::kubernetes_prometheus_config::{self, Target, TLS};
 use parking_lot::Mutex;
 use prometheus::IntCounter;
 use pulse_common::k8s::pods_info::{OwnedPodsInfoSingleton, PodInfo};
@@ -329,9 +329,9 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
     scrape_interval: Duration,
     ticker_factory: Box<dyn Fn() -> Box<dyn Ticker> + Send + Sync>,
     emit_up_metric: bool,
-    tls_config: Option<k8s_prom::TLS>,
+    tls_config: Option<TLS>,
   ) -> anyhow::Result<DynamicPipelineInflow> {
-    fn make_https_client(tls_config: Option<&k8s_prom::TLS>) -> anyhow::Result<reqwest::Client> {
+    fn make_https_client(tls_config: Option<&TLS>) -> anyhow::Result<reqwest::Client> {
       let mut builder = reqwest::Client::builder()
         .add_root_certificate(reqwest::Certificate::from_pem(&std::fs::read(
           "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
@@ -628,6 +628,7 @@ pub async fn make(
   let ticker_factory = Box::new(move || {
     Box::new(scrape_interval.interval(MissedTickBehavior::Delay)) as Box<dyn Ticker>
   });
+  let tls_config = config.tls_server_config.into_option();
   match config.target.expect("pgv") {
     Target::Pod(pod_config) => Scraper::<_, RealDurationJitter>::create(
       context.name,
@@ -642,7 +643,7 @@ pub async fn make(
       scrape_interval,
       ticker_factory,
       config.emit_up_metric,
-      config.tls_server_config,
+      tls_config,
     ),
     Target::Endpoint(_) => Scraper::<_, RealDurationJitter>::create(
       context.name,
@@ -655,7 +656,7 @@ pub async fn make(
       scrape_interval,
       ticker_factory,
       config.emit_up_metric,
-      config.tls_server_config,
+      tls_config,
     ),
     Target::Node(details) => Scraper::<_, RealDurationJitter>::create(
       context.name,
@@ -666,7 +667,7 @@ pub async fn make(
       scrape_interval,
       ticker_factory,
       config.emit_up_metric,
-      config.tls_server_config,
+      tls_config,
     ),
   }
 }
