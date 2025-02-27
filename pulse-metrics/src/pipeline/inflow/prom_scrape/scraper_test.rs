@@ -569,6 +569,7 @@ impl Setup {
       0.seconds(),
       Box::new(move || ticker_factory.make_ticker()),
       emit_up_metric,
+      None,
     )
     .unwrap();
     scraper.start().await;
