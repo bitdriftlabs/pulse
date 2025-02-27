@@ -1142,6 +1142,8 @@ pub struct KubernetesBootstrapConfig {
     pub node_name: ::protobuf::MessageField<super::common::EnvOrInline>,
     // @@protoc_insertion_point(field:pulse.config.bootstrap.v1.KubernetesBootstrapConfig.evaluate_services)
     pub evaluate_services: ::std::option::Option<bool>,
+    // @@protoc_insertion_point(field:pulse.config.bootstrap.v1.KubernetesBootstrapConfig.pod_phases)
+    pub pod_phases: ::std::vec::Vec<::protobuf::Chars>,
     // special fields
     // @@protoc_insertion_point(special_field:pulse.config.bootstrap.v1.KubernetesBootstrapConfig.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -1159,7 +1161,7 @@ impl KubernetesBootstrapConfig {
     }
 
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(2);
+        let mut fields = ::std::vec::Vec::with_capacity(3);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, super::common::EnvOrInline>(
             "node_name",
@@ -1170,6 +1172,11 @@ impl KubernetesBootstrapConfig {
             "evaluate_services",
             |m: &KubernetesBootstrapConfig| { &m.evaluate_services },
             |m: &mut KubernetesBootstrapConfig| { &mut m.evaluate_services },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_vec_simpler_accessor::<_, _>(
+            "pod_phases",
+            |m: &KubernetesBootstrapConfig| { &m.pod_phases },
+            |m: &mut KubernetesBootstrapConfig| { &mut m.pod_phases },
         ));
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<KubernetesBootstrapConfig>(
             "KubernetesBootstrapConfig",
@@ -1195,6 +1202,9 @@ impl ::protobuf::Message for KubernetesBootstrapConfig {
                 16 => {
                     self.evaluate_services = ::std::option::Option::Some(is.read_bool()?);
                 },
+                26 => {
+                    self.pod_phases.push(is.read_tokio_chars()?);
+                },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                 },
@@ -1214,6 +1224,9 @@ impl ::protobuf::Message for KubernetesBootstrapConfig {
         if let Some(v) = self.evaluate_services {
             my_size += 1 + 1;
         }
+        for value in &self.pod_phases {
+            my_size += ::protobuf::rt::string_size(3, &value);
+        };
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
         my_size
@@ -1226,6 +1239,9 @@ impl ::protobuf::Message for KubernetesBootstrapConfig {
         if let Some(v) = self.evaluate_services {
             os.write_bool(2, v)?;
         }
+        for v in &self.pod_phases {
+            os.write_string(3, &v)?;
+        };
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
     }
@@ -1245,6 +1261,7 @@ impl ::protobuf::Message for KubernetesBootstrapConfig {
     fn clear(&mut self) {
         self.node_name.clear();
         self.evaluate_services = ::std::option::Option::None;
+        self.pod_phases.clear();
         self.special_fields.clear();
     }
 
@@ -1252,6 +1269,7 @@ impl ::protobuf::Message for KubernetesBootstrapConfig {
         static instance: KubernetesBootstrapConfig = KubernetesBootstrapConfig {
             node_name: ::protobuf::MessageField::none(),
             evaluate_services: ::std::option::Option::None,
+            pod_phases: ::std::vec::Vec::new(),
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -1859,23 +1877,24 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \n\x03key\x18\x01\x20\x01(\tR\x03keyB\x07\xfaB\x04r\x02\x10\x01\x12\x1d\
     \n\x05value\x18\x02\x20\x01(\tR\x05valueB\x07\xfaB\x04r\x02\x10\x01B\x0e\
     \n\x0c_meta_prefix\"*\n\x0bAdminConfig\x12\x1b\n\x04bind\x18\x01\x20\x01\
-    (\tR\x04bindB\x07\xfaB\x04r\x02\x10\x01\"\xa5\x01\n\x19KubernetesBootstr\
+    (\tR\x04bindB\x07\xfaB\x04r\x02\x10\x01\"\xc4\x01\n\x19KubernetesBootstr\
     apConfig\x12@\n\tnode_name\x18\x01\x20\x01(\x0b2#.pulse.config.common.v1\
     .EnvOrInlineR\x08nodeName\x120\n\x11evaluate_services\x18\x02\x20\x01(\
-    \x08H\0R\x10evaluateServices\x88\x01\x01B\x14\n\x12_evaluate_services\"\
-    \xb0\x01\n\x0cMergedConfig\x12G\n\tbootstrap\x18\x01\x20\x01(\x0b2).puls\
-    e.config.bootstrap.v1.PipelineConfigR\tbootstrap\x12W\n\x14fs_watched_pi\
-    pelines\x18\x02\x20\x03(\x0b2%.pulse.config.common.v1.RuntimeConfigR\x12\
-    fsWatchedPipelines\"\xed\x03\n\x06Config\x12<\n\x05admin\x18\x01\x20\x01\
-    (\x0b2&.pulse.config.bootstrap.v1.AdminConfigR\x05admin\x12C\n\nmeta_sta\
-    ts\x18\x02\x20\x01(\x0b2$.pulse.config.bootstrap.v1.MetaStatsR\tmetaStat\
-    s\x12T\n\nkubernetes\x18\x03\x20\x01(\x0b24.pulse.config.bootstrap.v1.Ku\
-    bernetesBootstrapConfigR\nkubernetes\x12G\n\x08pipeline\x18\x04\x20\x01(\
-    \x0b2).pulse.config.bootstrap.v1.PipelineConfigH\0R\x08pipeline\x12W\n\
-    \x13fs_watched_pipeline\x18\x05\x20\x01(\x0b2%.pulse.config.common.v1.Ru\
-    ntimeConfigH\0R\x11fsWatchedPipeline\x12R\n\x0fmerged_pipeline\x18\x06\
-    \x20\x01(\x0b2'.pulse.config.bootstrap.v1.MergedConfigH\0R\x0emergedPipe\
-    lineB\x14\n\rpipeline_type\x12\x03\xf8B\x01b\x06proto3\
+    \x08H\0R\x10evaluateServices\x88\x01\x01\x12\x1d\n\npod_phases\x18\x03\
+    \x20\x03(\tR\tpodPhasesB\x14\n\x12_evaluate_services\"\xb0\x01\n\x0cMerg\
+    edConfig\x12G\n\tbootstrap\x18\x01\x20\x01(\x0b2).pulse.config.bootstrap\
+    .v1.PipelineConfigR\tbootstrap\x12W\n\x14fs_watched_pipelines\x18\x02\
+    \x20\x03(\x0b2%.pulse.config.common.v1.RuntimeConfigR\x12fsWatchedPipeli\
+    nes\"\xed\x03\n\x06Config\x12<\n\x05admin\x18\x01\x20\x01(\x0b2&.pulse.c\
+    onfig.bootstrap.v1.AdminConfigR\x05admin\x12C\n\nmeta_stats\x18\x02\x20\
+    \x01(\x0b2$.pulse.config.bootstrap.v1.MetaStatsR\tmetaStats\x12T\n\nkube\
+    rnetes\x18\x03\x20\x01(\x0b24.pulse.config.bootstrap.v1.KubernetesBootst\
+    rapConfigR\nkubernetes\x12G\n\x08pipeline\x18\x04\x20\x01(\x0b2).pulse.c\
+    onfig.bootstrap.v1.PipelineConfigH\0R\x08pipeline\x12W\n\x13fs_watched_p\
+    ipeline\x18\x05\x20\x01(\x0b2%.pulse.config.common.v1.RuntimeConfigH\0R\
+    \x11fsWatchedPipeline\x12R\n\x0fmerged_pipeline\x18\x06\x20\x01(\x0b2'.p\
+    ulse.config.bootstrap.v1.MergedConfigH\0R\x0emergedPipelineB\x14\n\rpipe\
+    line_type\x12\x03\xf8B\x01b\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
