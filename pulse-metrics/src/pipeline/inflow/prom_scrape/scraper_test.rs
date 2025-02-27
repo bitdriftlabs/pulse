@@ -105,6 +105,57 @@ async fn create_endpoint() {
 }
 
 #[tokio::test]
+async fn scrape_path() {
+  let pod_info = make_pod_info(
+    "some-namespace",
+    "my-awesome-pod",
+    &btreemap!(),
+    btreemap!(
+      "prometheus.io/scrape" => "true",
+      "prometheus.io/port" => "123"
+    ),
+    HashMap::new(),
+    "127.0.0.1",
+    vec![],
+  );
+  let endpoints = create_endpoints(&[], &[], &pod_info, None, None, &pod_info.annotations);
+  assert_eq!(endpoints[0].1.path, "/metrics");
+
+  let pod_info = make_pod_info(
+    "some-namespace",
+    "my-awesome-pod",
+    &btreemap!(),
+    btreemap!(
+      "prometheus.io/scrape" => "true",
+      "prometheus.io/port" => "123",
+      "prometheus.io/path" => "metrics"
+    ),
+    HashMap::new(),
+    "127.0.0.1",
+    vec![],
+  );
+  let endpoints = create_endpoints(&[], &[], &pod_info, None, None, &pod_info.annotations);
+  assert_eq!(endpoints[0].1.path, "/metrics");
+
+  let pod_info = make_pod_info(
+    "some-namespace",
+    "my-awesome-pod",
+    &btreemap!(),
+    btreemap!(
+      "prometheus.io/scrape" => "true",
+      "prometheus.io/port" => "123",
+      "prometheus.io/path" => "/custom/path"
+    ),
+    HashMap::new(),
+    "127.0.0.1",
+    vec![],
+  );
+  let endpoints = create_endpoints(&[], &[], &pod_info, None, None, &pod_info.annotations);
+  assert_eq!(endpoints[0].1.path, "/custom/path");
+}
+
+
+#[tokio::test]
 async fn multiple_ports() {
   let mut initial_state = PodsInfo::default();
   initial_state.insert(make_pod_info(
