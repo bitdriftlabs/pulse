@@ -557,6 +557,7 @@ impl Setup {
 
     let shutdown_trigger = ComponentShutdownTrigger::default();
     let dispatcher = Arc::new(MockPipelineDispatch::new());
+    let tls_config = None;
     let scraper = Scraper::<_, TestDurationJitter>::create(
       "test".to_string(),
       stats,
@@ -569,7 +570,7 @@ impl Setup {
       0.seconds(),
       Box::new(move || ticker_factory.make_ticker()),
       emit_up_metric,
-      None,
+      tls_config,
     )
     .unwrap();
     scraper.start().await;
