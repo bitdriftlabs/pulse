@@ -838,7 +838,7 @@ impl ParsedMetric {
         downstream_id,
       ),
       Some(Protocol_type::Statsd(statsd)) => Self::new(
-        crate::protos::statsd::parse(&original, statsd.lyft_tags)?,
+        crate::protos::statsd::parse(&original, statsd)?,
         MetricSource::Statsd(original),
         received_at,
         downstream_id,

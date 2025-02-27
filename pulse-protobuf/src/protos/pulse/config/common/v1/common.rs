@@ -416,6 +416,8 @@ pub mod wire_protocol {
         // message fields
         // @@protoc_insertion_point(field:pulse.config.common.v1.WireProtocol.StatsD.lyft_tags)
         pub lyft_tags: bool,
+        // @@protoc_insertion_point(field:pulse.config.common.v1.WireProtocol.StatsD.sanitize_tags)
+        pub sanitize_tags: bool,
         // special fields
         // @@protoc_insertion_point(special_field:pulse.config.common.v1.WireProtocol.StatsD.special_fields)
         pub special_fields: ::protobuf::SpecialFields,
@@ -433,12 +435,17 @@ pub mod wire_protocol {
         }
 
         pub(in super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-            let mut fields = ::std::vec::Vec::with_capacity(1);
+            let mut fields = ::std::vec::Vec::with_capacity(2);
             let mut oneofs = ::std::vec::Vec::with_capacity(0);
             fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
                 "lyft_tags",
                 |m: &StatsD| { &m.lyft_tags },
                 |m: &mut StatsD| { &mut m.lyft_tags },
+            ));
+            fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+                "sanitize_tags",
+                |m: &StatsD| { &m.sanitize_tags },
+                |m: &mut StatsD| { &mut m.sanitize_tags },
             ));
             ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<StatsD>(
                 "WireProtocol.StatsD",
@@ -461,6 +468,9 @@ pub mod wire_protocol {
                     8 => {
                         self.lyft_tags = is.read_bool()?;
                     },
+                    16 => {
+                        self.sanitize_tags = is.read_bool()?;
+                    },
                     tag => {
                         ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                     },
@@ -476,6 +486,9 @@ pub mod wire_protocol {
             if self.lyft_tags != false {
                 my_size += 1 + 1;
             }
+            if self.sanitize_tags != false {
+                my_size += 1 + 1;
+            }
             my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
             self.special_fields.cached_size().set(my_size as u32);
             my_size
@@ -484,6 +497,9 @@ pub mod wire_protocol {
         fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
             if self.lyft_tags != false {
                 os.write_bool(1, self.lyft_tags)?;
+            }
+            if self.sanitize_tags != false {
+                os.write_bool(2, self.sanitize_tags)?;
             }
             os.write_unknown_fields(self.special_fields.unknown_fields())?;
             ::std::result::Result::Ok(())
@@ -503,12 +519,14 @@ pub mod wire_protocol {
 
         fn clear(&mut self) {
             self.lyft_tags = false;
+            self.sanitize_tags = false;
             self.special_fields.clear();
         }
 
         fn default_instance() -> &'static StatsD {
             static instance: StatsD = StatsD {
                 lyft_tags: false,
+                sanitize_tags: false,
                 special_fields: ::protobuf::SpecialFields::new(),
             };
             &instance
@@ -1499,22 +1517,23 @@ impl ::protobuf::reflect::ProtobufValue for RuntimeConfig {
 
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n#pulse/config/common/v1/common.proto\x12\x16pulse.config.common.v1\x1a\
-    \x17validate/validate.proto\"\xe3\x01\n\x0cWireProtocol\x12E\n\x06carbon\
+    \x17validate/validate.proto\"\x88\x02\n\x0cWireProtocol\x12E\n\x06carbon\
     \x18\x01\x20\x01(\x0b2+.pulse.config.common.v1.WireProtocol.CarbonH\0R\
     \x06carbon\x12E\n\x06statsd\x18\x02\x20\x01(\x0b2+.pulse.config.common.v\
-    1.WireProtocol.StatsDH\0R\x06statsd\x1a\x08\n\x06Carbon\x1a%\n\x06StatsD\
-    \x12\x1b\n\tlyft_tags\x18\x01\x20\x01(\x08R\x08lyftTagsB\x14\n\rprotocol\
-    _type\x12\x03\xf8B\x01\"o\n\x11BearerTokenConfig\x12\x1f\n\x05token\x18\
-    \x01\x20\x01(\tH\0R\x05tokenB\x07\xfaB\x04r\x02\x10\x01\x12&\n\tfile_pat\
-    h\x18\x02\x20\x01(\tH\0R\x08filePathB\x07\xfaB\x04r\x02\x10\x01B\x11\n\n\
-    token_type\x12\x03\xf8B\x01\"f\n\x0bEnvOrInline\x12\"\n\x07env_var\x18\
-    \x01\x20\x01(\tH\0R\x06envVarB\x07\xfaB\x04r\x02\x10\x01\x12!\n\x06inlin\
-    e\x18\x02\x20\x01(\tH\0R\x06inlineB\x07\xfaB\x04r\x02\x10\x01B\x10\n\tda\
-    ta_type\x12\x03\xf8B\x01\"\x96\x01\n\x0fEnvInlineOrFile\x12I\n\renv_or_i\
-    nline\x18\x01\x20\x01(\x0b2#.pulse.config.common.v1.EnvOrInlineH\0R\x0be\
-    nvOrInline\x12&\n\tfile_path\x18\x02\x20\x01(\tH\0R\x08filePathB\x07\xfa\
-    B\x04r\x02\x10\x01B\x10\n\tdata_type\x12\x03\xf8B\x01\"G\n\rRuntimeConfi\
-    g\x12\x19\n\x03dir\x18\x01\x20\x01(\tR\x03dirB\x07\xfaB\x04r\x02\x10\x01\
+    1.WireProtocol.StatsDH\0R\x06statsd\x1a\x08\n\x06Carbon\x1aJ\n\x06StatsD\
+    \x12\x1b\n\tlyft_tags\x18\x01\x20\x01(\x08R\x08lyftTags\x12#\n\rsanitize\
+    _tags\x18\x02\x20\x01(\x08R\x0csanitizeTagsB\x14\n\rprotocol_type\x12\
+    \x03\xf8B\x01\"o\n\x11BearerTokenConfig\x12\x1f\n\x05token\x18\x01\x20\
+    \x01(\tH\0R\x05tokenB\x07\xfaB\x04r\x02\x10\x01\x12&\n\tfile_path\x18\
+    \x02\x20\x01(\tH\0R\x08filePathB\x07\xfaB\x04r\x02\x10\x01B\x11\n\ntoken\
+    _type\x12\x03\xf8B\x01\"f\n\x0bEnvOrInline\x12\"\n\x07env_var\x18\x01\
+    \x20\x01(\tH\0R\x06envVarB\x07\xfaB\x04r\x02\x10\x01\x12!\n\x06inline\
+    \x18\x02\x20\x01(\tH\0R\x06inlineB\x07\xfaB\x04r\x02\x10\x01B\x10\n\tdat\
+    a_type\x12\x03\xf8B\x01\"\x96\x01\n\x0fEnvInlineOrFile\x12I\n\renv_or_in\
+    line\x18\x01\x20\x01(\x0b2#.pulse.config.common.v1.EnvOrInlineH\0R\x0ben\
+    vOrInline\x12&\n\tfile_path\x18\x02\x20\x01(\tH\0R\x08filePathB\x07\xfaB\
+    \x04r\x02\x10\x01B\x10\n\tdata_type\x12\x03\xf8B\x01\"G\n\rRuntimeConfig\
+    \x12\x19\n\x03dir\x18\x01\x20\x01(\tR\x03dirB\x07\xfaB\x04r\x02\x10\x01\
     \x12\x1b\n\x04file\x18\x02\x20\x01(\tR\x04fileB\x07\xfaB\x04r\x02\x10\
     \x01b\x06proto3\
 ";

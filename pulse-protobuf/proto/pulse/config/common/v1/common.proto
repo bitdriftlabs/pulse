@@ -21,6 +21,10 @@ message WireProtocol {
     // This will produce the ("bar", "baz") tag.
     // This is currently only supported for inflow. It will be ignored on outflow.
     bool lyft_tags = 1;
+
+    // Sanitize tag names and values by replacing ':', '.', and '=' with '_'. This matches
+    // statsrelay behavior.
+    bool sanitize_tags = 2;
   }
 
   oneof protocol_type {

@@ -19,7 +19,9 @@ use super::metric::{
   TagValue,
   default_timestamp,
 };
+use bytes::{Bytes, BytesMut};
 use memchr::{memchr, memchr2, memmem, memrchr};
+use pulse_protobuf::protos::pulse::config::common::v1::common::wire_protocol::StatsD;
 use std::vec;
 
 fn parse_tags(input: bytes::Bytes) -> Result<Vec<TagValue>, ParseError> {
@@ -54,7 +56,20 @@ fn parse_tags(input: bytes::Bytes) -> Result<Vec<TagValue>, ParseError> {
 /// offsets for the positions and lengths of various protocol fields for
 /// later access. No parsing or validation of values is done, so at a low
 /// level this can be used to pass through unknown types and protocols.
-pub fn parse(input: &bytes::Bytes, parse_lyft_tags: bool) -> Result<Metric, ParseError> {
+pub fn parse(input: &bytes::Bytes, config: &StatsD) -> Result<Metric, ParseError> {
+  // TODO(mattklein123): It's not clear if it's faster to search before copy, or just copy always.
+  // We can benchmark and optimize this later if we choose.
+  fn sanitize(bytes: &Bytes) -> Bytes {
+    let mut sanitized = BytesMut::with_capacity(bytes.len());
+    sanitized.extend_from_slice(bytes.as_ref());
+    for byte in sanitized.iter_mut() {
+      if *byte == b':' || *byte == b'.' || *byte == b'=' {
+        *byte = b'_';
+      }
+    }
+    sanitized.freeze()
+  }
+
   let length = input.len();
 
   // To support inner ':' symbols in a metric name (more common than you
@@ -117,7 +132,7 @@ pub fn parse(input: &bytes::Bytes, parse_lyft_tags: bool) -> Result<Metric, Pars
     .unwrap_or_default();
   let mut name = input.slice(0 .. value_index - 1);
 
-  if parse_lyft_tags {
+  if config.lyft_tags {
     // Search backwards in the name for ".__" and attempt to extract a tag from that, adjusting
     // the name when done.
     while let Some(tag_index) = memmem::rfind(&name, b".__") {
@@ -176,6 +191,13 @@ pub fn parse(input: &bytes::Bytes, parse_lyft_tags: bool) -> Result<Metric, Pars
       if need_name_truncate {
         name.truncate(tag_index - 3);
       }
+    }
+  }
+
+  if config.sanitize_tags {
+    for tag in &mut tags {
+      tag.tag = sanitize(&tag.tag);
+      tag.value = sanitize(&tag.value);
     }
   }
 
