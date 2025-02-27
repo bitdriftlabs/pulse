@@ -138,7 +138,7 @@ fn create_endpoints(
         } else {
           format!("/{path}")
         }
-      }
+      },
     );
 
   // We attempt the resolve the prom endpoint by considering (in order):
