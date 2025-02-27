@@ -45,7 +45,7 @@ clap                   = { version = "4.5.31", features = ["derive", "env"] }
 comfy-table            = "7.1.4"
 console-subscriber     = "0.4.1"
 criterion              = { version = "0.5", features = ["html_reports"] }
-ctor                   = "0.3.6"
+ctor                   = "0.4.0"
 cuckoofilter           = "0.5.0"
 dashmap                = { version = "6", features = ["raw-api"] }
 deadpool               = { version = "0.12", features = ["managed", "rt_tokio_1"] }
@@ -125,7 +125,7 @@ topological-sort           = "0.2.2"
 tracing                    = "0.1.41"
 unwrap-infallible          = "0.1.5"
 url                        = "2.5.4"
-uuid                       = { version = "1.14.0", features = ["v4"] }
+uuid                       = { version = "1.15.1", features = ["v4"] }
 
 vrl = { git = "https://github.com/mattklein123/vrl.git", branch = "performance-20240826", default-features = false, features = [
   "compiler",

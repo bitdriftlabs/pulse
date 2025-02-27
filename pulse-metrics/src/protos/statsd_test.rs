@@ -9,11 +9,27 @@ use super::*;
 use crate::test::make_counter;
 use anyhow::bail;
 use nom::AsBytes;
+use protobuf::Message;
 use quickcheck_macros::quickcheck;
 
 const fn clean(mut metric: Metric) -> Metric {
   metric.timestamp = 0;
   metric
+}
+
+fn parse_lyft_tags() -> StatsD {
+  StatsD {
+    lyft_tags: true,
+    ..Default::default()
+  }
+}
+
+fn parse_lyft_tags_sanitize() -> StatsD {
+  StatsD {
+    lyft_tags: true,
+    sanitize_tags: true,
+    ..Default::default()
+  }
 }
 
 #[test]
@@ -25,7 +41,7 @@ fn parse_statsd() {
     "hello.bar:4.0|ms|@1.0|#tags".into(),
   ];
   for buf in valid {
-    parse(&buf, false).unwrap();
+    parse(&buf, StatsD::default_instance()).unwrap();
   }
 }
 
@@ -34,7 +50,7 @@ fn lyft_tags() {
   let parsed = clean(
     parse(
       &"tests.service.Users.GetUser.__downstream_cluster=XYZ.stream.send.ms:3.0|c".into(),
-      true,
+      &parse_lyft_tags(),
     )
     .unwrap(),
   );
@@ -52,7 +68,7 @@ fn lyft_tags() {
   let parsed = clean(
     parse(
       &"tests.service.Users.GetUser.__downstream_cluster=XYZ.codes.__hello=world.OK:3.0|c".into(),
-      true,
+      &parse_lyft_tags(),
     )
     .unwrap(),
   );
@@ -70,7 +86,7 @@ fn lyft_tags() {
   let parsed = clean(
     parse(
       &"tests.service.Users.GetUser.__downstream_cluster.stream.send.ms:3.0|c".into(),
-      true,
+      &parse_lyft_tags(),
     )
     .unwrap(),
   );
@@ -88,7 +104,7 @@ fn lyft_tags() {
   let parsed = clean(
     parse(
       &"tests.service.Users.GetUser.__downstream_cluster=.stream.send.ms:3.0|c".into(),
-      true,
+      &parse_lyft_tags(),
     )
     .unwrap(),
   );
@@ -103,39 +119,69 @@ fn lyft_tags() {
     .metric()
   );
 
-  let parsed = clean(parse(&"foo.car:bar.__hello=world:3.0|c".into(), true).unwrap());
+  let parsed = clean(
+    parse(
+      &"foo.car:bar.__hello=world:3.0|c".into(),
+      &parse_lyft_tags(),
+    )
+    .unwrap(),
+  );
   assert_eq!(
     &parsed,
     make_counter("foo.car:bar", &[("hello", "world")], 0, 3.0).metric()
   );
 
-  let parsed = clean(parse(&"foo.car:bar.__hello=world.__bar=baz:3.0|c".into(), true).unwrap());
+  let parsed = clean(
+    parse(
+      &"foo.car:bar.__hello=world.__bar=baz:3.0|c".into(),
+      &parse_lyft_tags(),
+    )
+    .unwrap(),
+  );
   assert_eq!(
     &parsed,
     make_counter("foo.car:bar", &[("bar", "baz"), ("hello", "world")], 0, 3.0).metric()
   );
 
-  let parsed = clean(parse(&"foo.car:bar.__bar:3.0|c".into(), true).unwrap());
+  let parsed = clean(parse(&"foo.car:bar.__bar:3.0|c".into(), &parse_lyft_tags()).unwrap());
   assert_eq!(
     &parsed,
     make_counter("foo.car:bar", &[("bar", "")], 0, 3.0).metric()
   );
 
-  let parsed = clean(parse(&"foo.car:bar.__bar=:3.0|c".into(), true).unwrap());
+  let parsed = clean(parse(&"foo.car:bar.__bar=:3.0|c".into(), &parse_lyft_tags()).unwrap());
   assert_eq!(
     &parsed,
     make_counter("foo.car:bar", &[("bar", "")], 0, 3.0).metric()
+  );
+
+  let parsed = clean(parse(&"foo.car:bar.__bar=1=1=1:3.0|c".into(), &parse_lyft_tags()).unwrap());
+  assert_eq!(
+    &parsed,
+    make_counter("foo.car:bar", &[("bar", "1=1=1")], 0, 3.0).metric()
+  );
+
+  let parsed = clean(
+    parse(
+      &"foo.car:bar.__bar=1=1=1:3.0|c".into(),
+      &parse_lyft_tags_sanitize(),
+    )
+    .unwrap(),
+  );
+  assert_eq!(
+    &parsed,
+    make_counter("foo.car:bar", &[("bar", "1_1_1")], 0, 3.0).metric()
   );
 
   assert_eq!(
     Err(ParseError::InvalidTag),
-    parse(&"foo.car:bar.__:3.0|c".into(), true)
+    parse(&"foo.car:bar.__:3.0|c".into(), &parse_lyft_tags())
   );
 }
 
 #[test]
 fn simple_line() {
-  let parsed = parse(&"foo.car:bar:3.0|c".into(), false).unwrap();
+  let parsed = parse(&"foo.car:bar:3.0|c".into(), StatsD::default_instance()).unwrap();
   assert_eq!(parsed.get_id().name(), "foo.car:bar");
   assert_eq!(parsed.value, MetricValue::Simple(3.));
   assert_eq!(
@@ -158,7 +204,7 @@ fn metric_types() -> anyhow::Result<()> {
   ];
   for (buf, expected_metric_type) in type_checks {
     println!("{}", String::from_utf8(buf.to_vec())?);
-    let res = parse(&buf, false)?;
+    let res = parse(&buf, StatsD::default_instance())?;
     assert_eq!(res.get_id().mtype(), Some(expected_metric_type));
   }
   Ok(())
@@ -166,7 +212,7 @@ fn metric_types() -> anyhow::Result<()> {
 
 #[test]
 fn tagged_line() {
-  let parsed = parse(&"foo.bar:3|c|@1.0|#tags".into(), false).unwrap();
+  let parsed = parse(&"foo.bar:3|c|@1.0|#tags".into(), StatsD::default_instance()).unwrap();
   assert_eq!(parsed.get_id().name(), "foo.bar");
   assert_eq!(parsed.value, MetricValue::Simple(3.));
   assert_eq!(
@@ -180,7 +226,7 @@ fn tagged_line() {
 
 #[test]
 fn tagged_line_reverse() {
-  let parsed = parse(&"foo.bar:3|c|#tags|@1.0".into(), false).unwrap();
+  let parsed = parse(&"foo.bar:3|c|#tags|@1.0".into(), StatsD::default_instance()).unwrap();
   assert_eq!(parsed.get_id().name(), "foo.bar");
   assert_eq!(parsed.value, MetricValue::Simple(3.));
   assert_eq!(
@@ -194,13 +240,13 @@ fn tagged_line_reverse() {
 
 #[test]
 fn invalid_value() {
-  let result = parse(&"foo.car:bar:3.x0|c".into(), false);
+  let result = parse(&"foo.car:bar:3.x0|c".into(), StatsD::default_instance());
   assert_eq!(result.err().unwrap(), ParseError::InvalidValue);
 }
 
 #[test]
 fn invalid_line() {
-  let result = parse(&"foo.car:bar:3".into(), false);
+  let result = parse(&"foo.car:bar:3".into(), StatsD::default_instance());
   assert_eq!(result.err().unwrap(), ParseError::InvalidLine);
 }
 
@@ -267,7 +313,11 @@ fn test_parse_tag_multiple_short() {
 
 #[test]
 fn parsed_simple() {
-  let parsed = parse(&"foo.bar:3|c|#tags:value|@0.25".into(), false).unwrap();
+  let parsed = parse(
+    &"foo.bar:3|c|#tags:value|@0.25".into(),
+    StatsD::default_instance(),
+  )
+  .unwrap();
   assert_eq!(parsed.get_id().name(), "foo.bar");
   assert_eq!(parsed.value, MetricValue::Simple(3.0));
   assert_eq!(
@@ -286,7 +336,11 @@ fn parsed_simple() {
 
 #[test]
 fn parsed_tags_complex() {
-  let parsed = parse(&"foo.bar:3|c|#tags|tagpt2:value|@1.0".into(), false).unwrap();
+  let parsed = parse(
+    &"foo.bar:3|c|#tags|tagpt2:value|@1.0".into(),
+    StatsD::default_instance(),
+  )
+  .unwrap();
   assert_eq!(parsed.get_id().name(), "foo.bar");
   assert_eq!(parsed.value, MetricValue::Simple(3.0));
   assert_eq!(
@@ -301,12 +355,31 @@ fn parsed_tags_complex() {
       value: "value".into(),
     }
   );
+
+  let parsed = parse(
+    &"foo.bar:3|c|#foo:bar,hello:1.1.1|@1.0".into(),
+    &parse_lyft_tags_sanitize(),
+  )
+  .unwrap();
+  assert_eq!(
+    parsed.get_id().tags(),
+    vec![
+      TagValue {
+        tag: "foo".into(),
+        value: "bar".into(),
+      },
+      TagValue {
+        tag: "hello".into(),
+        value: "1_1_1".into(),
+      }
+    ]
+  );
 }
 
 #[quickcheck]
 fn metric_roundtrip_statsd_line(mut input: Metric) -> anyhow::Result<()> {
   let statsd_line = to_statsd_line(&input);
-  let mut output = parse(&statsd_line, false)?;
+  let mut output = parse(&statsd_line, StatsD::default_instance())?;
   // Statsd requires a metric type. We default to counter if none is provided.
   if input.get_id().mtype().is_none() {
     let id = MetricId::new(

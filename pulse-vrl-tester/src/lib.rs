@@ -14,12 +14,14 @@ use cardinality_limiter::cardinality_limiter_config::per_pod_limit::Override_lim
 use config::bootstrap::v1::bootstrap::Config;
 use config::processor::v1::processor::processor_config::Processor_type;
 use pretty_assertions::Comparison;
+use protobuf::Message;
 use pulse_common::metadata::Metadata;
 use pulse_common::proto::yaml_to_proto;
 use pulse_metrics::protos::metric::{DownstreamId, Metric, MetricSource, ParsedMetric};
 use pulse_metrics::protos::statsd;
 use pulse_metrics::vrl::ProgramWrapper;
 use pulse_protobuf::protos::pulse::config;
+use pulse_protobuf::protos::pulse::config::common::v1::common::wire_protocol::StatsD;
 use pulse_protobuf::protos::pulse::config::processor::v1::cardinality_limiter;
 use pulse_protobuf::protos::pulse::config::processor::v1::processor::ProcessorConfig;
 use pulse_protobuf::protos::pulse::vrl_tester::v1::vrl_tester::transform::Transform_type;
@@ -155,13 +157,16 @@ fn run_test_case(test_case: VrlTestCase, proxy_config: Option<&Config>) -> anyho
       Transform_type::Metric(metric_transform) => {
         // TODO(mattklein123): Support parsing other formats. Probably a limited PromQL query of the
         // metric?
-        let mut input = statsd::parse(&metric_transform.input.clone().into_bytes(), false)
-          .map_err(|e| {
-            anyhow!(
-              "unable to parse input '{}' as statsd: {e}",
-              metric_transform.input
-            )
-          })?;
+        let mut input = statsd::parse(
+          &metric_transform.input.clone().into_bytes(),
+          StatsD::default_instance(),
+        )
+        .map_err(|e| {
+          anyhow!(
+            "unable to parse input '{}' as statsd: {e}",
+            metric_transform.input
+          )
+        })?;
         log::debug!("parsed input metric: {input}");
         input.timestamp = 0;
         let mut parsed_input = ParsedMetric::new(
@@ -175,13 +180,16 @@ fn run_test_case(test_case: VrlTestCase, proxy_config: Option<&Config>) -> anyho
         let output = if metric_transform.output.as_str() == "abort" {
           OutputType::Abort
         } else {
-          let mut output = statsd::parse(&metric_transform.output.clone().into_bytes(), false)
-            .map_err(|e| {
-              anyhow!(
-                "unable to parse output '{}' as statsd: {e}",
-                metric_transform.output
-              )
-            })?;
+          let mut output = statsd::parse(
+            &metric_transform.output.clone().into_bytes(),
+            StatsD::default_instance(),
+          )
+          .map_err(|e| {
+            anyhow!(
+              "unable to parse output '{}' as statsd: {e}",
+              metric_transform.output
+            )
+          })?;
           output.timestamp = 0;
           OutputType::Metric(output)
         };

@@ -15,6 +15,7 @@ clap.workspace              = true
 ctor.workspace              = true
 log.workspace               = true
 pretty_assertions.workspace = true
+protobuf.workspace          = true
 pulse-common                = { path = "../pulse-common" }
 pulse-metrics               = { path = "../pulse-metrics" }
 pulse-protobuf              = { path = "../pulse-protobuf" }

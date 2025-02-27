@@ -195,9 +195,9 @@ dependencies = [
 
 [[package]]
 name = "async-compression"
-version = "0.4.18"
+version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df895a515f70646414f4b45c0b79082783b80552b373a68283012928df56f522"
+checksum = "06575e6a9673580f52661c92107baabffbf41e2141373441cbcdc47cb733003c"
 dependencies = [
  "flate2",
  "futures-core",
@@ -861,7 +861,7 @@ source = "git+https://github.com/bitdriftlabs/shared-core.git#b812b3e0ded3797267
 dependencies = [
  "bd-runtime",
  "bd-shutdown",
- "ctor",
+ "ctor 0.3.6",
  "log",
  "tokio",
 ]
@@ -1073,7 +1073,7 @@ dependencies = [
  "bd-runtime",
  "bd-shutdown",
  "bd-time",
- "ctor",
+ "ctor 0.3.6",
  "log",
  "time",
  "tokio",
@@ -1164,7 +1164,7 @@ dependencies = [
  "bd-shutdown",
  "bd-stats-common",
  "bd-time",
- "ctor",
+ "ctor 0.3.6",
  "log",
  "parking_lot",
  "time",
@@ -1500,9 +1500,9 @@ dependencies = [
 
 [[package]]
 name = "chrono"
-version = "0.4.39"
+version = "0.4.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e36cc9d416881d2e24f9a963be5fb1cd90966419ac844274161d10488b3e825"
+checksum = "1a7964611d71df112cb1730f2ee67324fcf4d0fc6606acbbe9bfe06df124637c"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
@@ -1510,7 +1510,7 @@ dependencies = [
  "num-traits",
  "serde",
  "wasm-bindgen",
- "windows-targets 0.52.6",
+ "windows-link",
 ]
 
 [[package]]
@@ -1965,7 +1965,17 @@ version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "21d960ecacd0a1bf55e73144b72de745e7bf275c7952c50e36e8af0a0cb7ab1f"
 dependencies = [
- "ctor-proc-macro",
+ "ctor-proc-macro 0.0.4",
+]
+
+[[package]]
+name = "ctor"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7747ac3a66a06f4ee6718686c8ea976d2d05fb30ada93ebd76b3f9aef97257c"
+dependencies = [
+ "ctor-proc-macro 0.0.5",
+ "dtor",
 ]
 
 [[package]]
@@ -1973,6 +1983,12 @@ name = "ctor-proc-macro"
 version = "0.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c426d2ba3e525b39c1f0a9ba41b9fe61878dee11fa4e4a76b6ab440f46c5db5d"
+
+[[package]]
+name = "ctor-proc-macro"
+version = "0.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f211af61d8efdd104f96e57adf5e426ba1bc3ed7a4ead616e15e5881fd79c4d"
 
 [[package]]
 name = "ctr"
@@ -2182,6 +2198,21 @@ name = "downcast"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1435fa1053d8b2fbbe9be7e97eca7f33d37b28409959813daefc1446a14247f1"
+
+[[package]]
+name = "dtor"
+version = "0.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8bf39a0bfd1f94d62ffdb2802a7e6244c0f34f6ebacf5d4c26547d08cd1d67a5"
+dependencies = [
+ "dtor-proc-macro",
+]
+
+[[package]]
+name = "dtor-proc-macro"
+version = "0.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7454e41ff9012c00d53cf7f475c5e3afa3b91b7c90568495495e8d9bf47a1055"
 
 [[package]]
 name = "dunce"
@@ -3633,9 +3664,9 @@ checksum = "d26c52dbd32dccf2d10cac7725f8eae5296885fb5703b261f7d0a0739ec807ab"
 
 [[package]]
 name = "litemap"
-version = "0.7.4"
+version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ee93343901ab17bd981295f2cf0026d4ad018c7c31ba84549a4ddbb47a45104"
+checksum = "23fb14cb19457329c82206317a5663005a4d404783dc74f4252769b0d5f42856"
 
 [[package]]
 name = "lock_api"
@@ -4615,7 +4646,7 @@ dependencies = [
  "bd-pgv",
  "bd-time",
  "console-subscriber",
- "ctor",
+ "ctor 0.4.0",
  "futures-util",
  "k8s-openapi",
  "kube",
@@ -4668,7 +4699,7 @@ dependencies = [
  "cc",
  "comfy-table",
  "criterion",
- "ctor",
+ "ctor 0.4.0",
  "cuckoofilter",
  "dashmap",
  "deadpool",
@@ -4790,7 +4821,7 @@ dependencies = [
  "bytes",
  "clap",
  "criterion",
- "ctor",
+ "ctor 0.4.0",
  "fst",
  "futures",
  "http 1.2.0",
@@ -4829,9 +4860,10 @@ dependencies = [
  "anyhow",
  "bd-log",
  "clap",
- "ctor",
+ "ctor 0.4.0",
  "log",
  "pretty_assertions",
+ "protobuf 4.0.0-alpha.0",
  "pulse-common",
  "pulse-metrics",
  "pulse-protobuf",
@@ -6598,9 +6630,9 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "uuid"
-version = "1.14.0"
+version = "1.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93d59ca99a559661b96bf898d8fce28ed87935fd2bea9f05983c1464dd6c71b1"
+checksum = "e0f540e3240398cce6128b64ba83fdbdd86129c16a3aa1a3a252efd66eb3d587"
 dependencies = [
  "getrandom 0.3.1",
  "js-sys",
@@ -6973,6 +7005,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "windows-link"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6dccfd733ce2b1753b03b6d3c65edf020262ea35e20ccdf3e288043e6dd620e3"
+
+[[package]]
 name = "windows-registry"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7293,18 +7331,18 @@ dependencies = [
 
 [[package]]
 name = "zerofrom"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cff3ee08c995dee1859d998dea82f7374f2826091dd9cd47def953cae446cd2e"
+checksum = "50cc42e0333e05660c3587f3bf9d0478688e15d870fab3346451ce7f8c9fbea5"
 dependencies = [
  "zerofrom-derive",
 ]
 
 [[package]]
 name = "zerofrom-derive"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "595eed982f7d355beb85837f651fa22e90b3c044842dc7f2c2842c086f295808"
+checksum = "d71e5d6e06ab090c67b5e44993ec16b72dcbaabc526db883a360057678b48502"
 dependencies = [
  "proc-macro2",
  "quote",
