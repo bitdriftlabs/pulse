@@ -57,6 +57,36 @@ impl Helper {
 }
 
 #[tokio::test]
+async fn modify_all_tags() {
+  let mut helper = Helper::new(
+    r#"
+new_tags = {}
+for_each(.tags) -> |key, value| {
+  new_tags = set!(new_tags, [key], replace(value, r'[.=:]', "_"))
+}
+.tags = new_tags
+    "#,
+  );
+
+  helper
+    .expect_send_and_receive(
+      make_abs_counter(
+        "kube_job_status_failed",
+        &[("foo", "1.1.1"), ("bar", "ok"), ("baz", "a=b")],
+        0,
+        1.0,
+      ),
+      make_abs_counter(
+        "kube_job_status_failed",
+        &[("bar", "ok"), ("baz", "a_b"), ("foo", "1_1_1")],
+        0,
+        1.0,
+      ),
+    )
+    .await;
+}
+
+#[tokio::test]
 async fn drop_metrics_with_abort() {
   let mut helper = Helper::new(
     r#"

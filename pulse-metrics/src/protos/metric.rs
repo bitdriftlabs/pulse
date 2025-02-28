@@ -588,6 +588,15 @@ impl<'a> EditableParsedMetric<'a> {
     }
   }
 
+  pub fn assign_tags(&mut self, mut tags: Vec<TagValue>) {
+    // Just sort now so we effectively do a full reset. In the common case scripts are not going
+    // to do this and then do more edits.
+    tags.sort_unstable();
+    self.metric.metric.id.tags = tags;
+    self.tag_insertion_index = None;
+    self.deleted_tags = None;
+  }
+
   pub fn add_or_change_tag(&mut self, tag: TagValue) {
     log::trace!("adding or changing tag: {tag}");
     if let Some(existing_tag) = self

@@ -7,6 +7,7 @@
 
 use crate::protos::metric::{EditableParsedMetric, MetricType, ParsedMetric, TagValue};
 use anyhow::{anyhow, bail};
+use itertools::Itertools;
 use pulse_common::metadata::Metadata;
 use vrl::compiler::state::{ExternalEnv, RuntimeState};
 use vrl::compiler::{
@@ -81,7 +82,24 @@ impl Target for EditableMetricVrlTarget<'_> {
                 .clone(),
             });
           },
-          // TODO(mattklein123): Support other fields as well as assigning all tags.
+          [tags] if tags == "tags" => {
+            self.metric.assign_tags(
+              value
+                .as_object()
+                .ok_or_else(|| "assigning to tags requires an object".to_string())?
+                .iter()
+                .map(|(k, v)| {
+                  Ok::<_, String>(TagValue {
+                    tag: k.to_bytes(),
+                    value: v
+                      .as_bytes()
+                      .ok_or_else(|| "assigning to a tag value requires a string".to_string())?
+                      .clone(),
+                  })
+                })
+                .try_collect()?,
+            );
+          },
           _ => return Ok(()),
         }
 
@@ -114,6 +132,22 @@ impl Target for EditableMetricVrlTarget<'_> {
               .find_tag(tag_name.as_bytes())
               .map(|t| OwnedValueOrRef::Owned(Value::Bytes(t.value.clone()))),
           ),
+          [tags] if tags == "tags" => Ok(Some(OwnedValueOrRef::Owned(Value::Object(
+            self
+              .metric
+              .metric()
+              .metric()
+              .get_id()
+              .tags()
+              .iter()
+              .map(|t| {
+                (
+                  String::from_utf8_lossy(&t.tag).into(),
+                  Value::Bytes(t.value.clone()),
+                )
+              })
+              .collect(),
+          )))),
           [name] if name == "mtype" => Ok(Some(OwnedValueOrRef::Owned(Value::Bytes(
             match self.metric.metric().metric().get_id().mtype() {
               None => "unknown",
