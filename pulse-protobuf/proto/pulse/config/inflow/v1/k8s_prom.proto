@@ -83,9 +83,10 @@ message KubernetesPrometheusConfig {
   message TLS {
     optional string cert_file = 1;
     optional string key_file = 2;
+    bool insecure_skip_verify = 3;
   }
 
-  // Based on https://prometheus.io/docs/prometheus/latest/configuration/https/
+  // Based on https://prometheus.io/docs/prometheus/latest/configuration/configuration/#tls_config
   // allow users to add cert and key files
   TLS tls_config = 6;
 }

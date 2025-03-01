@@ -349,7 +349,11 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
       // shouldn't be needed, but connections to K8s APIs still fail without it. We should
       // investigate why this is actually required since AFAICT the public cert above should
       // allow for validation of the server cert.
-      Ok(builder.danger_accept_invalid_certs(true).build()?)
+      Ok(
+        builder
+          .danger_accept_invalid_certs(tls_config.is_some_and(|tls| tls.insecure_skip_verify))
+          .build()?,
+      )
     }
 
     // In practice we should always have a valid CA cert, but this won't work in tests, so we

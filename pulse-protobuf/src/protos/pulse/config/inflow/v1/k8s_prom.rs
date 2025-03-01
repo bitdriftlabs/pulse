@@ -1367,6 +1367,8 @@ pub mod kubernetes_prometheus_config {
         pub cert_file: ::std::option::Option<::protobuf::Chars>,
         // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.TLS.key_file)
         pub key_file: ::std::option::Option<::protobuf::Chars>,
+        // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.TLS.insecure_skip_verify)
+        pub insecure_skip_verify: bool,
         // special fields
         // @@protoc_insertion_point(special_field:pulse.config.inflow.v1.KubernetesPrometheusConfig.TLS.special_fields)
         pub special_fields: ::protobuf::SpecialFields,
@@ -1384,7 +1386,7 @@ pub mod kubernetes_prometheus_config {
         }
 
         pub(in super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-            let mut fields = ::std::vec::Vec::with_capacity(2);
+            let mut fields = ::std::vec::Vec::with_capacity(3);
             let mut oneofs = ::std::vec::Vec::with_capacity(0);
             fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
                 "cert_file",
@@ -1395,6 +1397,11 @@ pub mod kubernetes_prometheus_config {
                 "key_file",
                 |m: &TLS| { &m.key_file },
                 |m: &mut TLS| { &mut m.key_file },
+            ));
+            fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+                "insecure_skip_verify",
+                |m: &TLS| { &m.insecure_skip_verify },
+                |m: &mut TLS| { &mut m.insecure_skip_verify },
             ));
             ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<TLS>(
                 "KubernetesPrometheusConfig.TLS",
@@ -1420,6 +1427,9 @@ pub mod kubernetes_prometheus_config {
                     18 => {
                         self.key_file = ::std::option::Option::Some(is.read_tokio_chars()?);
                     },
+                    24 => {
+                        self.insecure_skip_verify = is.read_bool()?;
+                    },
                     tag => {
                         ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                     },
@@ -1438,6 +1448,9 @@ pub mod kubernetes_prometheus_config {
             if let Some(v) = self.key_file.as_ref() {
                 my_size += ::protobuf::rt::string_size(2, &v);
             }
+            if self.insecure_skip_verify != false {
+                my_size += 1 + 1;
+            }
             my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
             self.special_fields.cached_size().set(my_size as u32);
             my_size
@@ -1449,6 +1462,9 @@ pub mod kubernetes_prometheus_config {
             }
             if let Some(v) = self.key_file.as_ref() {
                 os.write_string(2, v)?;
+            }
+            if self.insecure_skip_verify != false {
+                os.write_bool(3, self.insecure_skip_verify)?;
             }
             os.write_unknown_fields(self.special_fields.unknown_fields())?;
             ::std::result::Result::Ok(())
@@ -1469,6 +1485,7 @@ pub mod kubernetes_prometheus_config {
         fn clear(&mut self) {
             self.cert_file = ::std::option::Option::None;
             self.key_file = ::std::option::Option::None;
+            self.insecure_skip_verify = false;
             self.special_fields.clear();
         }
 
@@ -1476,6 +1493,7 @@ pub mod kubernetes_prometheus_config {
             static instance: TLS = TLS {
                 cert_file: ::std::option::Option::None,
                 key_file: ::std::option::Option::None,
+                insecure_skip_verify: false,
                 special_fields: ::protobuf::SpecialFields::new(),
             };
             &instance
@@ -1503,7 +1521,7 @@ pub mod kubernetes_prometheus_config {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n%pulse/config/inflow/v1/k8s_prom.proto\x12\x16pulse.config.inflow.v1\
     \x1a\x1egoogle/protobuf/duration.proto\x1a\x17validate/validate.proto\"\
-    \xfb\t\n\x1aKubernetesPrometheusConfig\x12L\n\x0fscrape_interval\x18\x01\
+    \xae\n\n\x1aKubernetesPrometheusConfig\x12L\n\x0fscrape_interval\x18\x01\
     \x20\x01(\x0b2\x19.google.protobuf.DurationR\x0escrapeIntervalB\x08\xfaB\
     \x05\x8a\x01\x02\x10\x01\x12Y\n\x08endpoint\x18\x02\x20\x01(\x0b2;.pulse\
     .config.inflow.v1.KubernetesPrometheusConfig.EndpointH\0R\x08endpoint\
@@ -1526,10 +1544,11 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x08\n\x06_value\x1a\xa6\x01\n\x1dUseK8sHttpsServiceAuthMatcher\x12p\n\
     \x12annotation_matcher\x18\x01\x20\x01(\x0b2?.pulse.config.inflow.v1.Kub\
     ernetesPrometheusConfig.Pod.KeyValueH\0R\x11annotationMatcherB\x13\n\x0c\
-    auth_matcher\x12\x03\xf8B\x01\x1ab\n\x03TLS\x12\x20\n\tcert_file\x18\x01\
-    \x20\x01(\tH\0R\x08certFile\x88\x01\x01\x12\x1e\n\x08key_file\x18\x02\
-    \x20\x01(\tH\x01R\x07keyFile\x88\x01\x01B\x0c\n\n_cert_fileB\x0b\n\t_key\
-    _fileB\r\n\x06target\x12\x03\xf8B\x01b\x06proto3\
+    auth_matcher\x12\x03\xf8B\x01\x1a\x94\x01\n\x03TLS\x12\x20\n\tcert_file\
+    \x18\x01\x20\x01(\tH\0R\x08certFile\x88\x01\x01\x12\x1e\n\x08key_file\
+    \x18\x02\x20\x01(\tH\x01R\x07keyFile\x88\x01\x01\x120\n\x14insecure_skip\
+    _verify\x18\x03\x20\x01(\x08R\x12insecureSkipVerifyB\x0c\n\n_cert_fileB\
+    \x0b\n\t_key_fileB\r\n\x06target\x12\x03\xf8B\x01b\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
