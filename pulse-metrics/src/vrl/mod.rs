@@ -203,7 +203,6 @@ impl Target for EditableMetricVrlTarget<'_> {
   }
 }
 
-
 //
 // MetadataTargetWrapper
 //

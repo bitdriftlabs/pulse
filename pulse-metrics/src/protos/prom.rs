@@ -129,7 +129,6 @@ pub fn prom_metric_type_to_internal_metric_type(
   }
 }
 
-
 // Convert from internal metric type to prom metric type.
 impl From<MetricType> for PromMetricType {
   fn from(t: MetricType) -> Self {

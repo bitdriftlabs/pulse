@@ -154,7 +154,6 @@ async fn scrape_path() {
   assert_eq!(endpoints[0].1.path, "/custom/path");
 }
 
-
 #[tokio::test]
 async fn multiple_ports() {
   let mut initial_state = PodsInfo::default();
