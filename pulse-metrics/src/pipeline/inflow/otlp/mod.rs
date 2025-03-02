@@ -19,7 +19,6 @@ use axum::routing::{get, post};
 use axum::Router;
 use bd_grpc::axum_helper::serve_with_connect_info;
 use bd_log::warn_every;
-use bd_proto::protos::prometheus::prompb::remote::WriteRequest;
 use bd_server_stats::stats::{AutoGauge, Scope};
 use bd_shutdown::ComponentShutdownTriggerHandle;
 use bytes::{BufMut, Bytes, BytesMut};
@@ -29,19 +28,21 @@ use hyper::body::Body;
 use itertools::Itertools;
 use log::info;
 use parking_lot::Mutex;
-use prom_remote_write::prom_remote_write_server_config::downstream_id_source::Source_type;
-use prom_remote_write::prom_remote_write_server_config::DownstreamIdSource;
-use prom_remote_write::PromRemoteWriteServerConfig;
 use prometheus::{IntCounter, IntGauge};
 use protobuf::Message;
 use pulse_common::bind_resolver::BoundTcpSocket;
-use pulse_protobuf::protos::pulse::config::inflow::v1::prom_remote_write;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::time::Instant;
 use time::ext::NumericalDuration;
 
+use pulse_protobuf::protos::pulse::otlp::v1::metrics_service::ExportMetricsServiceRequest;
+
 const MAX_ALLOWED_REQUEST_SIZE: u64 = 20_000_000;
+
+
+
+
 
 //
 // Stats
@@ -70,20 +71,22 @@ impl Stats {
 }
 
 //
-// PromRemoteWriteInflow
+// OTLP Inflow (Http)
+// Follow Spec: https://github.com/open-telemetry/opentelemetry-specification/blob/main/oteps/0099-otlp-http.md#otlphttp-protocol-details
 //
 
-pub(super) struct PromRemoteWriteInflow {
+
+pub(super) struct OTLPInflow {
   stats: Stats,
-  config: PromRemoteWriteServerConfig,
+  config: OTLPInflowConfig,
   dispatcher: Arc<dyn PipelineDispatch>,
   shutdown_trigger_handle: ComponentShutdownTriggerHandle,
   socket: Mutex<Option<BoundTcpSocket>>,
 }
 
-impl PromRemoteWriteInflow {
+impl OTLPInflow {
   pub async fn new(
-    config: PromRemoteWriteServerConfig,
+    config: OTLPInflowConfig,
     context: InflowFactoryContext,
   ) -> anyhow::Result<Self> {
     let stats = Stats::new(&context.scope);
@@ -99,16 +102,16 @@ impl PromRemoteWriteInflow {
 }
 
 #[async_trait]
-impl PipelineInflow for PromRemoteWriteInflow {
+impl PipelineInflow for OTLPInflow {
   async fn start(self: Arc<Self>) {
     let router = Router::new()
       .route("/healthcheck", get(|| async { "OK" }))
-      .route("/v1/metrics", post(otlp_handler))
+      .route("/api/v1/metrics", post(otlp_metrics_service_request_http_handler))
       .with_state(self.clone());
 
     let socket = self.socket.lock().take().unwrap();
     info!(
-      "otlp server starting at {}",
+      "otlp export metrics service server starting at {}",
       socket.local_addr()
     );
     tokio::spawn(async move {
@@ -122,12 +125,14 @@ impl PipelineInflow for PromRemoteWriteInflow {
       )
       .await;
       info!(
-        "terminated otlp server running at {}",
+        "terminated otlp export metrics service server running at {}",
         &self.config.bind
       );
     });
   }
 }
+
+
 
 //
 // DecodeError
@@ -159,10 +164,10 @@ impl DownstreamIdProviderImpl {
     remote_addr: IpAddr,
     req: &Request,
   ) -> Self {
-    // Note, there is currently no way to get the Bytes directly out of the header value so we have
-    // to clone it.
+    // Note, there is currently no way to get the Bytes directly out of the header value so we have to clone it.
     let base = downstream_id_source
       .and_then(|source| match source.source_type.as_ref().expect("pgv") {
+        // Note(Kai): not sure what is RemoteIp and RequestHeader in this context yet
         Source_type::RemoteIp(_) => None,
         Source_type::RequestHeader(header_name) => req
           .headers()
@@ -205,10 +210,10 @@ impl DownstreamIdProvider for DownstreamIdProviderImpl {
   }
 }
 
-fn decode_body_into_write_request(body: &[u8]) -> Result<WriteRequest, DecodeError> {
+fn decode_body_into_otlp_export_metrics_service_request(body: &[u8]) -> Result<ExportMetricsServiceRequest, DecodeError> {
   let decompressed = snap::raw::Decoder::new().decompress_vec(body)?;
-  let write_request = WriteRequest::parse_from_tokio_bytes(&Bytes::from(decompressed))?;
-  Ok(write_request)
+  let otlp_export_metrics_service_request = ExportMetricsServiceRequest::parse_from_tokio_bytes(&Bytes::from(decompressed))?;
+  Ok(otlp_export_metrics_service_request)
 }
 
 fn make_error_response(status: StatusCode, message: String) -> Response {
@@ -218,15 +223,17 @@ fn make_error_response(status: StatusCode, message: String) -> Response {
     .unwrap()
 }
 
-async fn otlp_metrics_handler(
-  State(state): State<Arc<PromRemoteWriteInflow>>,
+
+// Handler for OTLP Metrics Service requests
+async fn otlp_metrics_service_request_http_handler(
+  State(state): State<Arc<OTLPInflow>>,
   ConnectInfo(addr): ConnectInfo<SocketAddr>,
   req: Request,
 ) -> Result<Response, StatusCode> {
   let received_at = Instant::now();
   state.stats.requests_total.inc();
-  // TODO(mattklein123): Add bounds on max active requests.
   let _auto_request_active = AutoGauge::new(state.stats.requests_active.clone());
+
   // Length check to protect against malicious remote
   let req_content_length = req
     .body()
@@ -237,7 +244,7 @@ async fn otlp_metrics_handler(
     state.stats.requests_4xx.inc();
     warn_every!(
       1.minutes(),
-      "otlp request body size ({} bytes) exceeds limit ({} bytes)",
+      "OTLP Export Metrics Service Request body size ({} bytes) exceeds limit ({} bytes)",
       req_content_length,
       MAX_ALLOWED_REQUEST_SIZE
     );
@@ -262,13 +269,13 @@ async fn otlp_metrics_handler(
     .await
     .map_err(|_| StatusCode::BAD_REQUEST)?
     .to_bytes();
-  let write_request = match decode_body_into_write_request(&body) {
+  let otlp_export_metrics_service_request = match decode_body_into_otlp_export_metrics_service_request(&body) {
     Ok(wr) => wr,
     Err(e) => {
       state.stats.requests_4xx.inc();
       warn_every!(
         1.minutes(),
-        "prometheus remote write request body failed to decode: {}",
+        "OTLP Export Metrics Service Request body failed to decode: {}",
         e
       );
       return Ok(make_error_response(
@@ -278,9 +285,8 @@ async fn otlp_metrics_handler(
     },
   };
 
-  // Debug By Kai, need add test
-  let (samples, errors) = ParsedMetric::from_write_request(
-    write_request,
+  let (samples, errors) = ParsedMetric::from_otlp_export_metrics_service_request(
+    otlp_export_metrics_service_request,
     received_at,
     &state.config.parse_config,
     &downstream_id_provider,
@@ -288,8 +294,7 @@ async fn otlp_metrics_handler(
 
   state.dispatcher.send(samples).await;
 
-  // TODO(mattklein123): Integration test for prom inflow which makes sure we pass through metrics
-  // after a failure.
+  // TODO(kai): Add integration test for otlp inflow which makes sure we pass through metrics after a failure.
   if errors.is_empty() {
     Ok(
       Response::builder()
@@ -300,10 +305,12 @@ async fn otlp_metrics_handler(
   } else {
     state.stats.requests_4xx.inc();
     let errors = errors.into_iter().map(|e| e.to_string()).join(",");
-    warn_every!(1.minutes(), "invalid write request: {}", errors);
+    warn_every!(1.minutes(), "invalid otlp export metrics service request: {}", errors);
     Ok(make_error_response(
       StatusCode::BAD_REQUEST,
-      format!("invalid write request: {errors}"),
+      format!("invalid otlp export metrics service request: {errors}"),
     ))
   }
 }
+
+

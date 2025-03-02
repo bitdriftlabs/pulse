@@ -25,7 +25,7 @@
 #![allow(unused_results)]
 #![allow(unused_mut)]
 
-//! Generated file from `pulse/otlp/metrics/v1/metrics.proto`
+//! Generated file from `pulse/otlp/v1/metrics.proto`
 
 /// Generated files are compatible only with the same version
 /// of protobuf runtime.
@@ -4894,17 +4894,17 @@ impl DataPointFlags {
 }
 
 static file_descriptor_proto_data: &'static [u8] = b"\
-    \n#pulse/otlp/metrics/v1/metrics.proto\x12\x15pulse.otlp.metrics.v1\"`\n\
-    \x0bMetricsData\x12Q\n\x10resource_metrics\x18\x01\x20\x03(\x0b2&.pulse.\
-    otlp.metrics.v1.ResourceMetricsR\x0fresourceMetrics\"\xbf\x01\n\x0fResou\
-    rceMetrics\x12;\n\x08resource\x18\x01\x20\x01(\x0b2\x1f.pulse.otlp.metri\
-    cs.v1.ResourceR\x08resource\x12H\n\rscope_metrics\x18\x02\x20\x03(\x0b2#\
-    .pulse.otlp.metrics.v1.ScopeMetricsR\x0cscopeMetrics\x12\x1d\n\nschema_u\
-    rl\x18\x03\x20\x01(\tR\tschemaUrlJ\x06\x08\xe8\x07\x10\xe9\x07\"\xa9\x01\
-    \n\x0cScopeMetrics\x12A\n\x05scope\x18\x01\x20\x01(\x0b2+.pulse.otlp.met\
-    rics.v1.InstrumentationScopeR\x05scope\x127\n\x07metrics\x18\x02\x20\x03\
-    (\x0b2\x1d.pulse.otlp.metrics.v1.MetricR\x07metrics\x12\x1d\n\nschema_ur\
-    l\x18\x03\x20\x01(\tR\tschemaUrl\"\xf1\x03\n\x06Metric\x12\x12\n\x04name\
+    \n\x1bpulse/otlp/v1/metrics.proto\x12\x15pulse.otlp.metrics.v1\"`\n\x0bM\
+    etricsData\x12Q\n\x10resource_metrics\x18\x01\x20\x03(\x0b2&.pulse.otlp.\
+    metrics.v1.ResourceMetricsR\x0fresourceMetrics\"\xbf\x01\n\x0fResourceMe\
+    trics\x12;\n\x08resource\x18\x01\x20\x01(\x0b2\x1f.pulse.otlp.metrics.v1\
+    .ResourceR\x08resource\x12H\n\rscope_metrics\x18\x02\x20\x03(\x0b2#.puls\
+    e.otlp.metrics.v1.ScopeMetricsR\x0cscopeMetrics\x12\x1d\n\nschema_url\
+    \x18\x03\x20\x01(\tR\tschemaUrlJ\x06\x08\xe8\x07\x10\xe9\x07\"\xa9\x01\n\
+    \x0cScopeMetrics\x12A\n\x05scope\x18\x01\x20\x01(\x0b2+.pulse.otlp.metri\
+    cs.v1.InstrumentationScopeR\x05scope\x127\n\x07metrics\x18\x02\x20\x03(\
+    \x0b2\x1d.pulse.otlp.metrics.v1.MetricR\x07metrics\x12\x1d\n\nschema_url\
+    \x18\x03\x20\x01(\tR\tschemaUrl\"\xf1\x03\n\x06Metric\x12\x12\n\x04name\
     \x18\x01\x20\x01(\tR\x04name\x12\x20\n\x0bdescription\x18\x02\x20\x01(\t\
     R\x0bdescription\x12\x12\n\x04unit\x18\x03\x20\x01(\tR\x04unit\x124\n\
     \x05gauge\x18\x05\x20\x01(\x0b2\x1c.pulse.otlp.metrics.v1.GaugeH\0R\x05g\

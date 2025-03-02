@@ -25,7 +25,7 @@
 #![allow(unused_results)]
 #![allow(unused_mut)]
 
-//! Generated file from `pulse/otlp/collector/metrics/v1/metrics_service.proto`
+//! Generated file from `pulse/otlp/v1/metrics_service.proto`
 
 /// Generated files are compatible only with the same version
 /// of protobuf runtime.
@@ -418,18 +418,18 @@ impl ::protobuf::reflect::ProtobufValue for ExportMetricsPartialSuccess {
 }
 
 static file_descriptor_proto_data: &'static [u8] = b"\
-    \n5pulse/otlp/collector/metrics/v1/metrics_service.proto\x12\x1fpulse.ot\
-    lp.collector.metrics.v1\x1a#pulse/otlp/metrics/v1/metrics.proto\"p\n\x1b\
-    ExportMetricsServiceRequest\x12Q\n\x10resource_metrics\x18\x01\x20\x03(\
-    \x0b2&.pulse.otlp.metrics.v1.ResourceMetricsR\x0fresourceMetrics\"\x85\
-    \x01\n\x1cExportMetricsServiceResponse\x12e\n\x0fpartial_success\x18\x01\
-    \x20\x01(\x0b2<.pulse.otlp.collector.metrics.v1.ExportMetricsPartialSucc\
-    essR\x0epartialSuccess\"t\n\x1bExportMetricsPartialSuccess\x120\n\x14rej\
-    ected_data_points\x18\x01\x20\x01(\x03R\x12rejectedDataPoints\x12#\n\rer\
-    ror_message\x18\x02\x20\x01(\tR\x0cerrorMessage2\x9a\x01\n\x0eMetricsSer\
-    vice\x12\x87\x01\n\x06Export\x12<.pulse.otlp.collector.metrics.v1.Export\
-    MetricsServiceRequest\x1a=.pulse.otlp.collector.metrics.v1.ExportMetrics\
-    ServiceResponse\"\0b\x06proto3\
+    \n#pulse/otlp/v1/metrics_service.proto\x12\x1fpulse.otlp.collector.metri\
+    cs.v1\x1a\x1bpulse/otlp/v1/metrics.proto\"p\n\x1bExportMetricsServiceReq\
+    uest\x12Q\n\x10resource_metrics\x18\x01\x20\x03(\x0b2&.pulse.otlp.metric\
+    s.v1.ResourceMetricsR\x0fresourceMetrics\"\x85\x01\n\x1cExportMetricsSer\
+    viceResponse\x12e\n\x0fpartial_success\x18\x01\x20\x01(\x0b2<.pulse.otlp\
+    .collector.metrics.v1.ExportMetricsPartialSuccessR\x0epartialSuccess\"t\
+    \n\x1bExportMetricsPartialSuccess\x120\n\x14rejected_data_points\x18\x01\
+    \x20\x01(\x03R\x12rejectedDataPoints\x12#\n\rerror_message\x18\x02\x20\
+    \x01(\tR\x0cerrorMessage2\x9a\x01\n\x0eMetricsService\x12\x87\x01\n\x06E\
+    xport\x12<.pulse.otlp.collector.metrics.v1.ExportMetricsServiceRequest\
+    \x1a=.pulse.otlp.collector.metrics.v1.ExportMetricsServiceResponse\"\0b\
+    \x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file

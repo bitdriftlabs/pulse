@@ -1,2 +1,1 @@
-pub mod metrics;
-pub mod collector;
+pub mod v1;

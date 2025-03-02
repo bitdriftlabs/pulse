@@ -17,12 +17,12 @@ syntax = "proto3";
 
 // Note: This Protobuf file is local version for pulse
 // Original file: https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/collector/metrics/v1/metrics_service.proto
-// Excluede metrics_service_http [Source: https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/collector/metrics/v1/metrics_service_http.yaml] 
-//as grpc is not supported in pulse
+// Only included metrics_service_http [Source: https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/collector/metrics/v1/metrics_service_http.yaml] 
+// until grpc is implemented in pulse
 
 package pulse.otlp.collector.metrics.v1;
 
-import "pulse/otlp/metrics/v1/metrics.proto";
+import "pulse/otlp/v1/metrics.proto";
 
 // Service that can be used to push metrics between one Application
 // instrumented with OpenTelemetry and a collector, or between a collector and a

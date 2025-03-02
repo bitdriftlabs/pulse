@@ -49,5 +49,6 @@ message OtlpServerConfig {
   // then forwarded via internode and aggregated correctly. Depending on the aggregation topology
   // this is likely required if absolute counters are being used.
   // Aligned with PromRemoteWriteServerConfig
+  // This was added into prom_remote_write.proto, keep it here for consistency.
   bool append_tags_to_downstream_id = 4;
 }

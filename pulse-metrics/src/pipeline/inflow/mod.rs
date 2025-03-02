@@ -7,6 +7,7 @@
 
 use self::metric_generator::MetricGeneratorInflow;
 use self::prom_remote_write::PromRemoteWriteInflow;
+use self::otlp::OTLPInflow;
 use self::wire::tcp::TcpInflow;
 use self::wire::udp::UdpInflow;
 use self::wire::unix::UnixInflow;
@@ -25,6 +26,7 @@ use std::sync::Arc;
 mod metric_generator;
 mod prom_remote_write;
 mod prom_scrape;
+mod otlp;
 pub mod wire;
 
 //
@@ -69,6 +71,9 @@ pub(super) async fn to_inflow(
     Config_type::Udp(config) => Ok(Arc::new(UdpInflow::new(config, context).await?)),
     Config_type::PromRemoteWrite(config) => {
       Ok(Arc::new(PromRemoteWriteInflow::new(config, context).await?))
+    },
+    Config_type::Otlp(config) => {
+      Ok(Arc::new(OTLPInflow::new(config, context).await?))
     },
     Config_type::MetricGenerator(config) => {
       Ok(Arc::new(MetricGeneratorInflow::new(config, context).await?))
