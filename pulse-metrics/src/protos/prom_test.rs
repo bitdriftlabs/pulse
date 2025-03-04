@@ -54,9 +54,9 @@ fn invalid_histogram_or_summary() {
   assert!(metrics.is_empty());
   assert_eq!(1, errors.len());
   assert_matches!(
-    errors[0],
+    &errors[0],
     ParseError::PromRemoteWrite(message)
-      if message == "invalid histogram or summary timeseries"
+      if message == "foo: invalid histogram or summary timeseries"
   );
 }
 
