@@ -207,6 +207,11 @@ impl DownstreamIdProvider for DownstreamIdProviderImpl {
 
 fn decode_body_into_write_request(body: &[u8]) -> Result<WriteRequest, DecodeError> {
   let decompressed = snap::raw::Decoder::new().decompress_vec(body)?;
+  log::trace!(
+    "decompressed WriteRequest from {} bytes to {} bytes",
+    body.len(),
+    decompressed.len()
+  );
   let write_request = WriteRequest::parse_from_tokio_bytes(&Bytes::from(decompressed))?;
   Ok(write_request)
 }
