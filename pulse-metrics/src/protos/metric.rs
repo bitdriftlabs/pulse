@@ -495,7 +495,7 @@ pub enum ParseError {
   #[error("invalid protocol")]
   InvalidProtocol,
   #[error("prometheus remote write error: {0}")]
-  PromRemoteWrite(&'static str),
+  PromRemoteWrite(String),
   #[error("more than one sample rate field found")]
   RepeatedSampleRate,
   #[error("more than one set of tags found")]

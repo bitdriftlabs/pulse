@@ -147,6 +147,14 @@ impl From<MetricType> for PromMetricType {
   }
 }
 
+fn make_remote_write_error(family_name: &[u8], message: &str) -> ParseError {
+  ParseError::PromRemoteWrite(format!(
+    "{}: {}",
+    String::from_utf8_lossy(family_name),
+    message
+  ))
+}
+
 //
 // InProgressHistogramData
 //
@@ -304,6 +312,7 @@ impl ChangedTypeTracker {
 // Given the tags and samples for an incoming timeseries that is part of a summary, collect the
 // samples into the in progress state.
 fn process_in_progress_summary(
+  family_name: &[u8],
   summary: &mut InProgressSummary,
   data_type: SummaryDataType,
   mut tags: Vec<TagValue>,
@@ -315,11 +324,11 @@ fn process_in_progress_summary(
       .find_position(|t| t.tag.as_ref() == b"quantile")
       .unwrap();
     let quantile: f64 = std::str::from_utf8(&quantile_tag_value.value)
-      .map_err(|_| ParseError::PromRemoteWrite("invalid quantile tag"))?
+      .map_err(|_| make_remote_write_error(family_name, "invalid quantile tag"))?
       .parse::<f64>()
-      .map_err(|_| ParseError::PromRemoteWrite("invalid quantile tag"))?;
+      .map_err(|_| make_remote_write_error(family_name, "invalid quantile tag"))?;
     if !quantile.is_finite() {
-      return Err(ParseError::PromRemoteWrite("invalid quantile tag"));
+      return Err(make_remote_write_error(family_name, "invalid quantile tag"));
     }
     tags.swap_remove(quantile_tag_index);
     Some(quantile)
@@ -342,13 +351,19 @@ fn process_in_progress_summary(
       }),
       SummaryDataType::Count => {
         if data.sample_count.is_some() {
-          return Err(ParseError::PromRemoteWrite("duplicate summary count"));
+          return Err(make_remote_write_error(
+            family_name,
+            "duplicate summary count",
+          ));
         }
         data.sample_count = Some(sample.value);
       },
       SummaryDataType::Sum => {
         if data.sample_sum.is_some() {
-          return Err(ParseError::PromRemoteWrite("duplicate summary sum"));
+          return Err(make_remote_write_error(
+            family_name,
+            "duplicate summary sum",
+          ));
         }
         data.sample_sum = Some(sample.value);
       },
@@ -361,6 +376,7 @@ fn process_in_progress_summary(
 // Given the tags and samples for an incoming timeseries that is part of a histogram, collect the
 // samples into the in progress state.
 fn process_in_progress_histogram(
+  family_name: &[u8],
   histogram: &mut InProgressHistogram,
   data_type: HistogramDataType,
   mut tags: Vec<TagValue>,
@@ -373,7 +389,7 @@ fn process_in_progress_histogram(
         .iter()
         .enumerate()
         .find(|(_, tag)| tag.tag == "le")
-        .ok_or(ParseError::PromRemoteWrite("missing le tag"))?;
+        .ok_or_else(|| make_remote_write_error(family_name, "missing le tag"))?;
 
       // Special case the +Inf bucket.
       if le_tag.value.as_ref() == b"+Inf" {
@@ -381,11 +397,11 @@ fn process_in_progress_histogram(
         (HistogramDataType::Count, None)
       } else {
         let le = std::str::from_utf8(&le_tag.value)
-          .map_err(|_| ParseError::PromRemoteWrite("invalid le tag"))?
+          .map_err(|_| make_remote_write_error(family_name, "invalid le tag"))?
           .parse::<f64>()
-          .map_err(|_| ParseError::PromRemoteWrite("invalid le tag"))?;
+          .map_err(|_| make_remote_write_error(family_name, "invalid le tag"))?;
         if !le.is_finite() {
-          return Err(ParseError::PromRemoteWrite("invalid le tag"));
+          return Err(make_remote_write_error(family_name, "invalid le tag"));
         }
         tags.swap_remove(le_tag_index);
         (HistogramDataType::Bucket, Some(le))
@@ -412,12 +428,12 @@ fn process_in_progress_histogram(
       HistogramDataType::Count => {
         if matches!(data_type, HistogramDataType::Bucket) {
           if data.saw_inf {
-            return Err(ParseError::PromRemoteWrite("duplicate +Inf"));
+            return Err(make_remote_write_error(family_name, "duplicate +Inf"));
           }
           data.saw_inf = true;
         } else {
           if data.saw_count {
-            return Err(ParseError::PromRemoteWrite("duplicate _count"));
+            return Err(make_remote_write_error(family_name, "duplicate _count"));
           }
           data.saw_count = true;
         }
@@ -426,14 +442,17 @@ fn process_in_progress_histogram(
           .sample_count
           .is_some_and(|current_sample_count| current_sample_count != sample.value)
         {
-          return Err(ParseError::PromRemoteWrite("mismatch +Inf and _count"));
+          return Err(make_remote_write_error(
+            family_name,
+            "mismatch +Inf and _count",
+          ));
         }
 
         data.sample_count = Some(sample.value);
       },
       HistogramDataType::Sum => {
         if data.sample_sum.is_some() {
-          return Err(ParseError::PromRemoteWrite("duplicate _sum"));
+          return Err(make_remote_write_error(family_name, "duplicate _sum"));
         }
         data.sample_sum = Some(sample.value);
       },
@@ -445,10 +464,11 @@ fn process_in_progress_histogram(
 
 // Given in progress summary data, attempt to finalize and fail if not possible.
 fn in_progress_summary_data_to_summary_data(
+  family_name: &[u8],
   mut in_progress: InProgressSummaryData,
 ) -> Result<SummaryData, ParseError> {
   if in_progress.quantiles.is_empty() {
-    return Err(ParseError::PromRemoteWrite("empty quantiles"));
+    return Err(make_remote_write_error(family_name, "empty quantiles"));
   }
 
   in_progress
@@ -462,15 +482,24 @@ fn in_progress_summary_data_to_summary_data(
     let previous = &in_progress.quantiles[i - 1];
     // Make sure that quantile is > previous quantile (checks for duplicates after the sort).
     if current.quantile <= previous.quantile {
-      return Err(ParseError::PromRemoteWrite("duplicate quantile value"));
+      return Err(make_remote_write_error(
+        family_name,
+        "duplicate quantile value",
+      ));
     }
   }
 
   let Some(sample_count) = in_progress.sample_count else {
-    return Err(ParseError::PromRemoteWrite("sample count not provided"));
+    return Err(make_remote_write_error(
+      family_name,
+      "sample count not provided",
+    ));
   };
   let Some(sample_sum) = in_progress.sample_sum else {
-    return Err(ParseError::PromRemoteWrite("sample sum not provided"));
+    return Err(make_remote_write_error(
+      family_name,
+      "sample sum not provided",
+    ));
   };
 
   Ok(SummaryData {
@@ -482,14 +511,18 @@ fn in_progress_summary_data_to_summary_data(
 
 // Given in progress histogram data, attempt to finalize and fail if not possible.
 fn in_progress_histogram_data_to_histogram_data(
+  family_name: &[u8],
   mut in_progress: InProgressHistogramData,
 ) -> Result<HistogramData, ParseError> {
   if !in_progress.saw_count || !in_progress.saw_inf {
-    return Err(ParseError::PromRemoteWrite("_count or +Inf not provided"));
+    return Err(make_remote_write_error(
+      family_name,
+      "_count or +Inf not provided",
+    ));
   }
 
   if in_progress.buckets.is_empty() {
-    return Err(ParseError::PromRemoteWrite("empty buckets"));
+    return Err(make_remote_write_error(family_name, "empty buckets"));
   }
 
   // The buckets might have come in different orders. Sort them by le.
@@ -504,17 +537,20 @@ fn in_progress_histogram_data_to_histogram_data(
     let previous = &in_progress.buckets[i - 1];
     // Make sure that le is > previous le (checks for duplicates after the sort).
     if current.le <= previous.le {
-      return Err(ParseError::PromRemoteWrite("duplicate le value"));
+      return Err(make_remote_write_error(family_name, "duplicate le value"));
     }
     // Make sure count >= previous count.
     if current.count < previous.count {
-      return Err(ParseError::PromRemoteWrite("counts not ascending"));
+      return Err(make_remote_write_error(family_name, "counts not ascending"));
     }
   }
 
   let sample_count = in_progress.sample_count.unwrap();
   if sample_count < in_progress.buckets[in_progress.buckets.len() - 1].count {
-    return Err(ParseError::PromRemoteWrite("sample count < final bucket"));
+    return Err(make_remote_write_error(
+      family_name,
+      "sample count < final bucket",
+    ));
   }
 
   Ok(HistogramData {
@@ -522,7 +558,7 @@ fn in_progress_histogram_data_to_histogram_data(
     sample_count: in_progress.sample_count.unwrap(),
     sample_sum: in_progress
       .sample_sum
-      .ok_or(ParseError::PromRemoteWrite("sample sum not provided"))?,
+      .ok_or_else(|| make_remote_write_error(family_name, "sample sum not provided"))?,
   })
 }
 
@@ -569,7 +605,7 @@ fn timeseries_to_metrics(
 
   if let Some((family_name, data_type)) = maybe_histogram {
     if let Some(InProgressMetric::Histogram(histogram)) = metric_type_map.get_mut(family_name) {
-      process_in_progress_histogram(histogram, data_type, tags, time_series.samples)?;
+      process_in_progress_histogram(family_name, histogram, data_type, tags, time_series.samples)?;
       return Ok(vec![]);
     }
   }
@@ -589,7 +625,7 @@ fn timeseries_to_metrics(
 
   if let Some((family_name, data_type)) = maybe_summary {
     if let Some(InProgressMetric::Summary(summary)) = metric_type_map.get_mut(family_name) {
-      process_in_progress_summary(summary, data_type, tags, time_series.samples)?;
+      process_in_progress_summary(family_name, summary, data_type, tags, time_series.samples)?;
       return Ok(vec![]);
     }
   }
@@ -604,7 +640,8 @@ fn timeseries_to_metrics(
     },
     Some(InProgressMetric::Simple(mtype)) => *mtype,
     Some(InProgressMetric::Histogram(_) | InProgressMetric::Summary(_)) => {
-      return Err(ParseError::PromRemoteWrite(
+      return Err(make_remote_write_error(
+        &name,
         "invalid histogram or summary timeseries",
       ));
     },
@@ -661,7 +698,7 @@ fn finalize_histogram(
     )?,
     None,
     unwrap_prom_timestamp(timestamp),
-    MetricValue::Histogram(in_progress_histogram_data_to_histogram_data(data)?),
+    MetricValue::Histogram(in_progress_histogram_data_to_histogram_data(name, data)?),
   ))
 }
 
@@ -676,7 +713,7 @@ fn finalize_summary(
     MetricId::new(name.clone(), Some(MetricType::Summary), tags.to_vec(), true)?,
     None,
     unwrap_prom_timestamp(timestamp),
-    MetricValue::Summary(in_progress_summary_data_to_summary_data(data)?),
+    MetricValue::Summary(in_progress_summary_data_to_summary_data(name, data)?),
   ))
 }
 
@@ -711,9 +748,10 @@ pub fn from_write_request(
         metric_type
       );
       match map.entry(m.metric_family_name.into_bytes()) {
-        Entry::Occupied(_) => {
+        Entry::Occupied(o) => {
           if !parse_config.ignore_duplicate_metadata {
-            errors.push(ParseError::PromRemoteWrite(
+            errors.push(make_remote_write_error(
+              o.key(),
               "duplicate metric family name in metadata",
             ));
           }
