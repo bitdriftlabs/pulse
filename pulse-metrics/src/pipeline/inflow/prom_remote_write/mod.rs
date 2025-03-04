@@ -279,6 +279,7 @@ async fn prometheus_remote_write_handler(
     },
   };
 
+  log::trace!("WriteRequest received: {}", write_request);
   let (samples, errors) = ParsedMetric::from_write_request(
     write_request,
     received_at,
