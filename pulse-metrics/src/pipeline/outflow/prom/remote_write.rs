@@ -725,6 +725,7 @@ impl Batch<ParsedMetric> for PromBatch {
       },
       changed_type_tracker,
     );
+    log::trace!("WriteRequest batched and ready to send: {}", write_request);
     let compressed_write_request = compress_write_request(&write_request);
     let size = compressed_write_request.len();
     *self = Self::Complete {
