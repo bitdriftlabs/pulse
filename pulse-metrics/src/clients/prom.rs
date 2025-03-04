@@ -305,7 +305,7 @@ pub fn compress_write_request(write_request: &WriteRequest) -> Vec<u8> {
   let proto_compressed = snap::raw::Encoder::new()
     .compress_vec(&proto_encoded)
     .unwrap();
-  log::trace!(
+  log::debug!(
     "compressed WriteRequest {} bytes to {} bytes",
     proto_encoded.len(),
     proto_compressed.len()
