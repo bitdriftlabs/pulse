@@ -467,10 +467,6 @@ fn in_progress_summary_data_to_summary_data(
   family_name: &[u8],
   mut in_progress: InProgressSummaryData,
 ) -> Result<SummaryData, ParseError> {
-  if in_progress.quantiles.is_empty() {
-    return Err(make_remote_write_error(family_name, "empty quantiles"));
-  }
-
   in_progress
     .quantiles
     .sort_unstable_by(|a, b| a.quantile.partial_cmp(&b.quantile).unwrap());

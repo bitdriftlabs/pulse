@@ -9,6 +9,7 @@
 #[path = "./batch_test.rs"]
 mod batch_test;
 
+use bd_log::warn_every;
 use bd_server_stats::stats::Scope;
 use bd_shutdown::ComponentShutdown;
 use bd_time::TimeDurationExt;
@@ -20,6 +21,7 @@ use std::collections::VecDeque;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use time::Duration;
+use time::ext::NumericalDuration;
 use tokio::sync::Notify;
 use tokio::task::JoinHandle;
 
@@ -191,6 +193,12 @@ impl<I: Send + Sync + 'static, B: Batch<I> + Send + Sync + 'static> BatchBuilder
         // just drop the entire batch since there is no good way to unpush it right now and
         // this is an extreme edge case so we should just not crash. We can revisit later if
         // an issue.
+        warn_every!(
+          15.seconds(),
+          "dropping: batch size {} is larger than max queue size {}",
+          finished_size,
+          self.max_total_bytes
+        );
         self
           .stats
           .dropped_bytes
@@ -202,7 +210,11 @@ impl<I: Send + Sync + 'static, B: Batch<I> + Send + Sync + 'static> BatchBuilder
       // See if we need to evict old entries to make room for new data.
       while self.max_total_bytes - locked_data.current_total_size < finished_size {
         let back = locked_data.batch_queue.pop_back().unwrap();
-        log::trace!("evicting with size: {}", back.size);
+        warn_every!(
+          15.seconds(),
+          "batch overflow, evicting oldest with size: {}",
+          back.size
+        );
         self
           .stats
           .dropped_bytes

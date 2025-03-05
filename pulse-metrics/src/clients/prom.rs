@@ -302,9 +302,15 @@ impl PromRemoteWriteClient for HyperPromRemoteWriteClient {
 
 pub fn compress_write_request(write_request: &WriteRequest) -> Vec<u8> {
   let proto_encoded = write_request.write_to_bytes().unwrap();
-  snap::raw::Encoder::new()
+  let proto_compressed = snap::raw::Encoder::new()
     .compress_vec(&proto_encoded)
-    .unwrap()
+    .unwrap();
+  log::debug!(
+    "compressed WriteRequest {} bytes to {} bytes",
+    proto_encoded.len(),
+    proto_compressed.len()
+  );
+  proto_compressed
 }
 
 #[must_use]
