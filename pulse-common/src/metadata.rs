@@ -16,7 +16,7 @@ use vrl::value::{Kind, Value};
 //
 
 /// Holds additional metadata about the origin of the event data.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Metadata {
   // TODO(snowp): For now we just hard code k8s information here. Down the line we'd want this to
   // be a bit more generic, e.g. a provider / consumer contract where sources emit providers and

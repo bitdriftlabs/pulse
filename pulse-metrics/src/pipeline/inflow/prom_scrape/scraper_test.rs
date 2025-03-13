@@ -177,8 +177,8 @@ async fn multiple_ports() {
   assert_eq!(
     endpoints.keys().sorted().collect_vec(),
     &[
-      "some-namespace//my-awesome-pod/123",
-      "some-namespace//my-awesome-pod/124"
+      "some-namespace//my-awesome-pod/123/2081278170809814331",
+      "some-namespace//my-awesome-pod/124/922646523833764701"
     ]
   );
 }
@@ -206,8 +206,8 @@ async fn multiple_ports_with_space() {
   assert_eq!(
     endpoints.keys().sorted().collect_vec(),
     &[
-      "some-namespace//my-awesome-pod/123",
-      "some-namespace//my-awesome-pod/124"
+      "some-namespace//my-awesome-pod/123/12923558771307559046",
+      "some-namespace//my-awesome-pod/124/17560654736538538233"
     ]
   );
 }
@@ -251,8 +251,8 @@ async fn inclusion_filters() {
   assert_eq!(
     endpoints.keys().sorted().collect_vec(),
     &[
-      "some-namespace//my-awesome-pod/123",
-      "some-namespace//my-awesome-pod/124"
+      "some-namespace//my-awesome-pod/123/8164956601632705534",
+      "some-namespace//my-awesome-pod/124/3520612071421830717"
     ]
   );
 }
@@ -281,7 +281,7 @@ async fn test_kube_pod_target_endpoint() {
   assert_eq!(endpoints.len(), 1);
 
   assert_eq!(
-    endpoints["some-namespace//my-awesome-pod/9090"]
+    endpoints["some-namespace//my-awesome-pod/9090/4466796435962806514"]
       .metadata
       .as_ref()
       .unwrap()
@@ -293,7 +293,7 @@ async fn test_kube_pod_target_endpoint() {
     "some-namespace"
   );
   assert_eq!(
-    endpoints["some-namespace//my-awesome-pod/9090"]
+    endpoints["some-namespace//my-awesome-pod/9090/4466796435962806514"]
       .metadata
       .as_ref()
       .unwrap()
