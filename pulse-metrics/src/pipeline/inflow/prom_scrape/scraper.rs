@@ -48,6 +48,7 @@ use pulse_protobuf::protos::pulse::config::bootstrap::v1::bootstrap::KubernetesB
 use pulse_protobuf::protos::pulse::config::inflow::v1::k8s_prom;
 use regex::Regex;
 use std::collections::{BTreeMap, HashMap};
+use std::hash::{Hash, Hasher};
 use std::iter::empty;
 use std::marker::PhantomData;
 use std::sync::Arc;
@@ -55,6 +56,7 @@ use std::time::Instant;
 use time::Duration;
 use time::ext::NumericalDuration;
 use tokio::time::MissedTickBehavior;
+use xxhash_rust::xxh64::Xxh64Builder;
 
 fn process_inclusion_filters(
   inclusion_filters: &[InclusionFilter],
@@ -170,31 +172,38 @@ fn create_endpoints(
   ports
     .iter()
     .map(|port| {
+      let endpoint = PromEndpoint::new(
+        pod_info.ip.to_string(),
+        *port,
+        prom_endpoint_path.clone(),
+        Some(Arc::new(Metadata::new(
+          &prom_namespace,
+          &pod_info.name,
+          &pod_info.ip.to_string(),
+          &pod_info.labels,
+          &pod_info.annotations,
+          service_name,
+          &pod_info.node_name,
+          &pod_info.node_ip,
+          Some(format!("{}:{port}", pod_info.ip)),
+        ))),
+        use_k8s_https_service_auth,
+      );
+      // We use a stable hash to make sure the ID changes when the endpoint changes.
+      let mut hasher = Xxh64Builder::new(0).build();
+      endpoint.hash(&mut hasher);
+      let hash = hasher.finish();
+
       (
         format!(
-          "{}/{}/{}/{}",
+          "{}/{}/{}/{}/{}",
           prom_namespace,
           service_name.unwrap_or_default(),
           pod_info.name,
-          port
+          port,
+          hash
         ),
-        PromEndpoint::new(
-          pod_info.ip.to_string(),
-          *port,
-          prom_endpoint_path.clone(),
-          Some(Arc::new(Metadata::new(
-            &prom_namespace,
-            &pod_info.name,
-            &pod_info.ip.to_string(),
-            &pod_info.labels,
-            &pod_info.annotations,
-            service_name,
-            &pod_info.node_name,
-            &pod_info.node_ip,
-            Some(format!("{}:{port}", pod_info.ip)),
-          ))),
-          use_k8s_https_service_auth,
-        ),
+        endpoint,
       )
     })
     .collect()
@@ -209,7 +218,7 @@ fn create_endpoints(
 ///
 /// In k8s parlance each endpoint maps to a single pod, augmented by service annotations that came
 /// from the service that spawned the endpoint.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct PromEndpoint {
   address: String,
   port: i32,
