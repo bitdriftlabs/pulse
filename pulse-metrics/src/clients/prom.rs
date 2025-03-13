@@ -119,7 +119,7 @@ impl HyperPromRemoteWriteClient {
       },
       Auth_type::Aws(aws_auth_type) => match aws_auth_type.auth_type.expect("pgv") {
         aws_auth_config::Auth_type::Default(config) => {
-          let sdk_config = aws_config::load_defaults(BehaviorVersion::v2024_03_28()).await;
+          let sdk_config = aws_config::load_defaults(BehaviorVersion::v2025_01_17()).await;
           let credentials_provider =
             sdk_config
               .credentials_provider()

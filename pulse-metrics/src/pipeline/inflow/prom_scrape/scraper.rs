@@ -441,7 +441,7 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
         Err(e) => {
           warn_every!(
             1.minutes(),
-            "failed to scrape prometheus endpoint {}: {}",
+            "failed to scrape prometheus endpoint {}: {:#}",
             id,
             e
           );
@@ -675,11 +675,6 @@ pub async fn make(
     ),
   }
 }
-
-// TODO(snowp): At the moment the scraper and the pod watcher is oddly coupled together, see if we
-// can make this better. For example, if we want to match what prom can do we'd want to have the
-// pod cache store all annotations have the per scraper configuration decide which annotations
-// should be used to construct the url.
 
 /// Abstraction around a source of endpoints that can be scraped.
 #[async_trait]
