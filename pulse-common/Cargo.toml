@@ -11,6 +11,7 @@ doctest = false
 [dependencies]
 anyhow.workspace                = true
 async-trait.workspace           = true
+backoff.workspace               = true
 bd-log.workspace                = true
 bd-panic.workspace              = true
 bd-pgv.workspace                = true
@@ -22,8 +23,8 @@ kube.workspace                  = true
 log.workspace                   = true
 mockall.workspace               = true
 parking_lot.workspace           = true
-protobuf-json-mapping.workspace = true
 protobuf.workspace              = true
+protobuf-json-mapping.workspace = true
 pulse-protobuf.path             = "../pulse-protobuf"
 reqwest.workspace               = true
 rustls.workspace                = true
