@@ -425,16 +425,10 @@ pub async fn watch_pods(
     let mut initial_state = None;
     let mut initial_sync_tx = Some(initial_sync_tx);
     loop {
-      let Some(update) = process_resource_update(watcher.try_next().await) else {
-        tokio::time::sleep(backoff.next_backoff().unwrap()).await;
+      let Some(update) = process_resource_update(watcher.try_next().await, &mut backoff).await
+      else {
         continue;
       };
-
-      if !matches!(update, watcher::Event::Init) {
-        // The library will emit the Event::Init message in the case of a failure and the start of
-        // resync. We do not want to reset in this case, but reset in all other cases.
-        backoff.reset();
-      }
 
       match update {
         watcher::Event::Apply(pod) => {
@@ -472,15 +466,25 @@ pub async fn watch_pods(
   Ok(())
 }
 
-fn process_resource_update<T>(
+async fn process_resource_update<T>(
   result: kube::runtime::watcher::Result<Option<kube::runtime::watcher::Event<T>>>,
+  backoff: &mut ExponentialBackoff,
 ) -> Option<kube::runtime::watcher::Event<T>> {
   match result {
-    Ok(Some(pod_update)) => Some(pod_update),
+    Ok(Some(update)) => {
+      if !matches!(update, watcher::Event::Init) {
+        // The library will emit the Event::Init message in the case of a failure and the start of
+        // resync. We do not want to reset in this case, but reset in all other cases.
+        backoff.reset();
+      }
+
+      Some(update)
+    },
     // TODO(snowp): Would this ever happen?
     Ok(None) => None,
     Err(e) => {
-      log::warn!("Error watching pods: {}", e);
+      log::warn!("Error watching pods, backing off: {}", e);
+      tokio::time::sleep(backoff.next_backoff().unwrap()).await;
       None
     },
   }
@@ -627,16 +631,11 @@ impl ServiceMonitor {
       let mut initial_state = None;
       let mut initial_sync_tx = Some(initial_sync_tx);
       loop {
-        let Some(service_update) = process_resource_update(watcher.try_next().await) else {
-          tokio::time::sleep(backoff.next_backoff().unwrap()).await;
+        let Some(service_update) =
+          process_resource_update(watcher.try_next().await, &mut backoff).await
+        else {
           continue;
         };
-
-        if !matches!(service_update, watcher::Event::Init) {
-          // The library will emit the Event::Init message in the case of a failure and the start of
-          // resync. We do not want to reset in this case, but reset in all other cases.
-          backoff.reset();
-        }
 
         match service_update {
           watcher::Event::Apply(service) => {
