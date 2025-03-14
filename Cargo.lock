@@ -4690,6 +4690,7 @@ dependencies = [
  "anyhow",
  "assert_matches",
  "async-trait",
+ "backoff",
  "bd-log",
  "bd-panic",
  "bd-pgv",

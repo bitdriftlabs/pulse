@@ -13,13 +13,15 @@ use self::container::PodsInfo;
 use super::missing_node_name_error;
 use crate::proto::env_or_inline_to_string;
 use crate::singleton::{SingletonHandle, SingletonManager};
+use backoff::backoff::Backoff;
+use backoff::{ExponentialBackoff, ExponentialBackoffBuilder};
 use futures_util::future::BoxFuture;
 use futures_util::{Stream, TryStreamExt, pin_mut};
 use k8s_openapi::api::core::v1::{Pod, Service};
 use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
 use kube::core::ObjectMeta;
+use kube::runtime::watcher;
 use kube::runtime::watcher::Event;
-use kube::runtime::{WatchStreamExt, watcher};
 use kube::{Api, ResourceExt};
 use parking_lot::RwLock;
 use protobuf::Chars;
@@ -27,6 +29,7 @@ use pulse_protobuf::protos::pulse::config::bootstrap::v1::bootstrap::KubernetesB
 use std::collections::{BTreeMap, HashMap};
 use std::net::IpAddr;
 use std::sync::{Arc, OnceLock};
+use time::ext::NumericalStdDuration;
 use tokio::sync::oneshot;
 use tokio::sync::watch::{self, Ref};
 
@@ -369,6 +372,18 @@ pub async fn service_watch_stream() -> anyhow::Result<
   Ok(watcher(api, watcher::Config::default()))
 }
 
+fn make_k8s_backoff() -> ExponentialBackoff {
+  // This matches the k8s client which says that it matches the Go client. This is done manually
+  // as there appears to be a bug in the k8s client where it keeps resetting if the failure is
+  // during initial sync.
+  ExponentialBackoffBuilder::new()
+    .with_initial_interval(800.std_milliseconds())
+    .with_max_interval(30.std_seconds())
+    .with_max_elapsed_time(None)
+    .with_multiplier(2.0)
+    .build()
+}
+
 /// Performs a lookup of all eligible prom endpoints for the given k8s node and watches for
 /// changes to this set. The initial state and updates are provided via the watch channel.
 pub async fn watch_pods(
@@ -399,11 +414,11 @@ pub async fn watch_pods(
       field_selector: Some(format!("spec.nodeName={node}")),
       ..Default::default()
     },
-  )
-  .default_backoff();
+  );
 
   let mut pods_info_cache = PodsInfoCache::new(node, update_tx, config.pod_phases);
   let (initial_sync_tx, initial_sync_rx) = oneshot::channel();
+  let mut backoff = make_k8s_backoff();
 
   tokio::spawn(async move {
     pin_mut!(watcher);
@@ -411,8 +426,15 @@ pub async fn watch_pods(
     let mut initial_sync_tx = Some(initial_sync_tx);
     loop {
       let Some(update) = process_resource_update(watcher.try_next().await) else {
+        tokio::time::sleep(backoff.next_backoff().unwrap()).await;
         continue;
       };
+
+      if !matches!(update, watcher::Event::Init) {
+        // The library will emit the Event::Init message in the case of a failure and the start of
+        // resync. We do not want to reset in this case, but reset in all other cases.
+        backoff.reset();
+      }
 
       match update {
         watcher::Event::Apply(pod) => {
@@ -596,17 +618,25 @@ impl ServiceMonitor {
     self: &Arc<Self>,
     watch_stream: impl Stream<Item = ServiceResult> + Send + 'static,
   ) -> kube::Result<()> {
-    let watcher = watch_stream.default_backoff();
+    let watcher = watch_stream;
     let self_clone = self.clone();
     let (initial_sync_tx, initial_sync_rx) = oneshot::channel();
+    let mut backoff = make_k8s_backoff();
     tokio::spawn(async move {
       pin_mut!(watcher);
       let mut initial_state = None;
       let mut initial_sync_tx = Some(initial_sync_tx);
       loop {
         let Some(service_update) = process_resource_update(watcher.try_next().await) else {
+          tokio::time::sleep(backoff.next_backoff().unwrap()).await;
           continue;
         };
+
+        if !matches!(service_update, watcher::Event::Init) {
+          // The library will emit the Event::Init message in the case of a failure and the start of
+          // resync. We do not want to reset in this case, but reset in all other cases.
+          backoff.reset();
+        }
 
         match service_update {
           watcher::Event::Apply(service) => {
