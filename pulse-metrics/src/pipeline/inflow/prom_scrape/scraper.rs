@@ -522,6 +522,8 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
     active_jobs: &mut HashMap<String, ComponentShutdownTrigger>,
     endpoints: &mut Provider,
   ) {
+    log::info!("({}) starting reload", self.name);
+
     let mut added = Vec::new();
     let updated_state = {
       // TODO(snowp): Right now we make two passes over all the endpoint as they are first created
@@ -571,7 +573,7 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
     )
     .await;
 
-    log::debug!("({}) completed reload", self.name);
+    log::info!("({}) completed reload", self.name);
   }
 }
 
