@@ -143,6 +143,13 @@ fn create_endpoints(
       },
     );
 
+  // Process the scheme annotation, defaulting to "http" if not specified
+  let scheme = prom_annotations
+    .get("prometheus.io/scheme")
+    .map(String::as_str)
+    .unwrap_or("http")
+    .to_string();
+
   // We attempt the resolve the prom endpoint by considering (in order):
   // 1. A service annotation that specifies valid port number(s) via prometheus.io/port
   // 2. A a service port on the service. We use the first port mapping present on the svc object.
@@ -188,6 +195,7 @@ fn create_endpoints(
           Some(format!("{}:{port}", pod_info.ip)),
         ))),
         use_k8s_https_service_auth,
+        scheme.clone(),
       );
       // We use a stable hash to make sure the ID changes when the endpoint changes.
       let mut hasher = Xxh64Builder::new(0).build();
@@ -225,6 +233,7 @@ struct PromEndpoint {
   path: String,
   metadata: Option<Arc<Metadata>>,
   use_https_k8s_service_auth: bool,
+  scheme: String,
 }
 
 impl PromEndpoint {
@@ -234,6 +243,7 @@ impl PromEndpoint {
     path: String,
     metadata: Option<Arc<Metadata>>,
     use_https_k8s_service_auth: bool,
+    scheme: String,
   ) -> Self {
     Self {
       address,
@@ -241,6 +251,7 @@ impl PromEndpoint {
       path,
       metadata,
       use_https_k8s_service_auth,
+      scheme,
     }
   }
 
@@ -255,7 +266,7 @@ impl PromEndpoint {
         if self.use_https_k8s_service_auth {
           "https"
         } else {
-          "http"
+          &self.scheme
         },
         self.address,
         self.port,
@@ -799,6 +810,7 @@ impl NodeEndpointsTarget {
           details.path.to_string(),
           None,
           true,
+          "https".to_string(), // Node endpoints always use HTTPS
         ),
       )]),
     })

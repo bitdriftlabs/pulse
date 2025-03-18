@@ -177,8 +177,8 @@ async fn multiple_ports() {
   assert_eq!(
     endpoints.keys().sorted().collect_vec(),
     &[
-      "some-namespace//my-awesome-pod/123/2081278170809814331",
-      "some-namespace//my-awesome-pod/124/922646523833764701"
+      "some-namespace//my-awesome-pod/123/1848398654520702741",
+      "some-namespace//my-awesome-pod/124/10753466240023868778"
     ]
   );
 }
@@ -206,8 +206,8 @@ async fn multiple_ports_with_space() {
   assert_eq!(
     endpoints.keys().sorted().collect_vec(),
     &[
-      "some-namespace//my-awesome-pod/123/12923558771307559046",
-      "some-namespace//my-awesome-pod/124/17560654736538538233"
+      "some-namespace//my-awesome-pod/123/7470878910378973351",
+      "some-namespace//my-awesome-pod/124/4588601926225829043"
     ]
   );
 }
@@ -251,10 +251,63 @@ async fn inclusion_filters() {
   assert_eq!(
     endpoints.keys().sorted().collect_vec(),
     &[
-      "some-namespace//my-awesome-pod/123/8164956601632705534",
-      "some-namespace//my-awesome-pod/124/3520612071421830717"
+      "some-namespace//my-awesome-pod/123/5728390763373728862",
+      "some-namespace//my-awesome-pod/124/15536537833455954918"
     ]
   );
+}
+
+#[tokio::test]
+async fn test_scheme_annotation() {
+  // Test default scheme (http)
+  let pod_info = make_pod_info(
+    "some-namespace",
+    "my-awesome-pod",
+    &btreemap!(),
+    btreemap!(
+      "prometheus.io/scrape" => "true",
+      "prometheus.io/port" => "123"
+    ),
+    HashMap::new(),
+    "127.0.0.1",
+    vec![],
+  );
+  let endpoints = create_endpoints(&[], &[], &pod_info, None, None, &pod_info.annotations);
+  assert_eq!(endpoints[0].1.scheme, "http");
+
+  // Test explicit http scheme
+  let pod_info = make_pod_info(
+    "some-namespace",
+    "my-awesome-pod",
+    &btreemap!(),
+    btreemap!(
+      "prometheus.io/scrape" => "true",
+      "prometheus.io/port" => "123",
+      "prometheus.io/scheme" => "http"
+    ),
+    HashMap::new(),
+    "127.0.0.1",
+    vec![],
+  );
+  let endpoints = create_endpoints(&[], &[], &pod_info, None, None, &pod_info.annotations);
+  assert_eq!(endpoints[0].1.scheme, "http");
+
+  // Test explicit https scheme
+  let pod_info = make_pod_info(
+    "some-namespace",
+    "my-awesome-pod",
+    &btreemap!(),
+    btreemap!(
+      "prometheus.io/scrape" => "true",
+      "prometheus.io/port" => "123",
+      "prometheus.io/scheme" => "https"
+    ),
+    HashMap::new(),
+    "127.0.0.1",
+    vec![],
+  );
+  let endpoints = create_endpoints(&[], &[], &pod_info, None, None, &pod_info.annotations);
+  assert_eq!(endpoints[0].1.scheme, "https");
 }
 
 #[tokio::test]
@@ -281,7 +334,7 @@ async fn test_kube_pod_target_endpoint() {
   assert_eq!(endpoints.len(), 1);
 
   assert_eq!(
-    endpoints["some-namespace//my-awesome-pod/9090/4466796435962806514"]
+    endpoints["some-namespace//my-awesome-pod/9090/4391886273655461077"]
       .metadata
       .as_ref()
       .unwrap()
@@ -293,7 +346,7 @@ async fn test_kube_pod_target_endpoint() {
     "some-namespace"
   );
   assert_eq!(
-    endpoints["some-namespace//my-awesome-pod/9090/4466796435962806514"]
+    endpoints["some-namespace//my-awesome-pod/9090/4391886273655461077"]
       .metadata
       .as_ref()
       .unwrap()
@@ -503,6 +556,7 @@ impl EndpointProvider for FakeEndpointProvider {
           None,
         ))),
         false,
+        "http".to_string(),
       ),
     )]
     .into()
