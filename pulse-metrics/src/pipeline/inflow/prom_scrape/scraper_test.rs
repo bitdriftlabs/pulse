@@ -44,6 +44,7 @@ use time::ext::NumericalDuration;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 use vrl::{btreemap, path};
+use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
 
 #[tokio::test]
 async fn create_endpoint() {
@@ -648,4 +649,181 @@ async fn metrics(State(server): State<Arc<TestPromServer>>) -> Response {
   let mut response = Response::new(body);
   *response.status_mut() = server.response_code;
   response
+}
+
+#[test]
+fn test_create_endpoints_port_resolution() {
+  // Test basic pod with container port
+  let pod_info = make_pod_info(
+    "default",
+    "test-pod",
+    &btreemap!(),
+    btreemap!("prometheus.io/scrape" => "true"),
+    HashMap::new(),
+    "10.0.0.1",
+    vec![
+      ContainerPort {
+        name: "metrics".to_string(),
+        port: 9101,
+      },
+    ],
+  );
+
+  let endpoints = create_endpoints(&[], &[], &pod_info, None, None, &pod_info.annotations);
+  assert_eq!(endpoints.len(), 1);
+  assert_eq!(endpoints[0].1.port, 9090);
+
+  // Test annotation port override
+  let pod_info = make_pod_info(
+    "default",
+    "test-pod",
+    &btreemap!(),
+    btreemap!("prometheus.io/scrape" => "true", "prometheus.io/port" => "8080"),
+    HashMap::new(),
+    "10.0.0.1",
+    vec![
+      ContainerPort {
+        name: "metrics".to_string(),
+        port: 9101,
+      },
+    ],
+  );
+  let endpoints = create_endpoints(&[], &[], &pod_info, None, None, &pod_info.annotations);
+  assert_eq!(endpoints.len(), 1);
+  assert_eq!(endpoints[0].1.port, 8080);
+
+  // Test service port resolution
+  // Test integer service port
+  let pod_info = make_pod_info(
+    "default",
+    "test-pod",
+    &btreemap!(),
+    btreemap!("prometheus.io/scrape" => "true"),
+    HashMap::new(),
+    "10.0.0.1",
+    vec![
+      ContainerPort {
+        name: "metrics".to_string(),
+        port: 9101,
+      },
+    ],
+  );
+  let endpoints = create_endpoints(
+    &[],
+    &[],
+    &pod_info,
+    None,
+    Some(&IntOrString::Int(8080)),
+    &pod_info.annotations,
+  );
+  assert_eq!(endpoints.len(), 1);
+  assert_eq!(endpoints[0].1.port, 8080);
+
+  // Test string service port matching
+  let pod_info = make_pod_info(
+    "default",
+    "test-pod",
+    &btreemap!(),
+    btreemap!("prometheus.io/scrape" => "true"),
+    HashMap::new(),
+    "10.0.0.1",
+    vec![
+      ContainerPort {
+        name: "metrics".to_string(),
+        port: 9101,
+      },
+    ],
+  );
+  let endpoints = create_endpoints(
+    &[],
+    &[],
+    &pod_info,
+    None,
+    Some(&IntOrString::String("metrics".to_string())),
+    &pod_info.annotations,
+  );
+  assert_eq!(endpoints.len(), 1);
+  assert_eq!(endpoints[0].1.port, 9101);
+
+  // Test non-matching string service port
+  let pod_info = make_pod_info(
+    "default",
+    "test-pod",
+    &btreemap!(),
+    btreemap!("prometheus.io/scrape" => "true"),
+    HashMap::new(),
+    "10.0.0.1",
+    vec![
+      ContainerPort {
+        name: "metrics".to_string(),
+        port: 9101,
+      },
+    ],
+  );
+  let endpoints = create_endpoints(
+    &[],
+    &[],
+    &pod_info,
+    None,
+    Some(&IntOrString::String("non-existent".to_string())),
+    &pod_info.annotations,
+  );
+  assert_eq!(endpoints.len(), 1);
+  assert_eq!(endpoints[0].1.port, 9090);
+
+  // Test inclusion filters
+  let pod_info = make_pod_info(
+    "default",
+    "test-pod",
+    &btreemap!(),
+    btreemap!("prometheus.io/scrape" => "true"),
+    HashMap::new(),
+    "10.0.0.1",
+    vec![
+      ContainerPort {
+        name: "scrape_hello".to_string(),
+        port: 123,
+      },
+      ContainerPort {
+        name: "scrape_world".to_string(),
+        port: 124,
+      },
+      ContainerPort {
+        name: "other".to_string(),
+        port: 125,
+      },
+    ],
+  );
+
+  let inclusion_filters = vec![InclusionFilter {
+    filter_type: Some(Filter_type::ContainerPortNameRegex("scrape_.*".into())),
+    ..Default::default()
+  }];
+
+  let endpoints = create_endpoints(&inclusion_filters, &[], &pod_info, None, None, &pod_info.annotations);
+  assert_eq!(endpoints.len(), 2);
+  let ports: Vec<i32> = endpoints.iter().map(|e| e.1.port).collect();
+  assert!(ports.contains(&123));
+  assert!(ports.contains(&124));
+
+  // Test multiple ports from annotations
+  let pod_info = make_pod_info(
+    "default",
+    "test-pod",
+    &btreemap!(),
+    btreemap!("prometheus.io/scrape" => "true", "prometheus.io/port" => "8080,9090"),
+    HashMap::new(),
+    "10.0.0.1",
+    vec![
+      ContainerPort {
+        name: "metrics".to_string(),
+        port: 9101,
+      },
+    ],
+  );
+  let endpoints = create_endpoints(&[], &[], &pod_info, None, None, &pod_info.annotations);
+  assert_eq!(endpoints.len(), 2);
+  let ports: Vec<i32> = endpoints.iter().map(|e| e.1.port).collect();
+  assert!(ports.contains(&8080));
+  assert!(ports.contains(&9090));
 }

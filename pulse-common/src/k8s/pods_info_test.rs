@@ -10,6 +10,7 @@ use crate::k8s::pods_info::{ContainerPort, PodsInfo, ServiceInfo, ServiceMonitor
 use crate::k8s::test::make_pod_info;
 use k8s_openapi::api::core::v1;
 use k8s_openapi::api::core::v1::{Container, Pod, PodSpec, PodStatus};
+use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
 use kube::core::ObjectMeta;
 use pretty_assertions::assert_eq;
 use std::collections::{BTreeMap, HashMap};
@@ -76,7 +77,7 @@ fn pod_cache() {
           selector: btreemap! {
             "service" => "svc2"
           },
-          maybe_service_port: Some(4321),
+          maybe_service_port: Some(IntOrString::Int(4321)),
         }),
       ),
     ]),
@@ -200,7 +201,7 @@ fn pod_cache() {
           selector: btreemap! {
             "service" => "svc2"
           },
-          maybe_service_port: Some(4321),
+          maybe_service_port: Some(IntOrString::Int(4321)),
         }),
       )]),
       "127.0.0.2",

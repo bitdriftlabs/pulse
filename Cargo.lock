@@ -4767,6 +4767,7 @@ dependencies = [
  "hyperloglogplus",
  "intrusive-collections",
  "itertools 0.14.0",
+ "k8s-openapi",
  "log",
  "matches",
  "memchr",
