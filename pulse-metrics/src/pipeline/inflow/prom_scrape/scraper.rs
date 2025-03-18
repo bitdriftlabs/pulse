@@ -339,8 +339,9 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
     ticker_factory: Box<dyn Fn() -> Box<dyn Ticker> + Send + Sync>,
     emit_up_metric: bool,
     tls_config: Option<&TLS>,
+    timeout: Duration,
   ) -> anyhow::Result<DynamicPipelineInflow> {
-    fn make_https_client(tls_config: Option<&TLS>) -> anyhow::Result<reqwest::Client> {
+    fn make_https_client(tls_config: Option<&TLS>) -> anyhow::Result<reqwest::ClientBuilder> {
       let mut builder =
         reqwest::Client::builder().add_root_certificate(reqwest::Certificate::from_pem(
           &std::fs::read("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt")?,
@@ -359,9 +360,7 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
       // investigate why this is actually required since AFAICT the public cert above should
       // allow for validation of the server cert.
       Ok(
-        builder
-          .danger_accept_invalid_certs(tls_config.is_some_and(|tls| tls.insecure_skip_verify))
-          .build()?,
+        builder.danger_accept_invalid_certs(tls_config.is_some_and(|tls| tls.insecure_skip_verify)),
       )
     }
 
@@ -371,7 +370,9 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
       .inspect_err(|e| {
         log::warn!("could not create K8s service account HTTPS client, falling back to basic: {e}");
       })
-      .or_else(|_| Ok::<_, anyhow::Error>(reqwest::Client::new()))?;
+      .or_else(|_| Ok::<_, anyhow::Error>(reqwest::Client::builder()))?
+      .timeout(timeout.unsigned_abs())
+      .build()?;
 
     Ok(Arc::new(Self {
       name,
@@ -565,13 +566,16 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
       log::info!("({}) removing: {:?}", self.name, active_jobs.keys());
     }
 
-    // All remaining endpoints are no longer referenced and should therefore be completed.
-    join_all(
+    // All remaining endpoints are no longer referenced and should therefore be completed. We don't
+    // wait for them to finish as the scrape timeout can be long and we don't want to block starting
+    // up new scrapes.
+    // TODO(mattklein123): Add a variant of shutdown that does not wait for completion so we don't
+    // have to spawn.
+    tokio::spawn(join_all(
       std::mem::replace(active_jobs, updated_state)
         .into_values()
         .map(bd_shutdown::ComponentShutdownTrigger::shutdown),
-    )
-    .await;
+    ));
 
     log::info!("({}) completed reload", self.name);
   }
@@ -638,6 +642,10 @@ pub async fn make(
     .as_ref()
     .expect("pgv")
     .to_time_duration();
+  let timeout = config.scrape_timeout.as_ref().map_or_else(
+    || Duration::seconds(15),
+    bd_time::ProtoDurationExt::to_time_duration,
+  );
 
   let stats = Stats::new(&context.scope);
   let ticker_factory = Box::new(move || {
@@ -659,6 +667,7 @@ pub async fn make(
       ticker_factory,
       config.emit_up_metric,
       tls_config.as_ref(),
+      timeout,
     ),
     Target::Endpoint(_) => Scraper::<_, RealDurationJitter>::create(
       context.name,
@@ -672,6 +681,7 @@ pub async fn make(
       ticker_factory,
       config.emit_up_metric,
       tls_config.as_ref(),
+      timeout,
     ),
     Target::Node(details) => Scraper::<_, RealDurationJitter>::create(
       context.name,
@@ -683,6 +693,7 @@ pub async fn make(
       ticker_factory,
       config.emit_up_metric,
       tls_config.as_ref(),
+      timeout,
     ),
   }
 }
