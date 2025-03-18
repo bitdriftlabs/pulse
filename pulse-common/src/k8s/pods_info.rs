@@ -545,6 +545,10 @@ impl PodsInfoCache {
   }
 
   fn broadcast(&self) {
+    log::info!(
+      "broadcasting new pod info state with {} pods",
+      self.state.pods().count()
+    );
     log::debug!("broadcasting state: {:?}", self.state);
     let _ignored = self.update_tx.send(self.state.clone());
   }
