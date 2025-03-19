@@ -570,6 +570,7 @@ impl Setup {
       Box::new(move || ticker_factory.make_ticker()),
       emit_up_metric,
       tls_config,
+      15.seconds(),
     )
     .unwrap();
     scraper.start().await;

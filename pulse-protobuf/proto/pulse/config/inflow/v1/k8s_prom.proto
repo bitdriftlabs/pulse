@@ -89,4 +89,7 @@ message KubernetesPrometheusConfig {
   // Based on https://prometheus.io/docs/prometheus/latest/configuration/configuration/#tls_config
   // allow users to add cert and key files
   TLS tls_config = 6;
+
+  // The timeout to use on the scrape request. If not set this defaults to 15s.
+  google.protobuf.Duration scrape_timeout = 7;
 }
