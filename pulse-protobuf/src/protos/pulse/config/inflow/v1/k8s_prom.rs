@@ -433,9 +433,360 @@ pub mod kubernetes_prometheus_config {
             ::protobuf::reflect::GeneratedOneofDescriptorData::new::<Target>("target")
         }
     }
+    // @@protoc_insertion_point(message:pulse.config.inflow.v1.KubernetesPrometheusConfig.UseK8sHttpsServiceAuthMatcher)
+    #[derive(PartialEq,Clone,Default,Debug)]
+    pub struct UseK8sHttpsServiceAuthMatcher {
+        // message oneof groups
+        pub auth_matcher: ::std::option::Option<use_k8s_https_service_auth_matcher::Auth_matcher>,
+        // special fields
+        // @@protoc_insertion_point(special_field:pulse.config.inflow.v1.KubernetesPrometheusConfig.UseK8sHttpsServiceAuthMatcher.special_fields)
+        pub special_fields: ::protobuf::SpecialFields,
+    }
+
+    impl<'a> ::std::default::Default for &'a UseK8sHttpsServiceAuthMatcher {
+        fn default() -> &'a UseK8sHttpsServiceAuthMatcher {
+            <UseK8sHttpsServiceAuthMatcher as ::protobuf::Message>::default_instance()
+        }
+    }
+
+    impl UseK8sHttpsServiceAuthMatcher {
+        pub fn new() -> UseK8sHttpsServiceAuthMatcher {
+            ::std::default::Default::default()
+        }
+
+        // .pulse.config.inflow.v1.KubernetesPrometheusConfig.UseK8sHttpsServiceAuthMatcher.KeyValue annotation_matcher = 1;
+
+        pub fn annotation_matcher(&self) -> &use_k8s_https_service_auth_matcher::KeyValue {
+            match self.auth_matcher {
+                ::std::option::Option::Some(use_k8s_https_service_auth_matcher::Auth_matcher::AnnotationMatcher(ref v)) => v,
+                _ => <use_k8s_https_service_auth_matcher::KeyValue as ::protobuf::Message>::default_instance(),
+            }
+        }
+
+        pub fn clear_annotation_matcher(&mut self) {
+            self.auth_matcher = ::std::option::Option::None;
+        }
+
+        pub fn has_annotation_matcher(&self) -> bool {
+            match self.auth_matcher {
+                ::std::option::Option::Some(use_k8s_https_service_auth_matcher::Auth_matcher::AnnotationMatcher(..)) => true,
+                _ => false,
+            }
+        }
+
+        // Param is passed by value, moved
+        pub fn set_annotation_matcher(&mut self, v: use_k8s_https_service_auth_matcher::KeyValue) {
+            self.auth_matcher = ::std::option::Option::Some(use_k8s_https_service_auth_matcher::Auth_matcher::AnnotationMatcher(v))
+        }
+
+        // Mutable pointer to the field.
+        pub fn mut_annotation_matcher(&mut self) -> &mut use_k8s_https_service_auth_matcher::KeyValue {
+            if let ::std::option::Option::Some(use_k8s_https_service_auth_matcher::Auth_matcher::AnnotationMatcher(_)) = self.auth_matcher {
+            } else {
+                self.auth_matcher = ::std::option::Option::Some(use_k8s_https_service_auth_matcher::Auth_matcher::AnnotationMatcher(use_k8s_https_service_auth_matcher::KeyValue::new()));
+            }
+            match self.auth_matcher {
+                ::std::option::Option::Some(use_k8s_https_service_auth_matcher::Auth_matcher::AnnotationMatcher(ref mut v)) => v,
+                _ => panic!(),
+            }
+        }
+
+        // Take field
+        pub fn take_annotation_matcher(&mut self) -> use_k8s_https_service_auth_matcher::KeyValue {
+            if self.has_annotation_matcher() {
+                match self.auth_matcher.take() {
+                    ::std::option::Option::Some(use_k8s_https_service_auth_matcher::Auth_matcher::AnnotationMatcher(v)) => v,
+                    _ => panic!(),
+                }
+            } else {
+                use_k8s_https_service_auth_matcher::KeyValue::new()
+            }
+        }
+
+        pub(in super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
+            let mut fields = ::std::vec::Vec::with_capacity(1);
+            let mut oneofs = ::std::vec::Vec::with_capacity(1);
+            fields.push(::protobuf::reflect::rt::v2::make_oneof_message_has_get_mut_set_accessor::<_, use_k8s_https_service_auth_matcher::KeyValue>(
+                "annotation_matcher",
+                UseK8sHttpsServiceAuthMatcher::has_annotation_matcher,
+                UseK8sHttpsServiceAuthMatcher::annotation_matcher,
+                UseK8sHttpsServiceAuthMatcher::mut_annotation_matcher,
+                UseK8sHttpsServiceAuthMatcher::set_annotation_matcher,
+            ));
+            oneofs.push(use_k8s_https_service_auth_matcher::Auth_matcher::generated_oneof_descriptor_data());
+            ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<UseK8sHttpsServiceAuthMatcher>(
+                "KubernetesPrometheusConfig.UseK8sHttpsServiceAuthMatcher",
+                fields,
+                oneofs,
+            )
+        }
+    }
+
+    impl ::protobuf::Message for UseK8sHttpsServiceAuthMatcher {
+        const NAME: &'static str = "UseK8sHttpsServiceAuthMatcher";
+
+        fn is_initialized(&self) -> bool {
+            true
+        }
+
+        fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
+            while let Some(tag) = is.read_raw_tag_or_eof()? {
+                match tag {
+                    10 => {
+                        self.auth_matcher = ::std::option::Option::Some(use_k8s_https_service_auth_matcher::Auth_matcher::AnnotationMatcher(is.read_message()?));
+                    },
+                    tag => {
+                        ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
+                    },
+                };
+            }
+            ::std::result::Result::Ok(())
+        }
+
+        // Compute sizes of nested messages
+        #[allow(unused_variables)]
+        fn compute_size(&self) -> u64 {
+            let mut my_size = 0;
+            if let ::std::option::Option::Some(ref v) = self.auth_matcher {
+                match v {
+                    &use_k8s_https_service_auth_matcher::Auth_matcher::AnnotationMatcher(ref v) => {
+                        let len = v.compute_size();
+                        my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+                    },
+                };
+            }
+            my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
+            self.special_fields.cached_size().set(my_size as u32);
+            my_size
+        }
+
+        fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
+            if let ::std::option::Option::Some(ref v) = self.auth_matcher {
+                match v {
+                    &use_k8s_https_service_auth_matcher::Auth_matcher::AnnotationMatcher(ref v) => {
+                        ::protobuf::rt::write_message_field_with_cached_size(1, v, os)?;
+                    },
+                };
+            }
+            os.write_unknown_fields(self.special_fields.unknown_fields())?;
+            ::std::result::Result::Ok(())
+        }
+
+        fn special_fields(&self) -> &::protobuf::SpecialFields {
+            &self.special_fields
+        }
+
+        fn mut_special_fields(&mut self) -> &mut ::protobuf::SpecialFields {
+            &mut self.special_fields
+        }
+
+        fn new() -> UseK8sHttpsServiceAuthMatcher {
+            UseK8sHttpsServiceAuthMatcher::new()
+        }
+
+        fn clear(&mut self) {
+            self.auth_matcher = ::std::option::Option::None;
+            self.special_fields.clear();
+        }
+
+        fn default_instance() -> &'static UseK8sHttpsServiceAuthMatcher {
+            static instance: UseK8sHttpsServiceAuthMatcher = UseK8sHttpsServiceAuthMatcher {
+                auth_matcher: ::std::option::Option::None,
+                special_fields: ::protobuf::SpecialFields::new(),
+            };
+            &instance
+        }
+    }
+
+    impl ::protobuf::MessageFull for UseK8sHttpsServiceAuthMatcher {
+        fn descriptor() -> ::protobuf::reflect::MessageDescriptor {
+            static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::Lazy::new();
+            descriptor.get(|| super::file_descriptor().message_by_package_relative_name("KubernetesPrometheusConfig.UseK8sHttpsServiceAuthMatcher").unwrap()).clone()
+        }
+    }
+
+    impl ::std::fmt::Display for UseK8sHttpsServiceAuthMatcher {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            ::protobuf::text_format::fmt(self, f)
+        }
+    }
+
+    impl ::protobuf::reflect::ProtobufValue for UseK8sHttpsServiceAuthMatcher {
+        type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
+    }
+
+    /// Nested message and enums of message `UseK8sHttpsServiceAuthMatcher`
+    pub mod use_k8s_https_service_auth_matcher {
+
+        #[derive(Clone,PartialEq,Debug)]
+        // @@protoc_insertion_point(oneof:pulse.config.inflow.v1.KubernetesPrometheusConfig.UseK8sHttpsServiceAuthMatcher.auth_matcher)
+        pub enum Auth_matcher {
+            // @@protoc_insertion_point(oneof_field:pulse.config.inflow.v1.KubernetesPrometheusConfig.UseK8sHttpsServiceAuthMatcher.annotation_matcher)
+            AnnotationMatcher(KeyValue),
+        }
+
+        impl ::protobuf::Oneof for Auth_matcher {
+        }
+
+        impl ::protobuf::OneofFull for Auth_matcher {
+            fn descriptor() -> ::protobuf::reflect::OneofDescriptor {
+                static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::OneofDescriptor> = ::protobuf::rt::Lazy::new();
+                descriptor.get(|| <super::UseK8sHttpsServiceAuthMatcher as ::protobuf::MessageFull>::descriptor().oneof_by_name("auth_matcher").unwrap()).clone()
+            }
+        }
+
+        impl Auth_matcher {
+            pub(in super::super) fn generated_oneof_descriptor_data() -> ::protobuf::reflect::GeneratedOneofDescriptorData {
+                ::protobuf::reflect::GeneratedOneofDescriptorData::new::<Auth_matcher>("auth_matcher")
+            }
+        }
+        // @@protoc_insertion_point(message:pulse.config.inflow.v1.KubernetesPrometheusConfig.UseK8sHttpsServiceAuthMatcher.KeyValue)
+        #[derive(PartialEq,Clone,Default,Debug)]
+        pub struct KeyValue {
+            // message fields
+            // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.UseK8sHttpsServiceAuthMatcher.KeyValue.key)
+            pub key: ::protobuf::Chars,
+            // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.UseK8sHttpsServiceAuthMatcher.KeyValue.value)
+            pub value: ::std::option::Option<::protobuf::Chars>,
+            // special fields
+            // @@protoc_insertion_point(special_field:pulse.config.inflow.v1.KubernetesPrometheusConfig.UseK8sHttpsServiceAuthMatcher.KeyValue.special_fields)
+            pub special_fields: ::protobuf::SpecialFields,
+        }
+
+        impl<'a> ::std::default::Default for &'a KeyValue {
+            fn default() -> &'a KeyValue {
+                <KeyValue as ::protobuf::Message>::default_instance()
+            }
+        }
+
+        impl KeyValue {
+            pub fn new() -> KeyValue {
+                ::std::default::Default::default()
+            }
+
+            pub(in super::super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
+                let mut fields = ::std::vec::Vec::with_capacity(2);
+                let mut oneofs = ::std::vec::Vec::with_capacity(0);
+                fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+                    "key",
+                    |m: &KeyValue| { &m.key },
+                    |m: &mut KeyValue| { &mut m.key },
+                ));
+                fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+                    "value",
+                    |m: &KeyValue| { &m.value },
+                    |m: &mut KeyValue| { &mut m.value },
+                ));
+                ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<KeyValue>(
+                    "KubernetesPrometheusConfig.UseK8sHttpsServiceAuthMatcher.KeyValue",
+                    fields,
+                    oneofs,
+                )
+            }
+        }
+
+        impl ::protobuf::Message for KeyValue {
+            const NAME: &'static str = "KeyValue";
+
+            fn is_initialized(&self) -> bool {
+                true
+            }
+
+            fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
+                while let Some(tag) = is.read_raw_tag_or_eof()? {
+                    match tag {
+                        10 => {
+                            self.key = is.read_tokio_chars()?;
+                        },
+                        18 => {
+                            self.value = ::std::option::Option::Some(is.read_tokio_chars()?);
+                        },
+                        tag => {
+                            ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
+                        },
+                    };
+                }
+                ::std::result::Result::Ok(())
+            }
+
+            // Compute sizes of nested messages
+            #[allow(unused_variables)]
+            fn compute_size(&self) -> u64 {
+                let mut my_size = 0;
+                if !self.key.is_empty() {
+                    my_size += ::protobuf::rt::string_size(1, &self.key);
+                }
+                if let Some(v) = self.value.as_ref() {
+                    my_size += ::protobuf::rt::string_size(2, &v);
+                }
+                my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
+                self.special_fields.cached_size().set(my_size as u32);
+                my_size
+            }
+
+            fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
+                if !self.key.is_empty() {
+                    os.write_string(1, &self.key)?;
+                }
+                if let Some(v) = self.value.as_ref() {
+                    os.write_string(2, v)?;
+                }
+                os.write_unknown_fields(self.special_fields.unknown_fields())?;
+                ::std::result::Result::Ok(())
+            }
+
+            fn special_fields(&self) -> &::protobuf::SpecialFields {
+                &self.special_fields
+            }
+
+            fn mut_special_fields(&mut self) -> &mut ::protobuf::SpecialFields {
+                &mut self.special_fields
+            }
+
+            fn new() -> KeyValue {
+                KeyValue::new()
+            }
+
+            fn clear(&mut self) {
+                self.key.clear();
+                self.value = ::std::option::Option::None;
+                self.special_fields.clear();
+            }
+
+            fn default_instance() -> &'static KeyValue {
+                static instance: KeyValue = KeyValue {
+                    key: ::protobuf::Chars::new(),
+                    value: ::std::option::Option::None,
+                    special_fields: ::protobuf::SpecialFields::new(),
+                };
+                &instance
+            }
+        }
+
+        impl ::protobuf::MessageFull for KeyValue {
+            fn descriptor() -> ::protobuf::reflect::MessageDescriptor {
+                static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::Lazy::new();
+                descriptor.get(|| super::super::file_descriptor().message_by_package_relative_name("KubernetesPrometheusConfig.UseK8sHttpsServiceAuthMatcher.KeyValue").unwrap()).clone()
+            }
+        }
+
+        impl ::std::fmt::Display for KeyValue {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                ::protobuf::text_format::fmt(self, f)
+            }
+        }
+
+        impl ::protobuf::reflect::ProtobufValue for KeyValue {
+            type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
+        }
+    }
+
     // @@protoc_insertion_point(message:pulse.config.inflow.v1.KubernetesPrometheusConfig.Endpoint)
     #[derive(PartialEq,Clone,Default,Debug)]
     pub struct Endpoint {
+        // message fields
+        // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.Endpoint.use_k8s_https_service_auth_matchers)
+        pub use_k8s_https_service_auth_matchers: ::std::vec::Vec<UseK8sHttpsServiceAuthMatcher>,
         // special fields
         // @@protoc_insertion_point(special_field:pulse.config.inflow.v1.KubernetesPrometheusConfig.Endpoint.special_fields)
         pub special_fields: ::protobuf::SpecialFields,
@@ -453,8 +804,13 @@ pub mod kubernetes_prometheus_config {
         }
 
         pub(in super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-            let mut fields = ::std::vec::Vec::with_capacity(0);
+            let mut fields = ::std::vec::Vec::with_capacity(1);
             let mut oneofs = ::std::vec::Vec::with_capacity(0);
+            fields.push(::protobuf::reflect::rt::v2::make_vec_simpler_accessor::<_, _>(
+                "use_k8s_https_service_auth_matchers",
+                |m: &Endpoint| { &m.use_k8s_https_service_auth_matchers },
+                |m: &mut Endpoint| { &mut m.use_k8s_https_service_auth_matchers },
+            ));
             ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<Endpoint>(
                 "KubernetesPrometheusConfig.Endpoint",
                 fields,
@@ -473,6 +829,9 @@ pub mod kubernetes_prometheus_config {
         fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
             while let Some(tag) = is.read_raw_tag_or_eof()? {
                 match tag {
+                    18 => {
+                        self.use_k8s_https_service_auth_matchers.push(is.read_message()?);
+                    },
                     tag => {
                         ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                     },
@@ -485,12 +844,19 @@ pub mod kubernetes_prometheus_config {
         #[allow(unused_variables)]
         fn compute_size(&self) -> u64 {
             let mut my_size = 0;
+            for value in &self.use_k8s_https_service_auth_matchers {
+                let len = value.compute_size();
+                my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+            };
             my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
             self.special_fields.cached_size().set(my_size as u32);
             my_size
         }
 
         fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
+            for v in &self.use_k8s_https_service_auth_matchers {
+                ::protobuf::rt::write_message_field_with_cached_size(2, v, os)?;
+            };
             os.write_unknown_fields(self.special_fields.unknown_fields())?;
             ::std::result::Result::Ok(())
         }
@@ -508,11 +874,13 @@ pub mod kubernetes_prometheus_config {
         }
 
         fn clear(&mut self) {
+            self.use_k8s_https_service_auth_matchers.clear();
             self.special_fields.clear();
         }
 
         fn default_instance() -> &'static Endpoint {
             static instance: Endpoint = Endpoint {
+                use_k8s_https_service_auth_matchers: ::std::vec::Vec::new(),
                 special_fields: ::protobuf::SpecialFields::new(),
             };
             &instance
@@ -665,7 +1033,7 @@ pub mod kubernetes_prometheus_config {
         // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.Pod.inclusion_filters)
         pub inclusion_filters: ::std::vec::Vec<pod::InclusionFilter>,
         // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.Pod.use_k8s_https_service_auth_matchers)
-        pub use_k8s_https_service_auth_matchers: ::std::vec::Vec<pod::UseK8sHttpsServiceAuthMatcher>,
+        pub use_k8s_https_service_auth_matchers: ::std::vec::Vec<UseK8sHttpsServiceAuthMatcher>,
         // special fields
         // @@protoc_insertion_point(special_field:pulse.config.inflow.v1.KubernetesPrometheusConfig.Pod.special_fields)
         pub special_fields: ::protobuf::SpecialFields,
@@ -1008,355 +1376,6 @@ pub mod kubernetes_prometheus_config {
                 }
             }
         }
-
-        // @@protoc_insertion_point(message:pulse.config.inflow.v1.KubernetesPrometheusConfig.Pod.KeyValue)
-        #[derive(PartialEq,Clone,Default,Debug)]
-        pub struct KeyValue {
-            // message fields
-            // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.Pod.KeyValue.key)
-            pub key: ::protobuf::Chars,
-            // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.Pod.KeyValue.value)
-            pub value: ::std::option::Option<::protobuf::Chars>,
-            // special fields
-            // @@protoc_insertion_point(special_field:pulse.config.inflow.v1.KubernetesPrometheusConfig.Pod.KeyValue.special_fields)
-            pub special_fields: ::protobuf::SpecialFields,
-        }
-
-        impl<'a> ::std::default::Default for &'a KeyValue {
-            fn default() -> &'a KeyValue {
-                <KeyValue as ::protobuf::Message>::default_instance()
-            }
-        }
-
-        impl KeyValue {
-            pub fn new() -> KeyValue {
-                ::std::default::Default::default()
-            }
-
-            pub(in super::super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-                let mut fields = ::std::vec::Vec::with_capacity(2);
-                let mut oneofs = ::std::vec::Vec::with_capacity(0);
-                fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
-                    "key",
-                    |m: &KeyValue| { &m.key },
-                    |m: &mut KeyValue| { &mut m.key },
-                ));
-                fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
-                    "value",
-                    |m: &KeyValue| { &m.value },
-                    |m: &mut KeyValue| { &mut m.value },
-                ));
-                ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<KeyValue>(
-                    "KubernetesPrometheusConfig.Pod.KeyValue",
-                    fields,
-                    oneofs,
-                )
-            }
-        }
-
-        impl ::protobuf::Message for KeyValue {
-            const NAME: &'static str = "KeyValue";
-
-            fn is_initialized(&self) -> bool {
-                true
-            }
-
-            fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
-                while let Some(tag) = is.read_raw_tag_or_eof()? {
-                    match tag {
-                        10 => {
-                            self.key = is.read_tokio_chars()?;
-                        },
-                        18 => {
-                            self.value = ::std::option::Option::Some(is.read_tokio_chars()?);
-                        },
-                        tag => {
-                            ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
-                        },
-                    };
-                }
-                ::std::result::Result::Ok(())
-            }
-
-            // Compute sizes of nested messages
-            #[allow(unused_variables)]
-            fn compute_size(&self) -> u64 {
-                let mut my_size = 0;
-                if !self.key.is_empty() {
-                    my_size += ::protobuf::rt::string_size(1, &self.key);
-                }
-                if let Some(v) = self.value.as_ref() {
-                    my_size += ::protobuf::rt::string_size(2, &v);
-                }
-                my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
-                self.special_fields.cached_size().set(my_size as u32);
-                my_size
-            }
-
-            fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
-                if !self.key.is_empty() {
-                    os.write_string(1, &self.key)?;
-                }
-                if let Some(v) = self.value.as_ref() {
-                    os.write_string(2, v)?;
-                }
-                os.write_unknown_fields(self.special_fields.unknown_fields())?;
-                ::std::result::Result::Ok(())
-            }
-
-            fn special_fields(&self) -> &::protobuf::SpecialFields {
-                &self.special_fields
-            }
-
-            fn mut_special_fields(&mut self) -> &mut ::protobuf::SpecialFields {
-                &mut self.special_fields
-            }
-
-            fn new() -> KeyValue {
-                KeyValue::new()
-            }
-
-            fn clear(&mut self) {
-                self.key.clear();
-                self.value = ::std::option::Option::None;
-                self.special_fields.clear();
-            }
-
-            fn default_instance() -> &'static KeyValue {
-                static instance: KeyValue = KeyValue {
-                    key: ::protobuf::Chars::new(),
-                    value: ::std::option::Option::None,
-                    special_fields: ::protobuf::SpecialFields::new(),
-                };
-                &instance
-            }
-        }
-
-        impl ::protobuf::MessageFull for KeyValue {
-            fn descriptor() -> ::protobuf::reflect::MessageDescriptor {
-                static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::Lazy::new();
-                descriptor.get(|| super::super::file_descriptor().message_by_package_relative_name("KubernetesPrometheusConfig.Pod.KeyValue").unwrap()).clone()
-            }
-        }
-
-        impl ::std::fmt::Display for KeyValue {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-                ::protobuf::text_format::fmt(self, f)
-            }
-        }
-
-        impl ::protobuf::reflect::ProtobufValue for KeyValue {
-            type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
-        }
-
-        // @@protoc_insertion_point(message:pulse.config.inflow.v1.KubernetesPrometheusConfig.Pod.UseK8sHttpsServiceAuthMatcher)
-        #[derive(PartialEq,Clone,Default,Debug)]
-        pub struct UseK8sHttpsServiceAuthMatcher {
-            // message oneof groups
-            pub auth_matcher: ::std::option::Option<use_k8s_https_service_auth_matcher::Auth_matcher>,
-            // special fields
-            // @@protoc_insertion_point(special_field:pulse.config.inflow.v1.KubernetesPrometheusConfig.Pod.UseK8sHttpsServiceAuthMatcher.special_fields)
-            pub special_fields: ::protobuf::SpecialFields,
-        }
-
-        impl<'a> ::std::default::Default for &'a UseK8sHttpsServiceAuthMatcher {
-            fn default() -> &'a UseK8sHttpsServiceAuthMatcher {
-                <UseK8sHttpsServiceAuthMatcher as ::protobuf::Message>::default_instance()
-            }
-        }
-
-        impl UseK8sHttpsServiceAuthMatcher {
-            pub fn new() -> UseK8sHttpsServiceAuthMatcher {
-                ::std::default::Default::default()
-            }
-
-            // .pulse.config.inflow.v1.KubernetesPrometheusConfig.Pod.KeyValue annotation_matcher = 1;
-
-            pub fn annotation_matcher(&self) -> &KeyValue {
-                match self.auth_matcher {
-                    ::std::option::Option::Some(use_k8s_https_service_auth_matcher::Auth_matcher::AnnotationMatcher(ref v)) => v,
-                    _ => <KeyValue as ::protobuf::Message>::default_instance(),
-                }
-            }
-
-            pub fn clear_annotation_matcher(&mut self) {
-                self.auth_matcher = ::std::option::Option::None;
-            }
-
-            pub fn has_annotation_matcher(&self) -> bool {
-                match self.auth_matcher {
-                    ::std::option::Option::Some(use_k8s_https_service_auth_matcher::Auth_matcher::AnnotationMatcher(..)) => true,
-                    _ => false,
-                }
-            }
-
-            // Param is passed by value, moved
-            pub fn set_annotation_matcher(&mut self, v: KeyValue) {
-                self.auth_matcher = ::std::option::Option::Some(use_k8s_https_service_auth_matcher::Auth_matcher::AnnotationMatcher(v))
-            }
-
-            // Mutable pointer to the field.
-            pub fn mut_annotation_matcher(&mut self) -> &mut KeyValue {
-                if let ::std::option::Option::Some(use_k8s_https_service_auth_matcher::Auth_matcher::AnnotationMatcher(_)) = self.auth_matcher {
-                } else {
-                    self.auth_matcher = ::std::option::Option::Some(use_k8s_https_service_auth_matcher::Auth_matcher::AnnotationMatcher(KeyValue::new()));
-                }
-                match self.auth_matcher {
-                    ::std::option::Option::Some(use_k8s_https_service_auth_matcher::Auth_matcher::AnnotationMatcher(ref mut v)) => v,
-                    _ => panic!(),
-                }
-            }
-
-            // Take field
-            pub fn take_annotation_matcher(&mut self) -> KeyValue {
-                if self.has_annotation_matcher() {
-                    match self.auth_matcher.take() {
-                        ::std::option::Option::Some(use_k8s_https_service_auth_matcher::Auth_matcher::AnnotationMatcher(v)) => v,
-                        _ => panic!(),
-                    }
-                } else {
-                    KeyValue::new()
-                }
-            }
-
-            pub(in super::super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-                let mut fields = ::std::vec::Vec::with_capacity(1);
-                let mut oneofs = ::std::vec::Vec::with_capacity(1);
-                fields.push(::protobuf::reflect::rt::v2::make_oneof_message_has_get_mut_set_accessor::<_, KeyValue>(
-                    "annotation_matcher",
-                    UseK8sHttpsServiceAuthMatcher::has_annotation_matcher,
-                    UseK8sHttpsServiceAuthMatcher::annotation_matcher,
-                    UseK8sHttpsServiceAuthMatcher::mut_annotation_matcher,
-                    UseK8sHttpsServiceAuthMatcher::set_annotation_matcher,
-                ));
-                oneofs.push(use_k8s_https_service_auth_matcher::Auth_matcher::generated_oneof_descriptor_data());
-                ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<UseK8sHttpsServiceAuthMatcher>(
-                    "KubernetesPrometheusConfig.Pod.UseK8sHttpsServiceAuthMatcher",
-                    fields,
-                    oneofs,
-                )
-            }
-        }
-
-        impl ::protobuf::Message for UseK8sHttpsServiceAuthMatcher {
-            const NAME: &'static str = "UseK8sHttpsServiceAuthMatcher";
-
-            fn is_initialized(&self) -> bool {
-                true
-            }
-
-            fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
-                while let Some(tag) = is.read_raw_tag_or_eof()? {
-                    match tag {
-                        10 => {
-                            self.auth_matcher = ::std::option::Option::Some(use_k8s_https_service_auth_matcher::Auth_matcher::AnnotationMatcher(is.read_message()?));
-                        },
-                        tag => {
-                            ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
-                        },
-                    };
-                }
-                ::std::result::Result::Ok(())
-            }
-
-            // Compute sizes of nested messages
-            #[allow(unused_variables)]
-            fn compute_size(&self) -> u64 {
-                let mut my_size = 0;
-                if let ::std::option::Option::Some(ref v) = self.auth_matcher {
-                    match v {
-                        &use_k8s_https_service_auth_matcher::Auth_matcher::AnnotationMatcher(ref v) => {
-                            let len = v.compute_size();
-                            my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
-                        },
-                    };
-                }
-                my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
-                self.special_fields.cached_size().set(my_size as u32);
-                my_size
-            }
-
-            fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
-                if let ::std::option::Option::Some(ref v) = self.auth_matcher {
-                    match v {
-                        &use_k8s_https_service_auth_matcher::Auth_matcher::AnnotationMatcher(ref v) => {
-                            ::protobuf::rt::write_message_field_with_cached_size(1, v, os)?;
-                        },
-                    };
-                }
-                os.write_unknown_fields(self.special_fields.unknown_fields())?;
-                ::std::result::Result::Ok(())
-            }
-
-            fn special_fields(&self) -> &::protobuf::SpecialFields {
-                &self.special_fields
-            }
-
-            fn mut_special_fields(&mut self) -> &mut ::protobuf::SpecialFields {
-                &mut self.special_fields
-            }
-
-            fn new() -> UseK8sHttpsServiceAuthMatcher {
-                UseK8sHttpsServiceAuthMatcher::new()
-            }
-
-            fn clear(&mut self) {
-                self.auth_matcher = ::std::option::Option::None;
-                self.special_fields.clear();
-            }
-
-            fn default_instance() -> &'static UseK8sHttpsServiceAuthMatcher {
-                static instance: UseK8sHttpsServiceAuthMatcher = UseK8sHttpsServiceAuthMatcher {
-                    auth_matcher: ::std::option::Option::None,
-                    special_fields: ::protobuf::SpecialFields::new(),
-                };
-                &instance
-            }
-        }
-
-        impl ::protobuf::MessageFull for UseK8sHttpsServiceAuthMatcher {
-            fn descriptor() -> ::protobuf::reflect::MessageDescriptor {
-                static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::Lazy::new();
-                descriptor.get(|| super::super::file_descriptor().message_by_package_relative_name("KubernetesPrometheusConfig.Pod.UseK8sHttpsServiceAuthMatcher").unwrap()).clone()
-            }
-        }
-
-        impl ::std::fmt::Display for UseK8sHttpsServiceAuthMatcher {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-                ::protobuf::text_format::fmt(self, f)
-            }
-        }
-
-        impl ::protobuf::reflect::ProtobufValue for UseK8sHttpsServiceAuthMatcher {
-            type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
-        }
-
-        /// Nested message and enums of message `UseK8sHttpsServiceAuthMatcher`
-        pub mod use_k8s_https_service_auth_matcher {
-
-            #[derive(Clone,PartialEq,Debug)]
-            // @@protoc_insertion_point(oneof:pulse.config.inflow.v1.KubernetesPrometheusConfig.Pod.UseK8sHttpsServiceAuthMatcher.auth_matcher)
-            pub enum Auth_matcher {
-                // @@protoc_insertion_point(oneof_field:pulse.config.inflow.v1.KubernetesPrometheusConfig.Pod.UseK8sHttpsServiceAuthMatcher.annotation_matcher)
-                AnnotationMatcher(super::KeyValue),
-            }
-
-            impl ::protobuf::Oneof for Auth_matcher {
-            }
-
-            impl ::protobuf::OneofFull for Auth_matcher {
-                fn descriptor() -> ::protobuf::reflect::OneofDescriptor {
-                    static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::OneofDescriptor> = ::protobuf::rt::Lazy::new();
-                    descriptor.get(|| <super::UseK8sHttpsServiceAuthMatcher as ::protobuf::MessageFull>::descriptor().oneof_by_name("auth_matcher").unwrap()).clone()
-                }
-            }
-
-            impl Auth_matcher {
-                pub(in super::super::super) fn generated_oneof_descriptor_data() -> ::protobuf::reflect::GeneratedOneofDescriptorData {
-                    ::protobuf::reflect::GeneratedOneofDescriptorData::new::<Auth_matcher>("auth_matcher")
-                }
-            }
-        }
     }
 
     // @@protoc_insertion_point(message:pulse.config.inflow.v1.KubernetesPrometheusConfig.TLS)
@@ -1521,34 +1540,37 @@ pub mod kubernetes_prometheus_config {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n%pulse/config/inflow/v1/k8s_prom.proto\x12\x16pulse.config.inflow.v1\
     \x1a\x1egoogle/protobuf/duration.proto\x1a\x17validate/validate.proto\"\
-    \xae\n\n\x1aKubernetesPrometheusConfig\x12L\n\x0fscrape_interval\x18\x01\
-    \x20\x01(\x0b2\x19.google.protobuf.DurationR\x0escrapeIntervalB\x08\xfaB\
-    \x05\x8a\x01\x02\x10\x01\x12Y\n\x08endpoint\x18\x02\x20\x01(\x0b2;.pulse\
-    .config.inflow.v1.KubernetesPrometheusConfig.EndpointH\0R\x08endpoint\
-    \x12M\n\x04node\x18\x03\x20\x01(\x0b27.pulse.config.inflow.v1.Kubernetes\
-    PrometheusConfig.NodeH\0R\x04node\x12J\n\x03pod\x18\x04\x20\x01(\x0b26.p\
-    ulse.config.inflow.v1.KubernetesPrometheusConfig.PodH\0R\x03pod\x12$\n\
+    \xe6\x0b\n\x1aKubernetesPrometheusConfig\x12L\n\x0fscrape_interval\x18\
+    \x01\x20\x01(\x0b2\x19.google.protobuf.DurationR\x0escrapeIntervalB\x08\
+    \xfaB\x05\x8a\x01\x02\x10\x01\x12Y\n\x08endpoint\x18\x02\x20\x01(\x0b2;.\
+    pulse.config.inflow.v1.KubernetesPrometheusConfig.EndpointH\0R\x08endpoi\
+    nt\x12M\n\x04node\x18\x03\x20\x01(\x0b27.pulse.config.inflow.v1.Kubernet\
+    esPrometheusConfig.NodeH\0R\x04node\x12J\n\x03pod\x18\x04\x20\x01(\x0b26\
+    .pulse.config.inflow.v1.KubernetesPrometheusConfig.PodH\0R\x03pod\x12$\n\
     \x0eemit_up_metric\x18\x05\x20\x01(\x08R\x0cemitUpMetric\x12U\n\ntls_con\
     fig\x18\x06\x20\x01(\x0b26.pulse.config.inflow.v1.KubernetesPrometheusCo\
-    nfig.TLSR\ttlsConfig\x1a\n\n\x08Endpoint\x1a#\n\x04Node\x12\x1b\n\x04pat\
-    h\x18\x01\x20\x01(\tR\x04pathB\x07\xfaB\x04r\x02\x10\x01\x1a\xf7\x04\n\
-    \x03Pod\x12s\n\x11inclusion_filters\x18\x01\x20\x03(\x0b2F.pulse.config.\
-    inflow.v1.KubernetesPrometheusConfig.Pod.InclusionFilterR\x10inclusionFi\
-    lters\x12\xa1\x01\n#use_k8s_https_service_auth_matchers\x18\x02\x20\x03(\
-    \x0b2T.pulse.config.inflow.v1.KubernetesPrometheusConfig.Pod.UseK8sHttps\
-    ServiceAuthMatcherR\x1euseK8sHttpsServiceAuthMatchers\x1ab\n\x0fInclusio\
-    nFilter\x12;\n\x19container_port_name_regex\x18\x01\x20\x01(\tH\0R\x16co\
-    ntainerPortNameRegexB\x12\n\x0bfilter_type\x12\x03\xf8B\x01\x1aJ\n\x08Ke\
-    yValue\x12\x19\n\x03key\x18\x01\x20\x01(\tR\x03keyB\x07\xfaB\x04r\x02\
-    \x10\x01\x12\x19\n\x05value\x18\x02\x20\x01(\tH\0R\x05value\x88\x01\x01B\
-    \x08\n\x06_value\x1a\xa6\x01\n\x1dUseK8sHttpsServiceAuthMatcher\x12p\n\
-    \x12annotation_matcher\x18\x01\x20\x01(\x0b2?.pulse.config.inflow.v1.Kub\
-    ernetesPrometheusConfig.Pod.KeyValueH\0R\x11annotationMatcherB\x13\n\x0c\
-    auth_matcher\x12\x03\xf8B\x01\x1a\x94\x01\n\x03TLS\x12\x20\n\tcert_file\
-    \x18\x01\x20\x01(\tH\0R\x08certFile\x88\x01\x01\x12\x1e\n\x08key_file\
-    \x18\x02\x20\x01(\tH\x01R\x07keyFile\x88\x01\x01\x120\n\x14insecure_skip\
-    _verify\x18\x03\x20\x01(\x08R\x12insecureSkipVerifyB\x0c\n\n_cert_fileB\
-    \x0b\n\t_key_fileB\r\n\x06target\x12\x03\xf8B\x01b\x06proto3\
+    nfig.TLSR\ttlsConfig\x1a\x8d\x02\n\x1dUseK8sHttpsServiceAuthMatcher\x12\
+    \x8a\x01\n\x12annotation_matcher\x18\x01\x20\x01(\x0b2Y.pulse.config.inf\
+    low.v1.KubernetesPrometheusConfig.UseK8sHttpsServiceAuthMatcher.KeyValue\
+    H\0R\x11annotationMatcher\x1aJ\n\x08KeyValue\x12\x19\n\x03key\x18\x01\
+    \x20\x01(\tR\x03keyB\x07\xfaB\x04r\x02\x10\x01\x12\x19\n\x05value\x18\
+    \x02\x20\x01(\tH\0R\x05value\x88\x01\x01B\x08\n\x06_valueB\x13\n\x0cauth\
+    _matcher\x12\x03\xf8B\x01\x1a\xaa\x01\n\x08Endpoint\x12\x9d\x01\n#use_k8\
+    s_https_service_auth_matchers\x18\x02\x20\x03(\x0b2P.pulse.config.inflow\
+    .v1.KubernetesPrometheusConfig.UseK8sHttpsServiceAuthMatcherR\x1euseK8sH\
+    ttpsServiceAuthMatchers\x1a#\n\x04Node\x12\x1b\n\x04path\x18\x01\x20\x01\
+    (\tR\x04pathB\x07\xfaB\x04r\x02\x10\x01\x1a\xfe\x02\n\x03Pod\x12s\n\x11i\
+    nclusion_filters\x18\x01\x20\x03(\x0b2F.pulse.config.inflow.v1.Kubernete\
+    sPrometheusConfig.Pod.InclusionFilterR\x10inclusionFilters\x12\x9d\x01\n\
+    #use_k8s_https_service_auth_matchers\x18\x02\x20\x03(\x0b2P.pulse.config\
+    .inflow.v1.KubernetesPrometheusConfig.UseK8sHttpsServiceAuthMatcherR\x1e\
+    useK8sHttpsServiceAuthMatchers\x1ab\n\x0fInclusionFilter\x12;\n\x19conta\
+    iner_port_name_regex\x18\x01\x20\x01(\tH\0R\x16containerPortNameRegexB\
+    \x12\n\x0bfilter_type\x12\x03\xf8B\x01\x1a\x94\x01\n\x03TLS\x12\x20\n\tc\
+    ert_file\x18\x01\x20\x01(\tH\0R\x08certFile\x88\x01\x01\x12\x1e\n\x08key\
+    _file\x18\x02\x20\x01(\tH\x01R\x07keyFile\x88\x01\x01\x120\n\x14insecure\
+    _skip_verify\x18\x03\x20\x01(\x08R\x12insecureSkipVerifyB\x0c\n\n_cert_f\
+    ileB\x0b\n\t_key_fileB\r\n\x06target\x12\x03\xf8B\x01b\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
@@ -1570,13 +1592,13 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
             deps.push(super::validate::file_descriptor().clone());
             let mut messages = ::std::vec::Vec::with_capacity(8);
             messages.push(KubernetesPrometheusConfig::generated_message_descriptor_data());
+            messages.push(kubernetes_prometheus_config::UseK8sHttpsServiceAuthMatcher::generated_message_descriptor_data());
             messages.push(kubernetes_prometheus_config::Endpoint::generated_message_descriptor_data());
             messages.push(kubernetes_prometheus_config::Node::generated_message_descriptor_data());
             messages.push(kubernetes_prometheus_config::Pod::generated_message_descriptor_data());
             messages.push(kubernetes_prometheus_config::TLS::generated_message_descriptor_data());
+            messages.push(kubernetes_prometheus_config::use_k8s_https_service_auth_matcher::KeyValue::generated_message_descriptor_data());
             messages.push(kubernetes_prometheus_config::pod::InclusionFilter::generated_message_descriptor_data());
-            messages.push(kubernetes_prometheus_config::pod::KeyValue::generated_message_descriptor_data());
-            messages.push(kubernetes_prometheus_config::pod::UseK8sHttpsServiceAuthMatcher::generated_message_descriptor_data());
             let mut enums = ::std::vec::Vec::with_capacity(0);
             ::protobuf::reflect::GeneratedFileDescriptor::new_generated(
                 file_descriptor_proto(),

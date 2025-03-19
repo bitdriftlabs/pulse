@@ -17,9 +17,27 @@ message KubernetesPrometheusConfig {
   // How often eligible Prometheus endpoints are scraped.
   google.protobuf.Duration scrape_interval = 1 [(validate.rules).message.required = true];
 
+  message UseK8sHttpsServiceAuthMatcher {
+    message KeyValue {
+      string key = 1 [(validate.rules).string = {min_len: 1}];
+      // If not supplied, the value is ignored and only key presence is checked.
+      optional string value = 2;
+    }
+
+    oneof auth_matcher {
+      option (validate.required) = true;
+
+      // Matches if the supplied key/value pair is present in the pod's annotations.
+      KeyValue annotation_matcher = 1;
+    }
+  }
+
   // Scrapes metrics from Prometheus endpoints defined on pods via associated service annotations.
   // Resolves to all pod-local endpoints using the service annotations to infer path, port, etc.
   message Endpoint {
+    // If any of the optionally provided matchers matches, HTTPS K8s service auth will be used
+    // against the scrape target.
+    repeated UseK8sHttpsServiceAuthMatcher use_k8s_https_service_auth_matchers = 2;
   }
 
   // Scrape metrics from endpoints discovered on the node. This will resolve to the kubelet
@@ -38,21 +56,6 @@ message KubernetesPrometheusConfig {
         // Apply the following regex to each container port name to determine if it should be
         // scraped. If the regex is a match, the container port will be scraped.
         string container_port_name_regex = 1;
-      }
-    }
-
-    message KeyValue {
-      string key = 1 [(validate.rules).string = {min_len: 1}];
-      // If not supplied, the value is ignored and only key presence is checked.
-      optional string value = 2;
-    }
-
-    message UseK8sHttpsServiceAuthMatcher {
-      oneof auth_matcher {
-        option (validate.required) = true;
-
-        // Matches if the supplied key/value pair is present in the pod's annotations.
-        KeyValue annotation_matcher = 1;
       }
     }
 

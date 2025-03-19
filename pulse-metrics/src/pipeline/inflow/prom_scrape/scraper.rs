@@ -35,8 +35,9 @@ use http::header::{ACCEPT, AUTHORIZATION};
 use itertools::Itertools;
 use k8s_prom::KubernetesPrometheusConfig;
 use k8s_prom::kubernetes_prometheus_config::pod::inclusion_filter::Filter_type;
-use k8s_prom::kubernetes_prometheus_config::pod::use_k8s_https_service_auth_matcher::Auth_matcher;
-use k8s_prom::kubernetes_prometheus_config::pod::{InclusionFilter, UseK8sHttpsServiceAuthMatcher};
+use k8s_prom::kubernetes_prometheus_config::use_k8s_https_service_auth_matcher::Auth_matcher;
+use k8s_prom::kubernetes_prometheus_config::UseK8sHttpsServiceAuthMatcher;
+use k8s_prom::kubernetes_prometheus_config::pod::InclusionFilter;
 use k8s_prom::kubernetes_prometheus_config::{self, TLS, Target};
 use parking_lot::Mutex;
 use prometheus::IntCounter;
@@ -658,13 +659,14 @@ pub async fn make(
       config.emit_up_metric,
       tls_config.as_ref(),
     ),
-    Target::Endpoint(_) => Scraper::<_, RealDurationJitter>::create(
+    Target::Endpoint(endpoint_config) => Scraper::<_, RealDurationJitter>::create(
       context.name,
       stats,
       context.dispatcher,
       context.shutdown_trigger_handle,
       KubeEndpointsTarget {
         pods_info: (context.k8s_watch_factory)().await?.make_owned(),
+        use_k8s_https_service_auth_matchers: endpoint_config.use_k8s_https_service_auth_matchers,
       },
       scrape_interval,
       ticker_factory,
@@ -738,6 +740,7 @@ impl EndpointProvider for KubePodTarget {
 /// Resolves prom endpoints via node-local Kubernetes endpoints.
 struct KubeEndpointsTarget {
   pods_info: OwnedPodsInfoSingleton,
+  use_k8s_https_service_auth_matchers: Vec<UseK8sHttpsServiceAuthMatcher>,
 }
 
 #[async_trait]
@@ -749,7 +752,7 @@ impl EndpointProvider for KubeEndpointsTarget {
       for service in pod_info.services.values() {
         endpoints.extend(create_endpoints(
           &[],
-          &[],
+          &self.use_k8s_https_service_auth_matchers,
           pod_info,
           Some(&service.name),
           service.maybe_service_port,

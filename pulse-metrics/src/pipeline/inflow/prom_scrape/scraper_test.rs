@@ -11,6 +11,7 @@ use crate::pipeline::inflow::prom_scrape::scraper::{
   EndpointProvider,
   KubePodTarget,
   create_endpoints,
+  KubeEndpointsTarget,
 };
 use crate::pipeline::time::TestDurationJitter;
 use async_trait::async_trait;
@@ -22,17 +23,16 @@ use bd_shutdown::ComponentShutdownTrigger;
 use bd_test_helpers::make_mut;
 use http::StatusCode;
 use itertools::Itertools;
-use k8s_prom::kubernetes_prometheus_config::pod::inclusion_filter::Filter_type;
-use k8s_prom::kubernetes_prometheus_config::pod::use_k8s_https_service_auth_matcher::Auth_matcher;
-use k8s_prom::kubernetes_prometheus_config::pod::{
-  InclusionFilter,
-  KeyValue,
+use k8s_prom::kubernetes_prometheus_config::{
+  pod::inclusion_filter::Filter_type,
+  use_k8s_https_service_auth_matcher::{Auth_matcher, KeyValue},
   UseK8sHttpsServiceAuthMatcher,
 };
+use k8s_prom::kubernetes_prometheus_config::pod::InclusionFilter;
 use parking_lot::Mutex;
 use prometheus::labels;
 use pulse_common::k8s::pods_info::container::PodsInfo;
-use pulse_common::k8s::pods_info::{ContainerPort, PodsInfoSingleton};
+use pulse_common::k8s::pods_info::{ContainerPort, PodsInfoSingleton, ServiceInfo};
 use pulse_common::k8s::test::make_pod_info;
 use pulse_common::metadata::Metadata;
 use pulse_protobuf::protos::pulse::config::inflow::v1::k8s_prom;
@@ -44,6 +44,7 @@ use time::ext::NumericalDuration;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 use vrl::{btreemap, path};
+use protobuf::Chars;
 
 #[tokio::test]
 async fn create_endpoint() {
@@ -434,6 +435,51 @@ async fn test_calls() {
   setup.shutdown().await;
 
   assert!(setup.tick_tx.send(()).await.is_err());
+}
+
+#[tokio::test]
+async fn test_kube_endpoints_target_auth_matchers() {
+  let mut initial_state = PodsInfo::default();
+  let mut services = HashMap::new();
+  services.insert(
+    "test-service".to_string(),
+    Arc::new(ServiceInfo {
+      name: "test-service".to_string(),
+      maybe_service_port: Some(9090),
+      annotations: btreemap!("prometheus.io/scrape" => "true"),
+      selector: btreemap!(),
+    }),
+  );
+  initial_state.insert(make_pod_info(
+    "some-namespace",
+    "my-awesome-pod",
+    &btreemap!(),
+    btreemap!("auth-annotation" => "true"),
+    services,
+    "127.0.0.1",
+    vec![],
+  ));
+
+  let (_tx, rx) = tokio::sync::watch::channel(initial_state);
+  let pods_info = Arc::new(PodsInfoSingleton::new(rx)).make_owned();
+  let mut target = KubeEndpointsTarget {
+    pods_info,
+    use_k8s_https_service_auth_matchers: vec![UseK8sHttpsServiceAuthMatcher {
+      auth_matcher: Some(Auth_matcher::AnnotationMatcher(KeyValue {
+        key: Chars::from("auth-annotation"),
+        value: None,
+        special_fields: Default::default(),
+      })),
+      special_fields: Default::default(),
+    }],
+  };
+  let endpoints = target.get();
+  assert_eq!(endpoints.len(), 1);
+
+  let endpoint = &endpoints["some-namespace/test-service/my-awesome-pod/9090/12125791021079042623"];
+  assert!(endpoint.use_https_k8s_service_auth, "HTTPS K8s service auth should be enabled");
+  assert_eq!(endpoint.port, 9090);
+  assert_eq!(endpoint.address, "127.0.0.1");
 }
 
 //
