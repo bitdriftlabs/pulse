@@ -297,8 +297,57 @@ impl OutflowConfig {
         }
     }
 
+    // .pulse.config.outflow.v1.OtlpClientConfig otlp = 6;
+
+    pub fn otlp(&self) -> &super::otlp::OtlpClientConfig {
+        match self.config_type {
+            ::std::option::Option::Some(outflow_config::Config_type::Otlp(ref v)) => v,
+            _ => <super::otlp::OtlpClientConfig as ::protobuf::Message>::default_instance(),
+        }
+    }
+
+    pub fn clear_otlp(&mut self) {
+        self.config_type = ::std::option::Option::None;
+    }
+
+    pub fn has_otlp(&self) -> bool {
+        match self.config_type {
+            ::std::option::Option::Some(outflow_config::Config_type::Otlp(..)) => true,
+            _ => false,
+        }
+    }
+
+    // Param is passed by value, moved
+    pub fn set_otlp(&mut self, v: super::otlp::OtlpClientConfig) {
+        self.config_type = ::std::option::Option::Some(outflow_config::Config_type::Otlp(v))
+    }
+
+    // Mutable pointer to the field.
+    pub fn mut_otlp(&mut self) -> &mut super::otlp::OtlpClientConfig {
+        if let ::std::option::Option::Some(outflow_config::Config_type::Otlp(_)) = self.config_type {
+        } else {
+            self.config_type = ::std::option::Option::Some(outflow_config::Config_type::Otlp(super::otlp::OtlpClientConfig::new()));
+        }
+        match self.config_type {
+            ::std::option::Option::Some(outflow_config::Config_type::Otlp(ref mut v)) => v,
+            _ => panic!(),
+        }
+    }
+
+    // Take field
+    pub fn take_otlp(&mut self) -> super::otlp::OtlpClientConfig {
+        if self.has_otlp() {
+            match self.config_type.take() {
+                ::std::option::Option::Some(outflow_config::Config_type::Otlp(v)) => v,
+                _ => panic!(),
+            }
+        } else {
+            super::otlp::OtlpClientConfig::new()
+        }
+    }
+
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(5);
+        let mut fields = ::std::vec::Vec::with_capacity(6);
         let mut oneofs = ::std::vec::Vec::with_capacity(1);
         fields.push(::protobuf::reflect::rt::v2::make_oneof_message_has_get_mut_set_accessor::<_, super::wire::NullClientConfig>(
             "null_outflow",
@@ -335,6 +384,13 @@ impl OutflowConfig {
             OutflowConfig::mut_prom_remote_write,
             OutflowConfig::set_prom_remote_write,
         ));
+        fields.push(::protobuf::reflect::rt::v2::make_oneof_message_has_get_mut_set_accessor::<_, super::otlp::OtlpClientConfig>(
+            "otlp",
+            OutflowConfig::has_otlp,
+            OutflowConfig::otlp,
+            OutflowConfig::mut_otlp,
+            OutflowConfig::set_otlp,
+        ));
         oneofs.push(outflow_config::Config_type::generated_oneof_descriptor_data());
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<OutflowConfig>(
             "OutflowConfig",
@@ -368,6 +424,9 @@ impl ::protobuf::Message for OutflowConfig {
                 },
                 42 => {
                     self.config_type = ::std::option::Option::Some(outflow_config::Config_type::PromRemoteWrite(is.read_message()?));
+                },
+                50 => {
+                    self.config_type = ::std::option::Option::Some(outflow_config::Config_type::Otlp(is.read_message()?));
                 },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
@@ -403,6 +462,10 @@ impl ::protobuf::Message for OutflowConfig {
                     let len = v.compute_size();
                     my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
                 },
+                &outflow_config::Config_type::Otlp(ref v) => {
+                    let len = v.compute_size();
+                    my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+                },
             };
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
@@ -428,6 +491,9 @@ impl ::protobuf::Message for OutflowConfig {
                 &outflow_config::Config_type::PromRemoteWrite(ref v) => {
                     ::protobuf::rt::write_message_field_with_cached_size(5, v, os)?;
                 },
+                &outflow_config::Config_type::Otlp(ref v) => {
+                    ::protobuf::rt::write_message_field_with_cached_size(6, v, os)?;
+                },
             };
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
@@ -447,6 +513,7 @@ impl ::protobuf::Message for OutflowConfig {
     }
 
     fn clear(&mut self) {
+        self.config_type = ::std::option::Option::None;
         self.config_type = ::std::option::Option::None;
         self.config_type = ::std::option::Option::None;
         self.config_type = ::std::option::Option::None;
@@ -497,6 +564,8 @@ pub mod outflow_config {
         Udp(super::super::wire::UdpClientConfig),
         // @@protoc_insertion_point(oneof_field:pulse.config.outflow.v1.OutflowConfig.prom_remote_write)
         PromRemoteWrite(super::super::prom_remote_write::PromRemoteWriteClientConfig),
+        // @@protoc_insertion_point(oneof_field:pulse.config.outflow.v1.OutflowConfig.otlp)
+        Otlp(super::super::otlp::OtlpClientConfig),
     }
 
     impl ::protobuf::Oneof for Config_type {
@@ -519,15 +588,17 @@ pub mod outflow_config {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n%pulse/config/outflow/v1/outflow.proto\x12\x17pulse.config.outflow.v1\
     \x1a/pulse/config/outflow/v1/prom_remote_write.proto\x1a\"pulse/config/o\
-    utflow/v1/wire.proto\x1a\x17validate/validate.proto\"\x94\x03\n\rOutflow\
-    Config\x12N\n\x0cnull_outflow\x18\x01\x20\x01(\x0b2).pulse.config.outflo\
-    w.v1.NullClientConfigH\0R\x0bnullOutflow\x12?\n\x04unix\x18\x02\x20\x01(\
-    \x0b2).pulse.config.outflow.v1.UnixClientConfigH\0R\x04unix\x12<\n\x03tc\
-    p\x18\x03\x20\x01(\x0b2(.pulse.config.outflow.v1.TcpClientConfigH\0R\x03\
-    tcp\x12<\n\x03udp\x18\x04\x20\x01(\x0b2(.pulse.config.outflow.v1.UdpClie\
-    ntConfigH\0R\x03udp\x12b\n\x11prom_remote_write\x18\x05\x20\x01(\x0b24.p\
-    ulse.config.outflow.v1.PromRemoteWriteClientConfigH\0R\x0fpromRemoteWrit\
-    eB\x12\n\x0bconfig_type\x12\x03\xf8B\x01b\x06proto3\
+    utflow/v1/wire.proto\x1a\x17validate/validate.proto\x1a\"pulse/config/ou\
+    tflow/v1/otlp.proto\"\xd5\x03\n\rOutflowConfig\x12N\n\x0cnull_outflow\
+    \x18\x01\x20\x01(\x0b2).pulse.config.outflow.v1.NullClientConfigH\0R\x0b\
+    nullOutflow\x12?\n\x04unix\x18\x02\x20\x01(\x0b2).pulse.config.outflow.v\
+    1.UnixClientConfigH\0R\x04unix\x12<\n\x03tcp\x18\x03\x20\x01(\x0b2(.puls\
+    e.config.outflow.v1.TcpClientConfigH\0R\x03tcp\x12<\n\x03udp\x18\x04\x20\
+    \x01(\x0b2(.pulse.config.outflow.v1.UdpClientConfigH\0R\x03udp\x12b\n\
+    \x11prom_remote_write\x18\x05\x20\x01(\x0b24.pulse.config.outflow.v1.Pro\
+    mRemoteWriteClientConfigH\0R\x0fpromRemoteWrite\x12?\n\x04otlp\x18\x06\
+    \x20\x01(\x0b2).pulse.config.outflow.v1.OtlpClientConfigH\0R\x04otlpB\
+    \x12\n\x0bconfig_type\x12\x03\xf8B\x01b\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
@@ -544,10 +615,11 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
     static file_descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::FileDescriptor> = ::protobuf::rt::Lazy::new();
     file_descriptor.get(|| {
         let generated_file_descriptor = generated_file_descriptor_lazy.get(|| {
-            let mut deps = ::std::vec::Vec::with_capacity(3);
+            let mut deps = ::std::vec::Vec::with_capacity(4);
             deps.push(super::prom_remote_write::file_descriptor().clone());
             deps.push(super::wire::file_descriptor().clone());
             deps.push(super::validate::file_descriptor().clone());
+            deps.push(super::otlp::file_descriptor().clone());
             let mut messages = ::std::vec::Vec::with_capacity(1);
             messages.push(OutflowConfig::generated_message_descriptor_data());
             let mut enums = ::std::vec::Vec::with_capacity(0);
