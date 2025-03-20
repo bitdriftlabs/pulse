@@ -20,8 +20,7 @@ use futures_util::{Stream, TryStreamExt, pin_mut};
 use k8s_openapi::api::core::v1::{Pod, Service};
 use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
 use kube::core::ObjectMeta;
-use kube::runtime::watcher;
-use kube::runtime::watcher::Event;
+use kube::runtime::watcher::{self, Event, ListSemantic};
 use kube::{Api, ResourceExt};
 use parking_lot::RwLock;
 use protobuf::Chars;
@@ -369,7 +368,10 @@ pub async fn service_watch_stream() -> anyhow::Result<
   let client = kube::Client::try_default().await?;
   let api = kube::Api::all(client);
 
-  Ok(watcher(api, watcher::Config::default()))
+  Ok(watcher::watcher(
+    api,
+    watcher::Config::default().list_semantic(ListSemantic::Any),
+  ))
 }
 
 fn make_k8s_backoff() -> ExponentialBackoff {
@@ -408,10 +410,11 @@ pub async fn watch_pods(
   let client = kube::Client::try_default().await?;
   let pod_api: Api<Pod> = kube::Api::all(client);
 
-  let watcher = watcher(
+  let watcher = watcher::watcher(
     pod_api,
     watcher::Config {
       field_selector: Some(format!("spec.nodeName={node}")),
+      list_semantic: ListSemantic::Any,
       ..Default::default()
     },
   );
