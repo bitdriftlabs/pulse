@@ -11,6 +11,7 @@ pub mod test;
 use anyhow::anyhow;
 use k8s_openapi::api::core::v1::Node;
 use kube::Api;
+use kube::api::GetParams;
 
 #[must_use]
 pub fn missing_node_name_error() -> anyhow::Error {
@@ -28,7 +29,7 @@ impl NodeInfo {
     let client = kube::Client::try_default().await.unwrap();
     let node_api: Api<Node> = kube::Api::all(client);
 
-    let node = node_api.get(node).await.unwrap();
+    let node = node_api.get_with(node, &GetParams::any()).await.unwrap();
 
     let kubelet_port = node
       .status

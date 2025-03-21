@@ -368,9 +368,18 @@ pub async fn service_watch_stream() -> anyhow::Result<
   let client = kube::Client::try_default().await?;
   let api = kube::Api::all(client);
 
+  // Note that we unset page size because the Rust library won't set resourceVersion=0 when
+  // page size is set because apparently K8s ignores it. See:
+  // https://github.com/kubernetes/kubernetes/issues/118394
+  // TODO(mattklein123): This entire mechanism should be redone so that we only watch services
+  // scoped to the namespaces that we are actually dealing with which will perform better overall.
   Ok(watcher::watcher(
     api,
-    watcher::Config::default().list_semantic(ListSemantic::Any),
+    watcher::Config {
+      list_semantic: ListSemantic::Any,
+      page_size: None,
+      ..Default::default()
+    },
   ))
 }
 
@@ -410,11 +419,15 @@ pub async fn watch_pods(
   let client = kube::Client::try_default().await?;
   let pod_api: Api<Pod> = kube::Api::all(client);
 
+  // Note that we unset page size because the Rust library won't set resourceVersion=0 when
+  // page size is set because apparently K8s ignores it. See:
+  // https://github.com/kubernetes/kubernetes/issues/118394
   let watcher = watcher::watcher(
     pod_api,
     watcher::Config {
       field_selector: Some(format!("spec.nodeName={node}")),
       list_semantic: ListSemantic::Any,
+      page_size: None,
       ..Default::default()
     },
   );
