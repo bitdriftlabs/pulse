@@ -675,9 +675,30 @@ async fn gauges() {
   let mut helper = HelperBuilder::default().extended_gauges().build().await;
   helper
     .recv(vec![
-      helper.make_metric("hello", MetricType::Gauge, MetricValue::Simple(5.0)),
-      helper.make_metric("world", MetricType::DeltaGauge, MetricValue::Simple(5.0)),
-      helper.make_metric("foo", MetricType::DirectGauge, MetricValue::Simple(100.0)),
+      helper.make_metric_ex(
+        "hello",
+        Some(MetricType::Gauge),
+        None,
+        MetricValue::Simple(5.0),
+        MetricSource::PromRemoteWrite,
+        DownstreamId::InflowProvided("1".into()),
+      ),
+      helper.make_metric_ex(
+        "world",
+        Some(MetricType::DeltaGauge),
+        None,
+        MetricValue::Simple(5.0),
+        MetricSource::PromRemoteWrite,
+        DownstreamId::InflowProvided("1".into()),
+      ),
+      helper.make_metric_ex(
+        "foo",
+        Some(MetricType::DirectGauge),
+        None,
+        MetricValue::Simple(100.0),
+        MetricSource::PromRemoteWrite,
+        DownstreamId::InflowProvided("1".into()),
+      ),
     ])
     .await;
   helper

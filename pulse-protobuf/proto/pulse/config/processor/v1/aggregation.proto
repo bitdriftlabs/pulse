@@ -97,8 +97,12 @@ message AggregationConfig {
     // Extended output configuration for gauges.
     message Extended {
       // The sum of samples during the interval.
+      // Important note: For this to work correctly the incoming gauges must have unique downstream
+      // IDs so that they can be differentiated.
       bool sum = 1;
       // The mean of samples during the interval.
+      // Important note: For this to work correctly the incoming gauges must have unique downstream
+      // IDs so that they can be differentiated.
       bool mean = 2;
       // The minimum sample during the interval.
       bool min = 3;
