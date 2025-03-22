@@ -8,6 +8,7 @@
 use super::{make_metric, make_name};
 use crate::protos::metric::{DownstreamId, MetricId, MetricType, MetricValue, ParsedMetric};
 use crate::protos::prom::prom_stale_marker;
+use ahash::AHashMap;
 use pulse_protobuf::protos::pulse::config::processor::v1::aggregation::AggregationConfig;
 use tokio::time::Instant;
 
@@ -125,16 +126,16 @@ struct RealProducer<'a> {
 }
 impl GaugeProducer for RealProducer<'_> {
   fn value(&self) -> f64 {
-    self.aggregation.value
+    self.aggregation.last_value
   }
   fn sum(&self) -> f64 {
-    self.aggregation.sum
+    self.aggregation.values.values().sum()
   }
   fn mean(&self) -> f64 {
-    if self.aggregation.count > 0 {
-      self.aggregation.sum / self.aggregation.count as f64
-    } else {
+    if self.aggregation.values.is_empty() {
       0.0
+    } else {
+      self.aggregation.values.values().sum::<f64>() / self.aggregation.values.len() as f64
     }
   }
   fn min(&self) -> f64 {
@@ -152,9 +153,8 @@ impl GaugeProducer for RealProducer<'_> {
 // An aggregated gauge.
 #[derive(Default)]
 pub(super) struct GaugeAggregation {
-  count: u64,
-  sum: f64,
-  value: f64,
+  last_value: f64,
+  values: AHashMap<DownstreamId, f64>,
   min: f64,
   max: f64,
 }
@@ -167,19 +167,13 @@ impl GaugeAggregation {
     metric: &MetricId,
     downstream_id: &DownstreamId,
   ) {
-    if delta {
-      self.value += sample;
-    } else {
-      self.value = sample;
-    }
-
     log::trace!(
       "aggregating gauge sample: {}/{:?}: {}",
       metric,
       downstream_id,
       sample
     );
-    if self.count == 0 {
+    if self.values.is_empty() {
       log::trace!("setting min/max: {}: {}", metric, sample);
       self.min = sample;
       self.max = sample;
@@ -191,8 +185,13 @@ impl GaugeAggregation {
       self.max = sample;
     }
 
-    self.sum += sample;
-    self.count += 1;
+    if delta {
+      *self.values.entry(downstream_id.clone()).or_insert(0.0) += sample;
+      self.last_value += sample;
+    } else {
+      self.values.insert(downstream_id.clone(), sample);
+      self.last_value = sample;
+    }
   }
 
   fn produce_common(
