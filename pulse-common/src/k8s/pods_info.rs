@@ -359,7 +359,7 @@ pub struct ServiceInfo {
   pub name: String,
   pub annotations: BTreeMap<String, String>,
   pub selector: BTreeMap<String, String>,
-  pub maybe_service_port: Option<i32>,
+  pub maybe_service_port: Option<IntOrString>,
 }
 
 pub async fn service_watch_stream() -> anyhow::Result<
@@ -581,12 +581,12 @@ struct ServiceCache {
 
 impl ServiceCache {
   fn apply_service(&mut self, service: Service) {
-    let maybe_service_port = service.spec.as_ref().and_then(|spec| {
-      Some(match spec.ports.as_ref()?.first()?.target_port.as_ref()? {
-        IntOrString::Int(i) => *i,
-        IntOrString::String(s) => s.parse().ok()?,
-      })
-    });
+    let maybe_service_port = service
+      .spec
+      .as_ref()
+      .and_then(|spec| spec.ports.as_ref())
+      .and_then(|ports| ports.first())
+      .and_then(|port| port.target_port.clone());
 
     self
       .services_by_namespace

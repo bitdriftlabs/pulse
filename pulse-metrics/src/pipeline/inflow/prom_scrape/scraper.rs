@@ -33,11 +33,12 @@ use futures_util::future::{join_all, pending};
 use http::StatusCode;
 use http::header::{ACCEPT, AUTHORIZATION};
 use itertools::Itertools;
+use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
 use k8s_prom::KubernetesPrometheusConfig;
+use k8s_prom::kubernetes_prometheus_config::pod::InclusionFilter;
 use k8s_prom::kubernetes_prometheus_config::pod::inclusion_filter::Filter_type;
-use k8s_prom::kubernetes_prometheus_config::pod::use_k8s_https_service_auth_matcher::Auth_matcher;
-use k8s_prom::kubernetes_prometheus_config::pod::{InclusionFilter, UseK8sHttpsServiceAuthMatcher};
-use k8s_prom::kubernetes_prometheus_config::{self, TLS, Target};
+use k8s_prom::kubernetes_prometheus_config::use_k8s_https_service_auth_matcher::Auth_matcher;
+use k8s_prom::kubernetes_prometheus_config::{self, TLS, Target, UseK8sHttpsServiceAuthMatcher};
 use parking_lot::Mutex;
 use prometheus::IntCounter;
 use pulse_common::k8s::pods_info::{OwnedPodsInfoSingleton, PodInfo};
@@ -106,12 +107,43 @@ fn process_k8s_https_service_auth_matchers(
   })
 }
 
+/// Resolves the ports to use for scraping metrics from a pod.
+///
+/// The resolution follows this priority order:
+/// 1. Use ports from annotations/inclusion filters if available.
+/// 2. Use service port if specified (either as number or by matching port name).
+/// 3. Fall back to default port 9090 if no other ports are available.
+pub fn resolve_ports(
+  ports: Vec<i32>,
+  maybe_service_port: Option<&IntOrString>,
+  pod_info: &PodInfo,
+) -> Vec<i32> {
+  // If we have ports from annotations/inclusion filters, use those.
+  if !ports.is_empty() {
+    return ports;
+  }
+
+  // Try to resolve from service port.
+  let service_port = match maybe_service_port {
+    Some(IntOrString::Int(port)) => Some(vec![*port]),
+    Some(IntOrString::String(name)) => pod_info
+      .container_ports
+      .iter()
+      .find(|port| port.name == *name)
+      .map(|port| vec![port.port]),
+    None => None,
+  };
+
+  // If we found a service port, use it, otherwise fall back to default.
+  service_port.unwrap_or_else(|| vec![9090])
+}
+
 fn create_endpoints(
   inclusion_filters: &[InclusionFilter],
   use_k8s_https_service_auth_matchers: &[UseK8sHttpsServiceAuthMatcher],
   pod_info: &PodInfo,
   service_name: Option<&str>,
-  maybe_service_port: Option<i32>,
+  maybe_service_port: Option<&IntOrString>,
   prom_annotations: &BTreeMap<String, String>,
 ) -> Vec<(String, PromEndpoint)> {
   let included_ports = process_inclusion_filters(inclusion_filters, pod_info);
@@ -143,10 +175,12 @@ fn create_endpoints(
       },
     );
 
-  // We attempt the resolve the prom endpoint by considering (in order):
-  // 1. A service annotation that specifies valid port number(s) via prometheus.io/port
-  // 2. A a service port on the service. We use the first port mapping present on the svc object.
-  // 3. A default of port 9090 if 1 & 2 are not present.
+  // Process the scheme annotation, defaulting to "http" if not specified.
+  let scheme = prom_annotations
+    .get("prometheus.io/scheme")
+    .map_or("http", String::as_str)
+    .to_string();
+
   let ports: Vec<i32> = prom_annotations
     .get("prometheus.io/port")
     .into_iter()
@@ -160,11 +194,7 @@ fn create_endpoints(
     .unique()
     .collect_vec();
 
-  let ports = match (maybe_service_port, ports.is_empty()) {
-    (_, false) => ports,
-    (Some(service_port), true) => vec![service_port],
-    (None, true) => vec![9090],
-  };
+  let ports = resolve_ports(ports, maybe_service_port, pod_info);
 
   let use_k8s_https_service_auth =
     process_k8s_https_service_auth_matchers(use_k8s_https_service_auth_matchers, pod_info);
@@ -188,6 +218,7 @@ fn create_endpoints(
           Some(format!("{}:{port}", pod_info.ip)),
         ))),
         use_k8s_https_service_auth,
+        scheme.clone(),
       );
       // We use a stable hash to make sure the ID changes when the endpoint changes.
       let mut hasher = Xxh64Builder::new(0).build();
@@ -225,6 +256,7 @@ struct PromEndpoint {
   path: String,
   metadata: Option<Arc<Metadata>>,
   use_https_k8s_service_auth: bool,
+  scheme: String,
 }
 
 impl PromEndpoint {
@@ -234,6 +266,7 @@ impl PromEndpoint {
     path: String,
     metadata: Option<Arc<Metadata>>,
     use_https_k8s_service_auth: bool,
+    scheme: String,
   ) -> Self {
     Self {
       address,
@@ -241,6 +274,7 @@ impl PromEndpoint {
       path,
       metadata,
       use_https_k8s_service_auth,
+      scheme,
     }
   }
 
@@ -255,7 +289,7 @@ impl PromEndpoint {
         if self.use_https_k8s_service_auth {
           "https"
         } else {
-          "http"
+          &self.scheme
         },
         self.address,
         self.port,
@@ -669,13 +703,14 @@ pub async fn make(
       tls_config.as_ref(),
       timeout,
     ),
-    Target::Endpoint(_) => Scraper::<_, RealDurationJitter>::create(
+    Target::Endpoint(endpoint_config) => Scraper::<_, RealDurationJitter>::create(
       context.name,
       stats,
       context.dispatcher,
       context.shutdown_trigger_handle,
       KubeEndpointsTarget {
         pods_info: (context.k8s_watch_factory)().await?.make_owned(),
+        use_k8s_https_service_auth_matchers: endpoint_config.use_k8s_https_service_auth_matchers,
       },
       scrape_interval,
       ticker_factory,
@@ -751,6 +786,7 @@ impl EndpointProvider for KubePodTarget {
 /// Resolves prom endpoints via node-local Kubernetes endpoints.
 struct KubeEndpointsTarget {
   pods_info: OwnedPodsInfoSingleton,
+  use_k8s_https_service_auth_matchers: Vec<UseK8sHttpsServiceAuthMatcher>,
 }
 
 #[async_trait]
@@ -762,10 +798,10 @@ impl EndpointProvider for KubeEndpointsTarget {
       for service in pod_info.services.values() {
         endpoints.extend(create_endpoints(
           &[],
-          &[],
+          &self.use_k8s_https_service_auth_matchers,
           pod_info,
           Some(&service.name),
-          service.maybe_service_port,
+          service.maybe_service_port.as_ref(),
           &service.annotations,
         ));
       }
@@ -812,6 +848,7 @@ impl NodeEndpointsTarget {
           details.path.to_string(),
           None,
           true,
+          "https".to_string(), // Node endpoints always use HTTPS.
         ),
       )]),
     })

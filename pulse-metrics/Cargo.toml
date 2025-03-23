@@ -49,6 +49,7 @@ hyper.workspace                  = true
 hyperloglogplus.workspace        = true
 intrusive-collections.workspace  = true
 itertools.workspace              = true
+k8s-openapi.workspace            = true
 log.workspace                    = true
 memchr.workspace                 = true
 mockall.workspace                = true
