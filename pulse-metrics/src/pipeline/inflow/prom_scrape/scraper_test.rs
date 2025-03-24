@@ -9,6 +9,7 @@ use super::{PromEndpoint, Scraper, Stats, Ticker};
 use crate::pipeline::MockPipelineDispatch;
 use crate::pipeline::inflow::prom_scrape::scraper::{
   EndpointProvider,
+  KubeEndpointsTarget,
   KubePodTarget,
   create_endpoints,
 };
@@ -22,17 +23,18 @@ use bd_shutdown::ComponentShutdownTrigger;
 use bd_test_helpers::make_mut;
 use http::StatusCode;
 use itertools::Itertools;
+use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
+use k8s_prom::kubernetes_prometheus_config::UseK8sHttpsServiceAuthMatcher;
+use k8s_prom::kubernetes_prometheus_config::pod::InclusionFilter;
 use k8s_prom::kubernetes_prometheus_config::pod::inclusion_filter::Filter_type;
-use k8s_prom::kubernetes_prometheus_config::pod::use_k8s_https_service_auth_matcher::Auth_matcher;
-use k8s_prom::kubernetes_prometheus_config::pod::{
-  InclusionFilter,
+use k8s_prom::kubernetes_prometheus_config::use_k8s_https_service_auth_matcher::{
+  Auth_matcher,
   KeyValue,
-  UseK8sHttpsServiceAuthMatcher,
 };
 use parking_lot::Mutex;
 use prometheus::labels;
 use pulse_common::k8s::pods_info::container::PodsInfo;
-use pulse_common::k8s::pods_info::{ContainerPort, PodsInfoSingleton};
+use pulse_common::k8s::pods_info::{ContainerPort, PodsInfoSingleton, ServiceInfo};
 use pulse_common::k8s::test::make_pod_info;
 use pulse_common::metadata::Metadata;
 use pulse_protobuf::protos::pulse::config::inflow::v1::k8s_prom;
@@ -177,8 +179,8 @@ async fn multiple_ports() {
   assert_eq!(
     endpoints.keys().sorted().collect_vec(),
     &[
-      "some-namespace//my-awesome-pod/123/2081278170809814331",
-      "some-namespace//my-awesome-pod/124/922646523833764701"
+      "some-namespace//my-awesome-pod/123/1848398654520702741",
+      "some-namespace//my-awesome-pod/124/10753466240023868778"
     ]
   );
 }
@@ -206,8 +208,8 @@ async fn multiple_ports_with_space() {
   assert_eq!(
     endpoints.keys().sorted().collect_vec(),
     &[
-      "some-namespace//my-awesome-pod/123/12923558771307559046",
-      "some-namespace//my-awesome-pod/124/17560654736538538233"
+      "some-namespace//my-awesome-pod/123/7470878910378973351",
+      "some-namespace//my-awesome-pod/124/4588601926225829043"
     ]
   );
 }
@@ -251,10 +253,63 @@ async fn inclusion_filters() {
   assert_eq!(
     endpoints.keys().sorted().collect_vec(),
     &[
-      "some-namespace//my-awesome-pod/123/8164956601632705534",
-      "some-namespace//my-awesome-pod/124/3520612071421830717"
+      "some-namespace//my-awesome-pod/123/5728390763373728862",
+      "some-namespace//my-awesome-pod/124/15536537833455954918"
     ]
   );
+}
+
+#[tokio::test]
+async fn test_scheme_annotation() {
+  // Test default scheme (http)
+  let pod_info = make_pod_info(
+    "some-namespace",
+    "my-awesome-pod",
+    &btreemap!(),
+    btreemap!(
+      "prometheus.io/scrape" => "true",
+      "prometheus.io/port" => "123"
+    ),
+    HashMap::new(),
+    "127.0.0.1",
+    vec![],
+  );
+  let endpoints = create_endpoints(&[], &[], &pod_info, None, None, &pod_info.annotations);
+  assert_eq!(endpoints[0].1.scheme, "http");
+
+  // Test explicit http scheme
+  let pod_info = make_pod_info(
+    "some-namespace",
+    "my-awesome-pod",
+    &btreemap!(),
+    btreemap!(
+      "prometheus.io/scrape" => "true",
+      "prometheus.io/port" => "123",
+      "prometheus.io/scheme" => "http"
+    ),
+    HashMap::new(),
+    "127.0.0.1",
+    vec![],
+  );
+  let endpoints = create_endpoints(&[], &[], &pod_info, None, None, &pod_info.annotations);
+  assert_eq!(endpoints[0].1.scheme, "http");
+
+  // Test explicit https scheme
+  let pod_info = make_pod_info(
+    "some-namespace",
+    "my-awesome-pod",
+    &btreemap!(),
+    btreemap!(
+      "prometheus.io/scrape" => "true",
+      "prometheus.io/port" => "123",
+      "prometheus.io/scheme" => "https"
+    ),
+    HashMap::new(),
+    "127.0.0.1",
+    vec![],
+  );
+  let endpoints = create_endpoints(&[], &[], &pod_info, None, None, &pod_info.annotations);
+  assert_eq!(endpoints[0].1.scheme, "https");
 }
 
 #[tokio::test]
@@ -281,7 +336,7 @@ async fn test_kube_pod_target_endpoint() {
   assert_eq!(endpoints.len(), 1);
 
   assert_eq!(
-    endpoints["some-namespace//my-awesome-pod/9090/4466796435962806514"]
+    endpoints["some-namespace//my-awesome-pod/9090/4391886273655461077"]
       .metadata
       .as_ref()
       .unwrap()
@@ -293,7 +348,7 @@ async fn test_kube_pod_target_endpoint() {
     "some-namespace"
   );
   assert_eq!(
-    endpoints["some-namespace//my-awesome-pod/9090/4466796435962806514"]
+    endpoints["some-namespace//my-awesome-pod/9090/4391886273655461077"]
       .metadata
       .as_ref()
       .unwrap()
@@ -436,6 +491,54 @@ async fn test_calls() {
   assert!(setup.tick_tx.send(()).await.is_err());
 }
 
+#[tokio::test]
+async fn test_kube_endpoints_target_auth_matchers() {
+  let mut initial_state = PodsInfo::default();
+  let mut services = HashMap::new();
+  services.insert(
+    "test-service".to_string(),
+    Arc::new(ServiceInfo {
+      name: "test-service".to_string(),
+      maybe_service_port: Some(IntOrString::Int(9090)),
+      annotations: btreemap!("prometheus.io/scrape" => "true"),
+      selector: btreemap!(),
+    }),
+  );
+  initial_state.insert(make_pod_info(
+    "some-namespace",
+    "my-awesome-pod",
+    &btreemap!(),
+    btreemap!("auth-annotation" => "true"),
+    services,
+    "127.0.0.1",
+    vec![],
+  ));
+
+  let (_tx, rx) = tokio::sync::watch::channel(initial_state);
+  let pods_info = Arc::new(PodsInfoSingleton::new(rx)).make_owned();
+  let mut target = KubeEndpointsTarget {
+    pods_info,
+    use_k8s_https_service_auth_matchers: vec![UseK8sHttpsServiceAuthMatcher {
+      auth_matcher: Some(Auth_matcher::AnnotationMatcher(KeyValue {
+        key: "auth-annotation".into(),
+        value: None,
+        ..Default::default()
+      })),
+      ..Default::default()
+    }],
+  };
+  let endpoints = target.get();
+  assert_eq!(endpoints.len(), 1);
+
+  let endpoint = &endpoints["some-namespace/test-service/my-awesome-pod/9090/5641194209388334680"];
+  assert!(
+    endpoint.use_https_k8s_service_auth,
+    "HTTPS K8s service auth should be enabled"
+  );
+  assert_eq!(endpoint.port, 9090);
+  assert_eq!(endpoint.address, "127.0.0.1");
+}
+
 //
 // FakeTicker
 //
@@ -503,6 +606,7 @@ impl EndpointProvider for FakeEndpointProvider {
           None,
         ))),
         false,
+        "http".to_string(),
       ),
     )]
     .into()
@@ -649,4 +753,176 @@ async fn metrics(State(server): State<Arc<TestPromServer>>) -> Response {
   let mut response = Response::new(body);
   *response.status_mut() = server.response_code;
   response
+}
+
+#[test]
+fn test_create_endpoints_port_resolution() {
+  // Test basic pod with container port
+  let pod_info = make_pod_info(
+    "default",
+    "test-pod",
+    &btreemap!(),
+    btreemap!("prometheus.io/scrape" => "true"),
+    HashMap::new(),
+    "10.0.0.1",
+    vec![ContainerPort {
+      name: "metrics".to_string(),
+      port: 9101,
+    }],
+  );
+
+  let endpoints = create_endpoints(&[], &[], &pod_info, None, None, &pod_info.annotations);
+  assert_eq!(endpoints.len(), 1);
+  assert_eq!(endpoints[0].1.port, 9090);
+
+  // Test annotation port override
+  let pod_info = make_pod_info(
+    "default",
+    "test-pod",
+    &btreemap!(),
+    btreemap!("prometheus.io/scrape" => "true", "prometheus.io/port" => "8080"),
+    HashMap::new(),
+    "10.0.0.1",
+    vec![ContainerPort {
+      name: "metrics".to_string(),
+      port: 9101,
+    }],
+  );
+  let endpoints = create_endpoints(&[], &[], &pod_info, None, None, &pod_info.annotations);
+  assert_eq!(endpoints.len(), 1);
+  assert_eq!(endpoints[0].1.port, 8080);
+
+  // Test service port resolution
+  // Test integer service port
+  let pod_info = make_pod_info(
+    "default",
+    "test-pod",
+    &btreemap!(),
+    btreemap!("prometheus.io/scrape" => "true"),
+    HashMap::new(),
+    "10.0.0.1",
+    vec![ContainerPort {
+      name: "metrics".to_string(),
+      port: 9101,
+    }],
+  );
+  let endpoints = create_endpoints(
+    &[],
+    &[],
+    &pod_info,
+    None,
+    Some(&IntOrString::Int(8080)),
+    &pod_info.annotations,
+  );
+  assert_eq!(endpoints.len(), 1);
+  assert_eq!(endpoints[0].1.port, 8080);
+
+  // Test string service port matching
+  let pod_info = make_pod_info(
+    "default",
+    "test-pod",
+    &btreemap!(),
+    btreemap!("prometheus.io/scrape" => "true"),
+    HashMap::new(),
+    "10.0.0.1",
+    vec![ContainerPort {
+      name: "metrics".to_string(),
+      port: 9101,
+    }],
+  );
+  let endpoints = create_endpoints(
+    &[],
+    &[],
+    &pod_info,
+    None,
+    Some(&IntOrString::String("metrics".to_string())),
+    &pod_info.annotations,
+  );
+  assert_eq!(endpoints.len(), 1);
+  assert_eq!(endpoints[0].1.port, 9101);
+
+  // Test non-matching string service port
+  let pod_info = make_pod_info(
+    "default",
+    "test-pod",
+    &btreemap!(),
+    btreemap!("prometheus.io/scrape" => "true"),
+    HashMap::new(),
+    "10.0.0.1",
+    vec![ContainerPort {
+      name: "metrics".to_string(),
+      port: 9101,
+    }],
+  );
+  let endpoints = create_endpoints(
+    &[],
+    &[],
+    &pod_info,
+    None,
+    Some(&IntOrString::String("non-existent".to_string())),
+    &pod_info.annotations,
+  );
+  assert_eq!(endpoints.len(), 1);
+  assert_eq!(endpoints[0].1.port, 9090);
+
+  // Test inclusion filters
+  let pod_info = make_pod_info(
+    "default",
+    "test-pod",
+    &btreemap!(),
+    btreemap!("prometheus.io/scrape" => "true"),
+    HashMap::new(),
+    "10.0.0.1",
+    vec![
+      ContainerPort {
+        name: "scrape_hello".to_string(),
+        port: 123,
+      },
+      ContainerPort {
+        name: "scrape_world".to_string(),
+        port: 124,
+      },
+      ContainerPort {
+        name: "other".to_string(),
+        port: 125,
+      },
+    ],
+  );
+
+  let inclusion_filters = vec![InclusionFilter {
+    filter_type: Some(Filter_type::ContainerPortNameRegex("scrape_.*".into())),
+    ..Default::default()
+  }];
+
+  let endpoints = create_endpoints(
+    &inclusion_filters,
+    &[],
+    &pod_info,
+    None,
+    None,
+    &pod_info.annotations,
+  );
+  assert_eq!(endpoints.len(), 2);
+  let ports: Vec<i32> = endpoints.iter().map(|e| e.1.port).collect();
+  assert!(ports.contains(&123));
+  assert!(ports.contains(&124));
+
+  // Test multiple ports from annotations
+  let pod_info = make_pod_info(
+    "default",
+    "test-pod",
+    &btreemap!(),
+    btreemap!("prometheus.io/scrape" => "true", "prometheus.io/port" => "8080,9090"),
+    HashMap::new(),
+    "10.0.0.1",
+    vec![ContainerPort {
+      name: "metrics".to_string(),
+      port: 9101,
+    }],
+  );
+  let endpoints = create_endpoints(&[], &[], &pod_info, None, None, &pod_info.annotations);
+  assert_eq!(endpoints.len(), 2);
+  let ports: Vec<i32> = endpoints.iter().map(|e| e.1.port).collect();
+  assert!(ports.contains(&8080));
+  assert!(ports.contains(&9090));
 }
