@@ -35,8 +35,8 @@ use parking_lot::Mutex;
 use prometheus::labels;
 use pulse_common::k8s::pods_info::container::PodsInfo;
 use pulse_common::k8s::pods_info::{ContainerPort, PodsInfoSingleton, ServiceInfo};
-use pulse_common::k8s::test::make_pod_info;
-use pulse_common::metadata::Metadata;
+use pulse_common::k8s::test::{make_node_info, make_pod_info};
+use pulse_common::metadata::{Metadata, PodMetadata};
 use pulse_protobuf::protos::pulse::config::inflow::v1::k8s_prom;
 use std::collections::{HashMap, VecDeque};
 use std::future::pending;
@@ -67,6 +67,7 @@ async fn create_endpoint() {
       })),
       ..Default::default()
     }],
+    &make_node_info(),
     &pod_info,
     None,
     None,
@@ -97,6 +98,7 @@ async fn create_endpoint() {
       })),
       ..Default::default()
     }],
+    &make_node_info(),
     &pod_info,
     None,
     None,
@@ -120,7 +122,15 @@ async fn scrape_path() {
     "127.0.0.1",
     vec![],
   );
-  let endpoints = create_endpoints(&[], &[], &pod_info, None, None, &pod_info.annotations);
+  let endpoints = create_endpoints(
+    &[],
+    &[],
+    &make_node_info(),
+    &pod_info,
+    None,
+    None,
+    &pod_info.annotations,
+  );
   assert_eq!(endpoints[0].1.path, "/metrics");
 
   let pod_info = make_pod_info(
@@ -136,7 +146,15 @@ async fn scrape_path() {
     "127.0.0.1",
     vec![],
   );
-  let endpoints = create_endpoints(&[], &[], &pod_info, None, None, &pod_info.annotations);
+  let endpoints = create_endpoints(
+    &[],
+    &[],
+    &make_node_info(),
+    &pod_info,
+    None,
+    None,
+    &pod_info.annotations,
+  );
   assert_eq!(endpoints[0].1.path, "/metrics");
 
   let pod_info = make_pod_info(
@@ -152,7 +170,15 @@ async fn scrape_path() {
     "127.0.0.1",
     vec![],
   );
-  let endpoints = create_endpoints(&[], &[], &pod_info, None, None, &pod_info.annotations);
+  let endpoints = create_endpoints(
+    &[],
+    &[],
+    &make_node_info(),
+    &pod_info,
+    None,
+    None,
+    &pod_info.annotations,
+  );
   assert_eq!(endpoints[0].1.path, "/custom/path");
 }
 
@@ -169,7 +195,7 @@ async fn multiple_ports() {
     vec![],
   ));
   let (_tx, rx) = tokio::sync::watch::channel(initial_state);
-  let pods_info = Arc::new(PodsInfoSingleton::new(rx)).make_owned();
+  let pods_info = Arc::new(PodsInfoSingleton::new(rx, make_node_info().into())).make_owned();
   let mut target = KubePodTarget {
     inclusion_filters: vec![],
     use_k8s_https_service_auth_matchers: vec![],
@@ -179,8 +205,8 @@ async fn multiple_ports() {
   assert_eq!(
     endpoints.keys().sorted().collect_vec(),
     &[
-      "some-namespace//my-awesome-pod/123/1848398654520702741",
-      "some-namespace//my-awesome-pod/124/10753466240023868778"
+      "some-namespace//my-awesome-pod/123/4384495397257537897",
+      "some-namespace//my-awesome-pod/124/18231476593344978654"
     ]
   );
 }
@@ -198,7 +224,7 @@ async fn multiple_ports_with_space() {
     vec![],
   ));
   let (_tx, rx) = tokio::sync::watch::channel(initial_state);
-  let pods_info = Arc::new(PodsInfoSingleton::new(rx)).make_owned();
+  let pods_info = Arc::new(PodsInfoSingleton::new(rx, make_node_info().into())).make_owned();
   let mut target = KubePodTarget {
     inclusion_filters: vec![],
     use_k8s_https_service_auth_matchers: vec![],
@@ -208,8 +234,8 @@ async fn multiple_ports_with_space() {
   assert_eq!(
     endpoints.keys().sorted().collect_vec(),
     &[
-      "some-namespace//my-awesome-pod/123/7470878910378973351",
-      "some-namespace//my-awesome-pod/124/4588601926225829043"
+      "some-namespace//my-awesome-pod/123/16207381826567842246",
+      "some-namespace//my-awesome-pod/124/13845632389437894757"
     ]
   );
 }
@@ -240,7 +266,7 @@ async fn inclusion_filters() {
     ],
   ));
   let (_tx, rx) = tokio::sync::watch::channel(initial_state);
-  let pods_info = Arc::new(PodsInfoSingleton::new(rx)).make_owned();
+  let pods_info = Arc::new(PodsInfoSingleton::new(rx, make_node_info().into())).make_owned();
   let mut target = KubePodTarget {
     inclusion_filters: vec![InclusionFilter {
       filter_type: Some(Filter_type::ContainerPortNameRegex("scrape_.*".into())),
@@ -253,8 +279,8 @@ async fn inclusion_filters() {
   assert_eq!(
     endpoints.keys().sorted().collect_vec(),
     &[
-      "some-namespace//my-awesome-pod/123/5728390763373728862",
-      "some-namespace//my-awesome-pod/124/15536537833455954918"
+      "some-namespace//my-awesome-pod/123/1393131387627709863",
+      "some-namespace//my-awesome-pod/124/17146259253306464564"
     ]
   );
 }
@@ -274,7 +300,15 @@ async fn test_scheme_annotation() {
     "127.0.0.1",
     vec![],
   );
-  let endpoints = create_endpoints(&[], &[], &pod_info, None, None, &pod_info.annotations);
+  let endpoints = create_endpoints(
+    &[],
+    &[],
+    &make_node_info(),
+    &pod_info,
+    None,
+    None,
+    &pod_info.annotations,
+  );
   assert_eq!(endpoints[0].1.scheme, "http");
 
   // Test explicit http scheme
@@ -291,7 +325,15 @@ async fn test_scheme_annotation() {
     "127.0.0.1",
     vec![],
   );
-  let endpoints = create_endpoints(&[], &[], &pod_info, None, None, &pod_info.annotations);
+  let endpoints = create_endpoints(
+    &[],
+    &[],
+    &make_node_info(),
+    &pod_info,
+    None,
+    None,
+    &pod_info.annotations,
+  );
   assert_eq!(endpoints[0].1.scheme, "http");
 
   // Test explicit https scheme
@@ -308,7 +350,15 @@ async fn test_scheme_annotation() {
     "127.0.0.1",
     vec![],
   );
-  let endpoints = create_endpoints(&[], &[], &pod_info, None, None, &pod_info.annotations);
+  let endpoints = create_endpoints(
+    &[],
+    &[],
+    &make_node_info(),
+    &pod_info,
+    None,
+    None,
+    &pod_info.annotations,
+  );
   assert_eq!(endpoints[0].1.scheme, "https");
 }
 
@@ -326,7 +376,7 @@ async fn test_kube_pod_target_endpoint() {
   ));
 
   let (_tx, rx) = tokio::sync::watch::channel(initial_state);
-  let pods_info = Arc::new(PodsInfoSingleton::new(rx)).make_owned();
+  let pods_info = Arc::new(PodsInfoSingleton::new(rx, make_node_info().into())).make_owned();
   let mut target = KubePodTarget {
     inclusion_filters: vec![],
     use_k8s_https_service_auth_matchers: vec![],
@@ -336,7 +386,9 @@ async fn test_kube_pod_target_endpoint() {
   assert_eq!(endpoints.len(), 1);
 
   assert_eq!(
-    endpoints["some-namespace//my-awesome-pod/9090/4391886273655461077"]
+    endpoints
+      .get("some-namespace//my-awesome-pod/9090/7824291410539923195")
+      .unwrap_or_else(|| panic!("actual endpoints: {endpoints:?}"))
       .metadata
       .as_ref()
       .unwrap()
@@ -348,7 +400,7 @@ async fn test_kube_pod_target_endpoint() {
     "some-namespace"
   );
   assert_eq!(
-    endpoints["some-namespace//my-awesome-pod/9090/4391886273655461077"]
+    endpoints["some-namespace//my-awesome-pod/9090/7824291410539923195"]
       .metadata
       .as_ref()
       .unwrap()
@@ -515,7 +567,7 @@ async fn test_kube_endpoints_target_auth_matchers() {
   ));
 
   let (_tx, rx) = tokio::sync::watch::channel(initial_state);
-  let pods_info = Arc::new(PodsInfoSingleton::new(rx)).make_owned();
+  let pods_info = Arc::new(PodsInfoSingleton::new(rx, make_node_info().into())).make_owned();
   let mut target = KubeEndpointsTarget {
     pods_info,
     use_k8s_https_service_auth_matchers: vec![UseK8sHttpsServiceAuthMatcher {
@@ -530,7 +582,9 @@ async fn test_kube_endpoints_target_auth_matchers() {
   let endpoints = target.get();
   assert_eq!(endpoints.len(), 1);
 
-  let endpoint = &endpoints["some-namespace/test-service/my-awesome-pod/9090/5641194209388334680"];
+  let endpoint = &endpoints
+    .get("some-namespace/test-service/my-awesome-pod/9090/10966376444896740670")
+    .unwrap_or_else(|| panic!("actual endpoints: {endpoints:?}"));
   assert!(
     endpoint.use_https_k8s_service_auth,
     "HTTPS K8s service auth should be enabled"
@@ -595,14 +649,15 @@ impl EndpointProvider for FakeEndpointProvider {
         },
         String::new(),
         Some(Arc::new(Metadata::new(
-          "namespace",
-          "pod",
-          "ip",
-          &btreemap!(),
-          &btreemap!(),
-          None,
-          "node_name",
-          "node_ip",
+          &make_node_info(),
+          Some(PodMetadata {
+            namespace: "namespace",
+            pod_name: "pod",
+            pod_ip: "ip",
+            pod_labels: &btreemap!(),
+            pod_annotations: &btreemap!(),
+            service: None,
+          }),
           None,
         ))),
         false,
@@ -771,7 +826,15 @@ fn test_create_endpoints_port_resolution() {
     }],
   );
 
-  let endpoints = create_endpoints(&[], &[], &pod_info, None, None, &pod_info.annotations);
+  let endpoints = create_endpoints(
+    &[],
+    &[],
+    &make_node_info(),
+    &pod_info,
+    None,
+    None,
+    &pod_info.annotations,
+  );
   assert_eq!(endpoints.len(), 1);
   assert_eq!(endpoints[0].1.port, 9090);
 
@@ -788,7 +851,15 @@ fn test_create_endpoints_port_resolution() {
       port: 9101,
     }],
   );
-  let endpoints = create_endpoints(&[], &[], &pod_info, None, None, &pod_info.annotations);
+  let endpoints = create_endpoints(
+    &[],
+    &[],
+    &make_node_info(),
+    &pod_info,
+    None,
+    None,
+    &pod_info.annotations,
+  );
   assert_eq!(endpoints.len(), 1);
   assert_eq!(endpoints[0].1.port, 8080);
 
@@ -809,6 +880,7 @@ fn test_create_endpoints_port_resolution() {
   let endpoints = create_endpoints(
     &[],
     &[],
+    &make_node_info(),
     &pod_info,
     None,
     Some(&IntOrString::Int(8080)),
@@ -833,6 +905,7 @@ fn test_create_endpoints_port_resolution() {
   let endpoints = create_endpoints(
     &[],
     &[],
+    &make_node_info(),
     &pod_info,
     None,
     Some(&IntOrString::String("metrics".to_string())),
@@ -857,6 +930,7 @@ fn test_create_endpoints_port_resolution() {
   let endpoints = create_endpoints(
     &[],
     &[],
+    &make_node_info(),
     &pod_info,
     None,
     Some(&IntOrString::String("non-existent".to_string())),
@@ -897,6 +971,7 @@ fn test_create_endpoints_port_resolution() {
   let endpoints = create_endpoints(
     &inclusion_filters,
     &[],
+    &make_node_info(),
     &pod_info,
     None,
     None,
@@ -920,7 +995,15 @@ fn test_create_endpoints_port_resolution() {
       port: 9101,
     }],
   );
-  let endpoints = create_endpoints(&[], &[], &pod_info, None, None, &pod_info.annotations);
+  let endpoints = create_endpoints(
+    &[],
+    &[],
+    &make_node_info(),
+    &pod_info,
+    None,
+    None,
+    &pod_info.annotations,
+  );
   assert_eq!(endpoints.len(), 2);
   let ports: Vec<i32> = endpoints.iter().map(|e| e.1.port).collect();
   assert!(ports.contains(&8080));

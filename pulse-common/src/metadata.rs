@@ -5,6 +5,7 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
+use crate::k8s::NodeInfo;
 use crate::k8s::pods_info::make_namespace_and_name;
 use std::collections::BTreeMap;
 use vrl::value;
@@ -22,21 +23,24 @@ pub struct Metadata {
   // be a bit more generic, e.g. a provider / consumer contract where sources emit providers and
   // filters are consumers - this would allow us to type check the pipeline to make sure that
   // required data is made available to consumers.
-  k8s_namespace_and_pod_name: String,
+  k8s_namespace_and_pod_name: Option<String>,
   value: Value,
+}
+
+pub struct PodMetadata<'a> {
+  pub namespace: &'a str,
+  pub pod_name: &'a str,
+  pub pod_ip: &'a str,
+  pub pod_labels: &'a BTreeMap<String, String>,
+  pub pod_annotations: &'a BTreeMap<String, String>,
+  pub service: Option<&'a str>,
 }
 
 impl Metadata {
   #[must_use]
   pub fn new(
-    namespace: &str,
-    pod_name: &str,
-    pod_ip: &str,
-    pod_labels: &BTreeMap<String, String>,
-    pod_annotations: &BTreeMap<String, String>,
-    service: Option<&str>,
-    node_name: &str,
-    node_ip: &str,
+    node_info: &NodeInfo,
+    pod_metadata: Option<PodMetadata<'_>>,
     prom_scrape_address: Option<String>,
   ) -> Self {
     fn btree_to_value(values: &BTreeMap<String, String>) -> Value {
@@ -46,10 +50,21 @@ impl Metadata {
         .collect::<Value>()
     }
 
-    let k8s_namespace_and_pod_name = make_namespace_and_name(namespace, pod_name);
-    let pod_labels = btree_to_value(pod_labels);
-    let pod_annotations = btree_to_value(pod_annotations);
-    let service = service.map(|s| value!({"name": s}));
+    let k8s_namespace_and_pod_name = pod_metadata
+      .as_ref()
+      .map(|p| make_namespace_and_name(p.namespace, p.pod_name));
+    let namespace = pod_metadata.as_ref().map(|p| p.namespace.to_string());
+    let pod_name = pod_metadata.as_ref().map(|p| p.pod_name.to_string());
+    let pod_ip = pod_metadata.as_ref().map(|p| p.pod_ip.to_string());
+    let pod_labels = pod_metadata.as_ref().map(|p| btree_to_value(p.pod_labels));
+    let pod_annotations = pod_metadata
+      .as_ref()
+      .map(|p| btree_to_value(p.pod_annotations));
+    let node_name = node_info.name.to_string();
+    let node_ip = node_info.ip.to_string();
+    let node_labels = btree_to_value(&node_info.labels);
+    let node_annotations = btree_to_value(&node_info.annotations);
+    let service = pod_metadata.and_then(|p| p.service.map(|s| value!({"name": s})));
     let value = value!({
       "prom": {
         "scrape": {
@@ -68,6 +83,8 @@ impl Metadata {
         "node": {
           "name": node_name,
           "ip": node_ip,
+          "labels": node_labels,
+          "annotations": node_annotations,
         }
       }
     });
@@ -78,8 +95,8 @@ impl Metadata {
     }
   }
 
-  pub fn k8s_namespace_and_pod_name(&self) -> &str {
-    &self.k8s_namespace_and_pod_name
+  pub fn k8s_namespace_and_pod_name(&self) -> Option<&str> {
+    self.k8s_namespace_and_pod_name.as_deref()
   }
 
   pub const fn value(&self) -> &Value {
@@ -101,7 +118,15 @@ impl Metadata {
 
     let node_collection = Collection::empty()
       .with_known("name", Kind::bytes().or_undefined())
-      .with_known("ip", Kind::bytes().or_undefined());
+      .with_known("ip", Kind::bytes().or_undefined())
+      .with_known(
+        "labels",
+        Kind::object(Collection::from_unknown(Kind::bytes())).or_undefined(),
+      )
+      .with_known(
+        "annotations",
+        Kind::object(Collection::from_unknown(Kind::bytes())).or_undefined(),
+      );
 
     let service_collection = Collection::empty().with_known("name", Kind::bytes().or_undefined());
 

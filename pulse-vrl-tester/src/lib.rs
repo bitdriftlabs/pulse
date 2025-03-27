@@ -15,7 +15,8 @@ use config::bootstrap::v1::bootstrap::Config;
 use config::processor::v1::processor::processor_config::Processor_type;
 use pretty_assertions::Comparison;
 use protobuf::Message;
-use pulse_common::metadata::Metadata;
+use pulse_common::k8s::NodeInfo;
+use pulse_common::metadata::{Metadata, PodMetadata};
 use pulse_common::proto::yaml_to_proto;
 use pulse_metrics::protos::metric::{DownstreamId, Metric, MetricSource, ParsedMetric};
 use pulse_metrics::protos::statsd;
@@ -27,6 +28,7 @@ use pulse_protobuf::protos::pulse::config::processor::v1::processor::ProcessorCo
 use pulse_protobuf::protos::pulse::vrl_tester::v1::vrl_tester::transform::Transform_type;
 use pulse_protobuf::protos::pulse::vrl_tester::v1::vrl_tester::vrl_test_case::Program_type;
 use pulse_protobuf::protos::pulse::vrl_tester::v1::vrl_tester::{VrlTestCase, VrlTesterConfig};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::Instant;
 use vrl::compiler::ExpressionError;
@@ -111,22 +113,29 @@ fn run_test_case(test_case: VrlTestCase, proxy_config: Option<&Config>) -> anyho
     .into_option()
     .map(|kubernetes_metadata| {
       Arc::new(Metadata::new(
-        &kubernetes_metadata.namespace,
-        &kubernetes_metadata.pod_name,
-        &kubernetes_metadata.pod_ip,
-        &kubernetes_metadata
-          .pod_labels
-          .into_iter()
-          .map(|(k, v)| (k.to_string(), v.to_string()))
-          .collect(),
-        &kubernetes_metadata
-          .pod_annotations
-          .into_iter()
-          .map(|(k, v)| (k.to_string(), v.to_string()))
-          .collect(),
-        kubernetes_metadata.service_name.as_deref(),
-        &kubernetes_metadata.host_name,
-        &kubernetes_metadata.host_ip,
+        &NodeInfo {
+          name: kubernetes_metadata.host_name.to_string(),
+          ip: kubernetes_metadata.host_ip.to_string(),
+          kubelet_port: 0,
+          labels: BTreeMap::new(),
+          annotations: BTreeMap::new(),
+        },
+        Some(PodMetadata {
+          namespace: &kubernetes_metadata.namespace,
+          pod_name: &kubernetes_metadata.pod_name,
+          pod_ip: &kubernetes_metadata.pod_ip,
+          pod_labels: &kubernetes_metadata
+            .pod_labels
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect(),
+          pod_annotations: &kubernetes_metadata
+            .pod_annotations
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect(),
+          service: kubernetes_metadata.service_name.as_deref(),
+        }),
         kubernetes_metadata
           .prom_scrape_address
           .map(|c| c.to_string()),

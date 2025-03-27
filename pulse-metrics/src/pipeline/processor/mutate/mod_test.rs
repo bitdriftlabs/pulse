@@ -20,7 +20,9 @@ use bd_server_stats::stats::Collector;
 use bd_test_helpers::make_mut;
 use pretty_assertions::assert_eq;
 use prometheus::labels;
-use pulse_common::metadata::Metadata;
+use pulse_common::k8s::NodeInfo;
+use pulse_common::k8s::test::make_node_info;
+use pulse_common::metadata::{Metadata, PodMetadata};
 use pulse_protobuf::protos::pulse::config::processor::v1::mutate::MutateConfig;
 use std::sync::Arc;
 use vrl::btreemap;
@@ -87,6 +89,63 @@ for_each(.tags) -> |key, value| {
 }
 
 #[tokio::test]
+async fn node_only() {
+  let mut helper = Helper::new(
+    r#"
+.tags.node = %k8s.node.name
+.tags.node_ip = %k8s.node.ip
+.tags.node_label = %k8s.node.labels.k1
+.tags.node_annotation = %k8s.node.annotations.a1
+    "#,
+  );
+
+  helper
+    .expect_send_and_receive(
+      make_abs_counter_with_metadata(
+        "test:name",
+        &[("a", "b")],
+        0,
+        1.0,
+        Metadata::new(
+          &NodeInfo {
+            name: "node_name".to_string(),
+            ip: "node_ip".to_string(),
+            labels: btreemap!("k1" => "v1"),
+            annotations: btreemap!("a1" => "b1"),
+            kubelet_port: 123,
+          },
+          None,
+          None,
+        ),
+      ),
+      make_abs_counter_with_metadata(
+        "test:name",
+        &[
+          ("a", "b"),
+          ("node", "node_name"),
+          ("node_annotation", "b1"),
+          ("node_ip", "node_ip"),
+          ("node_label", "v1"),
+        ],
+        0,
+        1.0,
+        Metadata::new(
+          &NodeInfo {
+            name: "node_name".to_string(),
+            ip: "node_ip".to_string(),
+            labels: btreemap!("k1" => "v1"),
+            annotations: btreemap!("a1" => "b1"),
+            kubelet_port: 123,
+          },
+          None,
+          None,
+        ),
+      ),
+    )
+    .await;
+}
+
+#[tokio::test]
 async fn drop_metrics_with_abort() {
   let mut helper = Helper::new(
     r#"
@@ -116,14 +175,15 @@ if string!(%k8s.service.name) == "kube_state_metrics" &&
       0,
       1.0,
       Metadata::new(
-        "default",
-        "podA",
-        "podAIP",
-        &btreemap!(),
-        &btreemap!(),
-        Some("kube_state_metrics"),
-        "node_name",
-        "node_ip",
+        &make_node_info(),
+        Some(PodMetadata {
+          namespace: "default",
+          pod_name: "podA",
+          pod_ip: "podAIP",
+          pod_labels: &btreemap!(),
+          pod_annotations: &btreemap!(),
+          service: Some("kube_state_metrics"),
+        }),
         None,
       ),
     )])
@@ -140,14 +200,15 @@ if string!(%k8s.service.name) == "kube_state_metrics" &&
         0,
         1.0,
         Metadata::new(
-          "default",
-          "podA",
-          "podAIP",
-          &btreemap!(),
-          &btreemap!(),
-          Some("kube_state_metrics"),
-          "node_name",
-          "node_ip",
+          &make_node_info(),
+          Some(PodMetadata {
+            namespace: "default",
+            pod_name: "podA",
+            pod_ip: "podAIP",
+            pod_labels: &btreemap!(),
+            pod_annotations: &btreemap!(),
+            service: Some("kube_state_metrics"),
+          }),
           None,
         ),
       ),
@@ -157,14 +218,15 @@ if string!(%k8s.service.name) == "kube_state_metrics" &&
         0,
         1.0,
         Metadata::new(
-          "default",
-          "podA",
-          "podAIP",
-          &btreemap!(),
-          &btreemap!(),
-          Some("kube_state_metrics"),
-          "node_name",
-          "node_ip",
+          &make_node_info(),
+          Some(PodMetadata {
+            namespace: "default",
+            pod_name: "podA",
+            pod_ip: "podAIP",
+            pod_labels: &btreemap!(),
+            pod_annotations: &btreemap!(),
+            service: Some("kube_state_metrics"),
+          }),
           None,
         ),
       ),
@@ -201,14 +263,15 @@ if is_null(.tags.namespace) {
         0,
         1.0,
         Metadata::new(
-          "default",
-          "podA",
-          "podAIP",
-          &btreemap!(),
-          &btreemap!(),
-          Some("some-service"),
-          "node_name",
-          "node_ip",
+          &make_node_info(),
+          Some(PodMetadata {
+            namespace: "default",
+            pod_name: "podA",
+            pod_ip: "podAIP",
+            pod_labels: &btreemap!(),
+            pod_annotations: &btreemap!(),
+            service: Some("some-service"),
+          }),
           None,
         ),
       ),
@@ -218,14 +281,15 @@ if is_null(.tags.namespace) {
         0,
         1.0,
         Metadata::new(
-          "default",
-          "podA",
-          "podAIP",
-          &btreemap!(),
-          &btreemap!(),
-          Some("some-service"),
-          "node_name",
-          "node_ip",
+          &make_node_info(),
+          Some(PodMetadata {
+            namespace: "default",
+            pod_name: "podA",
+            pod_ip: "podAIP",
+            pod_labels: &btreemap!(),
+            pod_annotations: &btreemap!(),
+            service: Some("some-service"),
+          }),
           None,
         ),
       ),
@@ -257,14 +321,15 @@ async fn test_transformation_kubernetes_service_name() {
         0,
         1.0,
         Metadata::new(
-          "default",
-          "podA",
-          "podAIP",
-          &btreemap!("label_a" => "foo"),
-          &btreemap!("annotation_b" => "bar"),
-          Some("some-service"),
-          "node_name",
-          "node_ip",
+          &make_node_info(),
+          Some(PodMetadata {
+            namespace: "default",
+            pod_name: "podA",
+            pod_ip: "podAIP",
+            pod_labels: &btreemap!("label_a" => "foo"),
+            pod_annotations: &btreemap!("annotation_b" => "bar"),
+            service: Some("some-service"),
+          }),
           None,
         ),
       ),
@@ -280,14 +345,15 @@ async fn test_transformation_kubernetes_service_name() {
         0,
         1.0,
         Metadata::new(
-          "default",
-          "podA",
-          "podAIP",
-          &btreemap!("label_a" => "foo"),
-          &btreemap!("annotation_b" => "bar"),
-          Some("some-service"),
-          "node_name",
-          "node_ip",
+          &make_node_info(),
+          Some(PodMetadata {
+            namespace: "default",
+            pod_name: "podA",
+            pod_ip: "podAIP",
+            pod_labels: &btreemap!("label_a" => "foo"),
+            pod_annotations: &btreemap!("annotation_b" => "bar"),
+            service: Some("some-service"),
+          }),
           None,
         ),
       ),
@@ -322,14 +388,15 @@ async fn test_transformation_kubernetes_namespace() {
         0,
         1.0,
         Metadata::new(
-          "default",
-          "podA",
-          "podAIP",
-          &btreemap!(),
-          &btreemap!(),
-          None,
-          "node_name",
-          "node_ip",
+          &make_node_info(),
+          Some(PodMetadata {
+            namespace: "default",
+            pod_name: "podA",
+            pod_ip: "podAIP",
+            pod_labels: &btreemap!(),
+            pod_annotations: &btreemap!(),
+            service: None,
+          }),
           Some("1.2.3.4:8000".to_string()),
         ),
       ),
@@ -347,14 +414,15 @@ async fn test_transformation_kubernetes_namespace() {
         0,
         1.0,
         Metadata::new(
-          "default",
-          "podA",
-          "podAIP",
-          &btreemap!(),
-          &btreemap!(),
-          None,
-          "node_name",
-          "node_ip",
+          &make_node_info(),
+          Some(PodMetadata {
+            namespace: "default",
+            pod_name: "podA",
+            pod_ip: "podAIP",
+            pod_labels: &btreemap!(),
+            pod_annotations: &btreemap!(),
+            service: None,
+          }),
           Some("1.2.3.4:8000".to_string()),
         ),
       ),
@@ -379,14 +447,15 @@ del(.tags.key1)
         0,
         1.0,
         Metadata::new(
-          "default",
-          "podA",
-          "podAIP",
-          &btreemap!(),
-          &btreemap!(),
-          None,
-          "node_name",
-          "node_ip",
+          &make_node_info(),
+          Some(PodMetadata {
+            namespace: "default",
+            pod_name: "podA",
+            pod_ip: "podAIP",
+            pod_labels: &btreemap!(),
+            pod_annotations: &btreemap!(),
+            service: None,
+          }),
           None,
         ),
       ),
@@ -396,14 +465,15 @@ del(.tags.key1)
         0,
         1.0,
         Metadata::new(
-          "default",
-          "podA",
-          "podAIP",
-          &btreemap!(),
-          &btreemap!(),
-          None,
-          "node_name",
-          "node_ip",
+          &make_node_info(),
+          Some(PodMetadata {
+            namespace: "default",
+            pod_name: "podA",
+            pod_ip: "podAIP",
+            pod_labels: &btreemap!(),
+            pod_annotations: &btreemap!(),
+            service: None,
+          }),
           None,
         ),
       ),
@@ -430,14 +500,15 @@ if exists(.tags.key1) {
         0,
         1.0,
         Metadata::new(
-          "default",
-          "podA",
-          "podAIP",
-          &btreemap!(),
-          &btreemap!(),
-          None,
-          "node_name",
-          "node_ip",
+          &make_node_info(),
+          Some(PodMetadata {
+            namespace: "default",
+            pod_name: "podA",
+            pod_ip: "podAIP",
+            pod_labels: &btreemap!(),
+            pod_annotations: &btreemap!(),
+            service: None,
+          }),
           None,
         ),
       ),
@@ -447,14 +518,15 @@ if exists(.tags.key1) {
         0,
         1.0,
         Metadata::new(
-          "default",
-          "podA",
-          "podAIP",
-          &btreemap!(),
-          &btreemap!(),
-          None,
-          "node_name",
-          "node_ip",
+          &make_node_info(),
+          Some(PodMetadata {
+            namespace: "default",
+            pod_name: "podA",
+            pod_ip: "podAIP",
+            pod_labels: &btreemap!(),
+            pod_annotations: &btreemap!(),
+            service: None,
+          }),
           None,
         ),
       ),

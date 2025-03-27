@@ -7,7 +7,7 @@
 
 use super::PodsInfoCache;
 use crate::k8s::pods_info::{ContainerPort, PodsInfo, ServiceInfo, ServiceMonitor};
-use crate::k8s::test::make_pod_info;
+use crate::k8s::test::{make_node_info, make_pod_info};
 use k8s_openapi::api::core::v1;
 use k8s_openapi::api::core::v1::{Container, Pod, PodSpec, PodStatus};
 use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
@@ -43,7 +43,7 @@ fn make_object_meta(
 fn pod_cache() {
   let (tx, mut rx) = tokio::sync::watch::channel(PodsInfo::default());
 
-  let mut cache = PodsInfoCache::new("node".to_string(), tx, vec![]);
+  let mut cache = PodsInfoCache::new(make_node_info().into(), tx, vec![]);
 
   let services = ServiceMonitor::default();
 

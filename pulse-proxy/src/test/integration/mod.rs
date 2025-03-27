@@ -32,6 +32,7 @@ use pulse_common::bind_resolver::{
 };
 use pulse_common::k8s::pods_info::PodsInfoSingleton;
 use pulse_common::k8s::pods_info::container::PodsInfo;
+use pulse_common::k8s::test::make_node_info;
 use pulse_common::proto::yaml_to_proto;
 use pulse_common::singleton::SingletonManager;
 use pulse_metrics::clients::prom::{
@@ -254,7 +255,12 @@ impl Helper {
         Arc::default(),
         move || {
           let cloned_k8s_rx = k8s_rx.clone().expect("k8s watch not configured");
-          async move { Ok(Arc::new(PodsInfoSingleton::new(cloned_k8s_rx))) }
+          async move {
+            Ok(Arc::new(PodsInfoSingleton::new(
+              cloned_k8s_rx,
+              Arc::new(make_node_info()),
+            )))
+          }
         },
       )
       .await

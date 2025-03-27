@@ -10,7 +10,7 @@
 mod pods_info_test;
 
 use self::container::PodsInfo;
-use super::missing_node_name_error;
+use super::{NodeInfo, missing_node_name_error};
 use crate::proto::env_or_inline_to_string;
 use crate::singleton::{SingletonHandle, SingletonManager};
 use backoff::backoff::Backoff;
@@ -48,7 +48,7 @@ pub fn make_namespace_and_name(namespace: &str, name: &str) -> String {
 // shared.
 #[derive(Clone)]
 pub struct OwnedPodsInfoSingleton {
-  _parent: Arc<PodsInfoSingleton>,
+  parent: Arc<PodsInfoSingleton>,
   rx: watch::Receiver<PodsInfo>,
 }
 
@@ -65,6 +65,11 @@ impl OwnedPodsInfoSingleton {
   pub async fn changed(&mut self) {
     let _ignored = self.rx.changed().await;
   }
+
+  #[must_use]
+  pub fn node_info(&self) -> Arc<NodeInfo> {
+    self.parent.node_info.clone()
+  }
 }
 
 //
@@ -74,18 +79,19 @@ impl OwnedPodsInfoSingleton {
 // Singleton access for the pod info watcher.
 pub struct PodsInfoSingleton {
   rx: watch::Receiver<PodsInfo>,
+  node_info: Arc<NodeInfo>,
 }
 
 impl PodsInfoSingleton {
   #[must_use]
-  pub const fn new(rx: watch::Receiver<PodsInfo>) -> Self {
-    Self { rx }
+  pub const fn new(rx: watch::Receiver<PodsInfo>, node_info: Arc<NodeInfo>) -> Self {
+    Self { rx, node_info }
   }
 
   #[must_use]
   pub fn make_owned(self: Arc<Self>) -> OwnedPodsInfoSingleton {
     let rx = self.rx.clone();
-    OwnedPodsInfoSingleton { _parent: self, rx }
+    OwnedPodsInfoSingleton { parent: self, rx }
   }
 
   pub fn node_name(kubernetes: &KubernetesBootstrapConfig) -> anyhow::Result<String> {
@@ -111,10 +117,11 @@ impl PodsInfoSingleton {
     singleton_manager
       .get_or_init(handle, async {
         let (pods_info_tx, pods_info_rx) = watch::channel(PodsInfo::default());
+        let node_info = NodeInfo::new(&node_name).await?;
 
         watch_pods(
           k8s_config,
-          node_name,
+          node_info.clone(),
           pods_info_tx,
           if load_services {
             Some(service_watch_stream().await?)
@@ -123,7 +130,7 @@ impl PodsInfoSingleton {
           },
         )
         .await?;
-        Ok::<_, anyhow::Error>(Arc::new(Self::new(pods_info_rx)))
+        Ok::<_, anyhow::Error>(Arc::new(Self::new(pods_info_rx, node_info)))
       })
       .await
   }
@@ -131,7 +138,9 @@ impl PodsInfoSingleton {
 
 pub mod container {
   use super::{PodInfo, ServiceMonitor, make_namespace_and_name};
+  use crate::k8s::NodeInfo;
   use crate::k8s::pods_info::object_namespace;
+  use crate::metadata::PodMetadata;
   use bd_log::warn_every;
   use k8s_openapi::api::core::v1::Pod;
   use kube::ResourceExt;
@@ -206,7 +215,7 @@ pub mod container {
 
     pub fn apply_pod(
       &mut self,
-      node_name: &str,
+      node_info: &NodeInfo,
       pod: &Pod,
       service_cache: Option<&ServiceMonitor>,
       pod_phases: &[Chars],
@@ -232,11 +241,6 @@ pub mod container {
 
       let Ok(pod_ip) = pod_ip_string.parse() else {
         log::trace!("skipping pod {pod_name}, failed to parse IP");
-        return false;
-      };
-
-      let Some(host_ip) = status.host_ip.as_ref() else {
-        log::trace!("skipping pod {pod_name}, no host IP");
         return false;
       };
 
@@ -293,20 +297,19 @@ pub mod container {
           labels: pod.labels().clone(),
           annotations: pod.annotations().clone(),
           metadata: Arc::new(crate::metadata::Metadata::new(
-            namespace,
-            pod_name,
-            pod_ip_string,
-            pod.labels(),
-            pod.annotations(),
-            None,
-            node_name,
-            host_ip,
+            node_info,
+            Some(PodMetadata {
+              namespace,
+              pod_name,
+              pod_ip: pod_ip_string,
+              pod_labels: pod.labels(),
+              pod_annotations: pod.annotations(),
+              service: None,
+            }),
             None,
           )),
           ip: pod_ip,
           container_ports,
-          node_name: node_name.to_string(),
-          node_ip: host_ip.clone(),
         }
       };
 
@@ -342,8 +345,6 @@ pub struct PodInfo {
   pub metadata: Arc<crate::metadata::Metadata>,
   pub ip: IpAddr,
   pub container_ports: Vec<ContainerPort>,
-  pub node_name: String,
-  pub node_ip: String,
 }
 
 impl PodInfo {
@@ -399,7 +400,7 @@ fn make_k8s_backoff() -> ExponentialBackoff {
 /// changes to this set. The initial state and updates are provided via the watch channel.
 pub async fn watch_pods(
   config: KubernetesBootstrapConfig,
-  node: String,
+  node_info: Arc<NodeInfo>,
   update_tx: tokio::sync::watch::Sender<PodsInfo>,
   watch_service_stream: Option<
     impl Stream<Item = kube::runtime::watcher::Result<Event<Service>>> + Send + 'static,
@@ -425,14 +426,14 @@ pub async fn watch_pods(
   let watcher = watcher::watcher(
     pod_api,
     watcher::Config {
-      field_selector: Some(format!("spec.nodeName={node}")),
+      field_selector: Some(format!("spec.nodeName={}", node_info.name)),
       list_semantic: ListSemantic::Any,
       page_size: None,
       ..Default::default()
     },
   );
 
-  let mut pods_info_cache = PodsInfoCache::new(node, update_tx, config.pod_phases);
+  let mut pods_info_cache = PodsInfoCache::new(node_info, update_tx, config.pod_phases);
   let (initial_sync_tx, initial_sync_rx) = oneshot::channel();
   let mut backoff = make_k8s_backoff();
 
@@ -456,7 +457,7 @@ pub async fn watch_pods(
         },
         watcher::Event::InitApply(pod) => {
           initial_state.get_or_insert(PodsInfo::default()).apply_pod(
-            &pods_info_cache.node_name,
+            &pods_info_cache.node_info,
             &pod,
             service_cache.as_deref(),
             &pods_info_cache.pod_phases,
@@ -511,7 +512,7 @@ async fn process_resource_update<T>(
 //
 
 struct PodsInfoCache {
-  node_name: String,
+  node_info: Arc<NodeInfo>,
   state: PodsInfo,
   update_tx: tokio::sync::watch::Sender<PodsInfo>,
   pod_phases: Vec<Chars>,
@@ -519,12 +520,12 @@ struct PodsInfoCache {
 
 impl PodsInfoCache {
   fn new(
-    node_name: String,
+    node_info: Arc<NodeInfo>,
     update_tx: tokio::sync::watch::Sender<PodsInfo>,
     pod_phases: Vec<Chars>,
   ) -> Self {
     Self {
-      node_name,
+      node_info,
       state: PodsInfo::default(),
       update_tx,
       pod_phases: if pod_phases.is_empty() {
@@ -543,7 +544,7 @@ impl PodsInfoCache {
   fn apply_pod(&mut self, pod: &Pod, service_cache: Option<&ServiceMonitor>) {
     if self
       .state
-      .apply_pod(&self.node_name, pod, service_cache, &self.pod_phases)
+      .apply_pod(&self.node_info, pod, service_cache, &self.pod_phases)
     {
       self.broadcast();
     }

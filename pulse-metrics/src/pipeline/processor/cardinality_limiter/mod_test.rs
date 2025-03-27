@@ -13,8 +13,8 @@ use cardinality_limiter_config::per_pod_limit::Override_limit_location;
 use cardinality_limiter_config::{GlobalLimit, Limit_type, PerPodLimit};
 use prometheus::labels;
 use pulse_common::k8s::pods_info::container::PodsInfo;
-use pulse_common::k8s::test::make_pod_info;
-use pulse_common::metadata::Metadata;
+use pulse_common::k8s::test::{make_node_info, make_pod_info};
+use pulse_common::metadata::{Metadata, PodMetadata};
 use pulse_protobuf::protos::pulse::config::processor::v1::cardinality_limiter::{
   CardinalityLimiterConfig,
   cardinality_limiter_config,
@@ -28,14 +28,15 @@ use xxhash_rust::xxh64::Xxh64;
 
 fn make_metadata(pod_name: &str) -> Metadata {
   Metadata::new(
-    "default",
-    pod_name,
-    "ip",
-    &BTreeMap::default(),
-    &BTreeMap::default(),
-    None,
-    "node_name",
-    "node_ip",
+    &make_node_info(),
+    Some(PodMetadata {
+      namespace: "default",
+      pod_name,
+      pod_ip: "ip",
+      pod_labels: &BTreeMap::default(),
+      pod_annotations: &BTreeMap::default(),
+      service: None,
+    }),
     None,
   )
 }
