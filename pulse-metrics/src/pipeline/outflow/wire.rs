@@ -14,6 +14,7 @@ use async_trait::async_trait;
 use bd_log::warn_every;
 use bd_server_stats::stats::AutoGauge;
 use bd_shutdown::ComponentShutdown;
+use itertools::Either;
 use prometheus::{IntCounter, IntGauge};
 use pulse_protobuf::protos::pulse::config::common::v1::common::WireProtocol;
 use pulse_protobuf::protos::pulse::config::outflow::v1::wire::CommonWireClientConfig;
@@ -101,43 +102,58 @@ impl WireOutflow {
 #[async_trait]
 impl PipelineOutflow for WireOutflow {
   async fn recv_samples(&self, samples: Vec<ParsedMetric>) {
-    for sample in samples {
-      // TODO(mattklein123): Support wire output for histograms and summaries. Currently we
-      // block/eat here as the common output point.
-      if matches!(
-        sample.metric().value,
-        MetricValue::Histogram(_) | MetricValue::Summary(_)
-      ) {
-        continue;
-      }
-
-      // In general we don't expect bulk timers to make it here given a normal configuration, but if
-      // they do emit them as individual values. No effort is made to make this perform well.
-      if Some(MetricType::BulkTimer) == sample.metric().get_id().mtype() {
-        for value in sample.metric().value.to_bulk_timer() {
-          self.batch_builder.send(ParsedMetric::new(
-            Metric::new(
-              MetricId::new(
-                sample.metric().get_id().name().clone(),
-                Some(MetricType::Timer),
-                sample.metric().get_id().tags().to_vec(),
-                true,
-              )
-              .unwrap(),
-              sample.metric().sample_rate,
-              sample.metric().timestamp,
-              MetricValue::Simple(*value),
-            ),
-            sample.source().clone(),
-            sample.received_at(),
-            sample.downstream_id().clone(),
-          ));
+    let samples = samples
+      .into_iter()
+      .filter_map(|sample| {
+        // TODO(mattklein123): Support wire output for histograms and summaries. Currently we
+        // block/eat here as the common output point.
+        if matches!(
+          sample.metric().value,
+          MetricValue::Histogram(_) | MetricValue::Summary(_)
+        ) {
+          return None;
         }
-        continue;
-      }
 
-      self.batch_builder.send(sample);
-    }
+        // In general we don't expect bulk timers to make it here given a normal configuration, but
+        // if they do emit them as individual values. No effort is made to make this perform
+        // well.
+        if Some(MetricType::BulkTimer) == sample.metric().get_id().mtype() {
+          Some(Either::Left(
+            // TODO(mattklein123): Figure out if it's possible remove the to_vec() below.
+            #[allow(clippy::unnecessary_to_owned)]
+            sample
+              .metric()
+              .value
+              .to_bulk_timer()
+              .to_vec()
+              .into_iter()
+              .map(move |value| {
+                ParsedMetric::new(
+                  Metric::new(
+                    MetricId::new(
+                      sample.metric().get_id().name().clone(),
+                      Some(MetricType::Timer),
+                      sample.metric().get_id().tags().to_vec(),
+                      true,
+                    )
+                    .unwrap(),
+                    sample.metric().sample_rate,
+                    sample.metric().timestamp,
+                    MetricValue::Simple(value),
+                  ),
+                  sample.source().clone(),
+                  sample.received_at(),
+                  sample.downstream_id().clone(),
+                )
+              }),
+          ))
+        } else {
+          Some(Either::Right(std::iter::once(sample)))
+        }
+      })
+      .flatten();
+
+    self.batch_builder.send(samples);
   }
 }
 
@@ -162,14 +178,16 @@ impl WireBatch {
 }
 
 impl Batch<ParsedMetric> for WireBatch {
-  fn push(&mut self, sample: ParsedMetric) -> Option<usize> {
-    self.received_at.push(sample.received_at());
-    let line = sample.to_wire_protocol(&self.protocol);
-    self.samples += 1;
-    self.payload.extend_from_slice(&line);
-    self.payload.extend_from_slice(b"\n");
-    if self.payload.len() > self.max_batch_size {
-      return Some(self.payload.len());
+  fn push(&mut self, samples: impl Iterator<Item = ParsedMetric>) -> Option<usize> {
+    for sample in samples {
+      self.received_at.push(sample.received_at());
+      let line = sample.to_wire_protocol(&self.protocol);
+      self.samples += 1;
+      self.payload.extend_from_slice(&line);
+      self.payload.extend_from_slice(b"\n");
+      if self.payload.len() > self.max_batch_size {
+        return Some(self.payload.len());
+      }
     }
     None
   }

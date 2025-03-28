@@ -25,4 +25,7 @@ message QueuePolicy {
   // The wait period between batch fills. Batches will be sent by this deadline if not full.
   // Defaults to 50ms.
   google.protobuf.Duration batch_fill_wait = 2 [(validate.rules).duration.gt = {}];
+
+  // fixfix
+  optional uint64 concurrent_batch_queues = 3;
 }

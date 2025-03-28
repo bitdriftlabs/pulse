@@ -20,6 +20,7 @@ use pulse_protobuf::protos::pulse::config::outflow::v1::queue_policy::QueuePolic
 use std::collections::VecDeque;
 use std::marker::PhantomData;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use time::Duration;
 use time::ext::NumericalDuration;
 use tokio::sync::Notify;
@@ -31,7 +32,7 @@ const DEFAULT_QUEUE_MAX_BYTES: u64 = 8 * 1024 * 1024;
 // A Batch is a collection of items that are collected over a period of time.
 pub trait Batch<I> {
   // Push an item onto the batch. If the batch is complete, return the size.
-  fn push(&mut self, item: I) -> Option<usize>;
+  fn push(&mut self, item: impl Iterator<Item = I>) -> Option<usize>;
 
   // Finish the batch. Will only be called if there is a batch fill timeout. Return the size.
   fn finish(&mut self) -> usize;
@@ -45,13 +46,14 @@ struct QueueEntry<T> {
 }
 
 // Data in the batch builder that must be locked.
-struct LockedData<T> {
+struct GlobalLockedData<T> {
   batch_queue: VecDeque<QueueEntry<T>>,
-  pending_batch: Option<T>,
   current_total_size: usize,
-  batch_fill_wait_task: Option<JoinHandle<()>>,
-  shutdown: bool,
   waiters: bool,
+}
+struct PerBatchLockedData<T> {
+  pending_batch: Option<T>,
+  batch_fill_wait_task: Option<JoinHandle<()>>,
 }
 
 // Stats for the batch builder.
@@ -73,7 +75,10 @@ struct Stats {
 // TODO(mattklein123): Potentially make the LIFO configurable. Some backends might not like this?
 // (Though if we send in parallel seems like it shouldn't matter.)
 pub struct BatchBuilder<I, B: Batch<I>> {
-  locked_data: Mutex<LockedData<B>>,
+  global_locked_data: Mutex<GlobalLockedData<B>>,
+  shutdown: AtomicBool,
+  concurrent_batch_index: AtomicUsize,
+  concurrent_pending_batches: Vec<Mutex<PerBatchLockedData<B>>>,
   notify_on_data: Notify,
   constructor: Box<dyn Fn() -> B + Send + Sync>,
   batch_fill_wait_duration: Duration,
@@ -97,14 +102,21 @@ impl<I: Send + Sync + 'static, B: Batch<I> + Send + Sync + 'static> BatchBuilder
     };
 
     let batch_builder = Arc::new(Self {
-      locked_data: Mutex::new(LockedData {
+      global_locked_data: Mutex::new(GlobalLockedData {
         batch_queue: VecDeque::new(),
-        pending_batch: None,
         current_total_size: 0,
-        batch_fill_wait_task: None,
-        shutdown: false,
         waiters: false,
       }),
+      shutdown: AtomicBool::new(false),
+      concurrent_batch_index: AtomicUsize::new(0),
+      concurrent_pending_batches: (0 .. policy.concurrent_batch_queues.unwrap_or(1))
+        .map(|_| {
+          Mutex::new(PerBatchLockedData {
+            pending_batch: None,
+            batch_fill_wait_task: None,
+          })
+        })
+        .collect(),
       notify_on_data: Notify::new(),
       constructor: Box::new(constructor),
       batch_fill_wait_duration: policy
@@ -124,16 +136,21 @@ impl<I: Send + Sync + 'static, B: Batch<I> + Send + Sync + 'static> BatchBuilder
     tokio::spawn(async move {
       shutdown.cancelled().await;
       log::trace!("shutting down");
-      let mut locked_data = cloned_batch_builder.locked_data.lock();
-      locked_data.shutdown = true;
+      cloned_batch_builder.shutdown.store(true, Ordering::Relaxed);
 
-      // Complete any pending batch.
-      if locked_data.pending_batch.is_some() {
+      // Complete any pending batches.
+      for pending_batch in &cloned_batch_builder.concurrent_pending_batches {
+        let Some(mut batch) = pending_batch.lock().pending_batch.take() else {
+          continue;
+        };
+        let size = batch.finish();
+        let mut locked_data = cloned_batch_builder.global_locked_data.lock();
         Self::finish_batch(
           &mut locked_data,
           &cloned_batch_builder.stats,
           &cloned_batch_builder.notify_on_data,
-          None,
+          batch,
+          size,
         );
       }
 
@@ -146,20 +163,20 @@ impl<I: Send + Sync + 'static, B: Batch<I> + Send + Sync + 'static> BatchBuilder
   }
 
   // Increment the total size across internal state and stats.
-  fn inc_total_size(locked_data: &mut LockedData<B>, stats: &Stats, size: usize) {
+  fn inc_total_size(locked_data: &mut GlobalLockedData<B>, stats: &Stats, size: usize) {
     locked_data.current_total_size += size;
     stats.queued_bytes.add(size.try_into().unwrap());
   }
 
   // Decrement the total size across internal state and stats.
-  fn dec_total_size(locked_data: &mut LockedData<B>, stats: &Stats, size: usize) {
+  fn dec_total_size(locked_data: &mut GlobalLockedData<B>, stats: &Stats, size: usize) {
     debug_assert!(locked_data.current_total_size >= size);
     locked_data.current_total_size -= size;
     stats.queued_bytes.sub(size.try_into().unwrap());
   }
 
   // Abort the fill task if it exists.
-  fn maybe_abort_fill_task(locked_data: &mut LockedData<B>) {
+  fn maybe_abort_fill_task(locked_data: &mut PerBatchLockedData<B>) {
     if let Some(handle) = locked_data.batch_fill_wait_task.take() {
       log::trace!("aborting batch fill wait task");
       handle.abort();
@@ -168,101 +185,121 @@ impl<I: Send + Sync + 'static, B: Batch<I> + Send + Sync + 'static> BatchBuilder
 
   // Send an item through the batch builder. This may result in old data getting dropped if the
   // total data in the LIFO queue and the pending batch is too large.
-  // TODO(mattklein123): Consider sending multiple items through in a single call to avoid lock and
-  // wake thrash.
-  pub fn send(self: &Arc<Self>, item: I) {
-    let mut locked_data = self.locked_data.lock();
-    if locked_data.shutdown {
+  pub fn send(self: &Arc<Self>, items: impl Iterator<Item = I>) {
+    if self.shutdown.load(Ordering::Relaxed) {
       // Just silently drop the data.
       // TODO(mattklein123): At least keep track of this in stats.
       return;
     }
 
-    let pending_batch = locked_data.pending_batch.get_or_insert_with(|| {
-      log::trace!("creating new pending batch");
-      (self.constructor)()
-    });
+    let mut items = items.peekable();
+    while items.peek().is_some() {
+      let pending_index = self.concurrent_batch_index.fetch_add(1, Ordering::Relaxed)
+        % self.concurrent_pending_batches.len();
+      log::trace!("using batch pending index: {}", pending_index);
 
-    // If the batch is finished, process it.
-    if let Some(finished_size) = pending_batch.push(item) {
-      Self::maybe_abort_fill_task(&mut locked_data);
+      let mut locked_pending_data = self.concurrent_pending_batches[pending_index].lock();
+      let pending_batch = locked_pending_data.pending_batch.get_or_insert_with(|| {
+        log::trace!("creating new pending batch");
+        (self.constructor)()
+      });
 
-      if finished_size > self.max_total_bytes {
-        // If somehow we just pushed an item that makes the pending batch bigger than the size of
-        // the queue, this will break all of the math below so we have to drop it. For now
-        // just drop the entire batch since there is no good way to unpush it right now and
-        // this is an extreme edge case so we should just not crash. We can revisit later if
-        // an issue.
-        warn_every!(
-          15.seconds(),
-          "dropping: batch size {} is larger than max queue size {}",
-          finished_size,
-          self.max_total_bytes
-        );
-        self
-          .stats
-          .dropped_bytes
-          .inc_by(finished_size.try_into().unwrap());
-        locked_data.pending_batch.take();
-        return;
-      }
+      // If the batch is finished, process it.
+      if let Some(finished_size) = pending_batch.push(&mut items) {
+        Self::maybe_abort_fill_task(&mut locked_pending_data);
 
-      // See if we need to evict old entries to make room for new data.
-      while self.max_total_bytes - locked_data.current_total_size < finished_size {
-        let back = locked_data.batch_queue.pop_back().unwrap();
-        warn_every!(
-          15.seconds(),
-          "batch overflow, evicting oldest with size: {}",
-          back.size
-        );
-        self
-          .stats
-          .dropped_bytes
-          .inc_by(back.size.try_into().unwrap());
-        Self::dec_total_size(&mut locked_data, &self.stats, back.size);
-      }
+        if finished_size > self.max_total_bytes {
+          // If somehow we just pushed an item that makes the pending batch bigger than the size of
+          // the queue, this will break all of the math below so we have to drop it. For now
+          // just drop the entire batch since there is no good way to unpush it right now and
+          // this is an extreme edge case so we should just not crash. We can revisit later if
+          // an issue.
+          warn_every!(
+            15.seconds(),
+            "dropping: batch size {} is larger than max queue size {}",
+            finished_size,
+            self.max_total_bytes
+          );
+          self
+            .stats
+            .dropped_bytes
+            .inc_by(finished_size.try_into().unwrap());
+          locked_pending_data.pending_batch.take();
+          return;
+        }
 
-      Self::finish_batch(
-        &mut locked_data,
-        &self.stats,
-        &self.notify_on_data,
-        Some(finished_size),
-      );
-    } else if locked_data.batch_fill_wait_task.is_none() {
-      // If there is no fill task, start one.
-      let cloned_self = self.clone();
-      log::trace!("spawning batch wait task");
-      locked_data.batch_fill_wait_task = Some(tokio::spawn(async move {
-        cloned_self.batch_fill_wait_duration.sleep().await;
-        log::trace!("batch fill timeout elapsed");
-        let mut locked_data = cloned_self.locked_data.lock();
-        locked_data.batch_fill_wait_task.take();
+        // At this point take the finished batch, unlock the slot so that other threads can make
+        // progress, and lock the global state to finish it.
+        let pending_batch = locked_pending_data.pending_batch.take().unwrap();
+        drop(locked_pending_data);
+        let mut locked_data = self.global_locked_data.lock();
+
+        // See if we need to evict old entries to make room for new data.
+        while self.max_total_bytes - locked_data.current_total_size < finished_size {
+          let back = locked_data.batch_queue.pop_back().unwrap();
+          warn_every!(
+            15.seconds(),
+            "batch overflow, evicting oldest with size: {}",
+            back.size
+          );
+          self
+            .stats
+            .dropped_bytes
+            .inc_by(back.size.try_into().unwrap());
+          Self::dec_total_size(&mut locked_data, &self.stats, back.size);
+        }
+
         Self::finish_batch(
           &mut locked_data,
-          &cloned_self.stats,
-          &cloned_self.notify_on_data,
-          None,
+          &self.stats,
+          &self.notify_on_data,
+          pending_batch,
+          finished_size,
         );
-      }));
+      } else if locked_pending_data.batch_fill_wait_task.is_none() {
+        // If there is no fill task, start one.
+        let cloned_self = self.clone();
+        log::trace!("spawning batch wait task");
+        locked_pending_data.batch_fill_wait_task = Some(tokio::spawn(async move {
+          cloned_self.batch_fill_wait_duration.sleep().await;
+          log::trace!("batch fill timeout elapsed");
+          let mut locked_pending_data =
+            cloned_self.concurrent_pending_batches[pending_index].lock();
+          locked_pending_data.batch_fill_wait_task.take();
+          // It's possible for this to race with batch max so make sure we still have a pending
+          // batch. TODO(mattklein123): Should we handle this differently? Perhaps it
+          // would be better to not spawn a task every time we need a fill timeout? We
+          // could have a task that just sits around and waits to be asked to timeout, and
+          // then we cancel the timeout? Alternatively we could keep track of a "batch
+          // epoch" to make sure we don't finish the wrong batch?
+          let Some(mut pending_batch) = locked_pending_data.pending_batch.take() else {
+            return;
+          };
+          let size = pending_batch.finish();
+
+          // Now drop the per batch lock and aquire the global lock to finish the batch.
+          drop(locked_pending_data);
+          let mut locked_data = cloned_self.global_locked_data.lock();
+          Self::finish_batch(
+            &mut locked_data,
+            &cloned_self.stats,
+            &cloned_self.notify_on_data,
+            pending_batch,
+            size,
+          );
+        }));
+      }
     }
   }
 
   // Finish a pending batch and push it onto the LIFO queue.
   fn finish_batch(
-    locked_data: &mut LockedData<B>,
+    locked_data: &mut GlobalLockedData<B>,
     stats: &Stats,
     notify_on_data: &Notify,
-    size: Option<usize>,
+    pending_batch: B,
+    size: usize,
   ) {
-    // It's possible for this to race with batch max so make sure we still have a pending batch.
-    // TODO(mattklein123): Should we handle this differently? Perhaps it would be better to not
-    // spawn a task every time we need a fill timeout? We could have a task that just sits around
-    // and waits to be asked to timeout, and then we cancel the timeout? Alternatively we could
-    // keep track of a "batch epoch" to make sure we don't finish the wrong batch?
-    let Some(mut pending_batch) = locked_data.pending_batch.take() else {
-      return;
-    };
-    let size = size.unwrap_or_else(|| pending_batch.finish());
     Self::inc_total_size(locked_data, stats, size);
 
     // In order to avoid spurious wakeups, we keep track of whether there are any waiters.
@@ -288,7 +325,7 @@ impl<I: Send + Sync + 'static, B: Batch<I> + Send + Sync + 'static> BatchBuilder
   pub async fn next_batch_set(&self, max_items: Option<usize>) -> Option<Vec<B>> {
     loop {
       let notified_future = {
-        let mut locked_data = self.locked_data.lock();
+        let mut locked_data = self.global_locked_data.lock();
         let len_to_pop = locked_data
           .batch_queue
           .len()
@@ -303,7 +340,7 @@ impl<I: Send + Sync + 'static, B: Batch<I> + Send + Sync + 'static> BatchBuilder
           }
           return Some(batch_set);
         }
-        if locked_data.shutdown {
+        if self.shutdown.load(Ordering::Relaxed) {
           return None;
         }
 

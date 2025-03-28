@@ -9,6 +9,7 @@ use super::*;
 use bd_server_stats::stats::Collector;
 use bd_shutdown::ComponentShutdownTrigger;
 use futures::poll;
+use std::iter::once;
 use std::task::Poll;
 use time::ext::NumericalDuration;
 use tokio::pin;
@@ -38,11 +39,16 @@ struct TestBatch {
 }
 
 impl Batch<(&'static str, Option<TestBatchResult>)> for TestBatch {
-  fn push(&mut self, item: (&'static str, Option<TestBatchResult>)) -> Option<usize> {
-    self.items.push(item.0);
-    self.result = item.1;
-    if let Some(TestBatchResult::Complete(size)) = item.1 {
-      return Some(size);
+  fn push(
+    &mut self,
+    items: impl Iterator<Item = (&'static str, Option<TestBatchResult>)>,
+  ) -> Option<usize> {
+    for item in items {
+      self.items.push(item.0);
+      self.result = item.1;
+      if let Some(TestBatchResult::Complete(size)) = item.1 {
+        return Some(size);
+      }
     }
     None
   }
@@ -53,6 +59,57 @@ impl Batch<(&'static str, Option<TestBatchResult>)> for TestBatch {
     }
     unreachable!();
   }
+}
+
+#[tokio::test(start_paused = true)]
+async fn many_items_batch() {
+  let shutdown_trigger = ComponentShutdownTrigger::default();
+  let batch_builder = BatchBuilder::new(
+    &Collector::default().scope("test"),
+    &QueuePolicy::default(),
+    TestBatch::default,
+    shutdown_trigger.make_shutdown(),
+  );
+  batch_builder.send(
+    [
+      ("a", None),
+      ("b", complete(2)),
+      ("c", None),
+      ("d", complete(2)),
+    ]
+    .into_iter(),
+  );
+  assert_eq!(
+    vec![vec!["c", "d"], vec!["a", "b"]],
+    map_return(batch_builder.next_batch_set(None).await).unwrap()
+  );
+}
+
+#[tokio::test(start_paused = true)]
+async fn multiple_queues() {
+  let shutdown_trigger = ComponentShutdownTrigger::default();
+  let batch_builder = BatchBuilder::new(
+    &Collector::default().scope("test"),
+    &QueuePolicy {
+      concurrent_batch_queues: Some(2),
+      ..Default::default()
+    },
+    TestBatch::default,
+    shutdown_trigger.make_shutdown(),
+  );
+  batch_builder.send(
+    [
+      ("a", None),
+      ("b", complete(2)),
+      ("c", None),
+      ("d", complete(2)),
+    ]
+    .into_iter(),
+  );
+  assert_eq!(
+    vec![vec!["c", "d"], vec!["a", "b"]],
+    map_return(batch_builder.next_batch_set(None).await).unwrap()
+  );
 }
 
 #[tokio::test(start_paused = true)]
@@ -69,7 +126,7 @@ async fn simple_batch() {
   pin!(batch_future);
   assert_eq!(Poll::Pending, poll!(batch_future.as_mut()));
 
-  batch_builder.send(("a", expect_finish(4096)));
+  batch_builder.send(once(("a", expect_finish(4096))));
   assert_eq!(Poll::Pending, poll!(batch_future.as_mut()));
 
   // Sleep to advance past the batch fill time.
@@ -78,8 +135,8 @@ async fn simple_batch() {
 
   // Add 2 items that together will meet the max batch size. This should flush it and cancel the
   // fill wait task.
-  batch_builder.send(("a", None));
-  batch_builder.send(("b", complete(4096)));
+  batch_builder.send(once(("a", None)));
+  batch_builder.send(once(("b", complete(4096))));
   51.milliseconds().sleep().await;
   assert_eq!(
     Some(vec![vec!["a", "b"]]),
@@ -87,7 +144,7 @@ async fn simple_batch() {
   );
 
   // Add another item, and advance past the batch fill time and make sure we get it back.
-  batch_builder.send(("a", expect_finish(1)));
+  batch_builder.send(once(("a", expect_finish(1))));
   51.milliseconds().sleep().await;
   assert_eq!(
     Some(vec![vec!["a"]]),
@@ -95,7 +152,7 @@ async fn simple_batch() {
   );
 
   // Add another item, and advance past the batch fill time and make sure we get it back.
-  batch_builder.send(("b", expect_finish(1)));
+  batch_builder.send(once(("b", expect_finish(1))));
   51.milliseconds().sleep().await;
   assert_eq!(
     Some(vec![vec!["b"]]),
@@ -131,7 +188,7 @@ async fn shutdown_with_pending_batch() {
     TestBatch::default,
     shutdown_trigger.make_shutdown(),
   );
-  batch_builder.send(("a", expect_finish(1)));
+  batch_builder.send(once(("a", expect_finish(1))));
   shutdown_trigger.shutdown().await;
   assert_eq!(
     Some(vec![vec!["a"]]),
@@ -140,7 +197,7 @@ async fn shutdown_with_pending_batch() {
   assert_eq!(None, map_return(batch_builder.next_batch_set(None).await));
 
   // TODO(mattklein123): Verify the following is dropped when stats are added.
-  batch_builder.send(("b", None));
+  batch_builder.send(once(("b", None)));
   assert_eq!(None, map_return(batch_builder.next_batch_set(None).await));
 }
 
@@ -157,11 +214,11 @@ async fn overflow() {
     shutdown_trigger.make_shutdown(),
   );
 
-  batch_builder.send(("a", None));
-  batch_builder.send(("b", complete(2)));
-  batch_builder.send(("c", complete(2)));
-  batch_builder.send(("d", None));
-  batch_builder.send(("e", complete(3)));
+  batch_builder.send(once(("a", None)));
+  batch_builder.send(once(("b", complete(2))));
+  batch_builder.send(once(("c", complete(2))));
+  batch_builder.send(once(("d", None)));
+  batch_builder.send(once(("e", complete(3))));
   assert_eq!(
     Some(vec![vec!["d", "e"]]),
     map_return(batch_builder.next_batch_set(Some(1)).await)
@@ -188,12 +245,12 @@ async fn max_size_overflow() {
     TestBatch::default,
     shutdown_trigger.make_shutdown(),
   );
-  batch_builder.send(("a", None));
-  batch_builder.send(("b", complete(2)));
-  batch_builder.send(("c", None));
-  batch_builder.send(("d", complete(2)));
-  batch_builder.send(("e", None));
-  batch_builder.send(("f", complete(7)));
+  batch_builder.send(once(("a", None)));
+  batch_builder.send(once(("b", complete(2))));
+  batch_builder.send(once(("c", None)));
+  batch_builder.send(once(("d", complete(2))));
+  batch_builder.send(once(("e", None)));
+  batch_builder.send(once(("f", complete(7))));
   assert_eq!(
     Some(vec![vec!["c", "d"], vec!["a", "b"]]),
     map_return(batch_builder.next_batch_set(Some(16)).await)

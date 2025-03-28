@@ -39,6 +39,8 @@ pub struct QueuePolicy {
     pub queue_max_bytes: ::std::option::Option<u64>,
     // @@protoc_insertion_point(field:pulse.config.outflow.v1.QueuePolicy.batch_fill_wait)
     pub batch_fill_wait: ::protobuf::MessageField<::protobuf::well_known_types::duration::Duration>,
+    // @@protoc_insertion_point(field:pulse.config.outflow.v1.QueuePolicy.concurrent_batch_queues)
+    pub concurrent_batch_queues: ::std::option::Option<u64>,
     // special fields
     // @@protoc_insertion_point(special_field:pulse.config.outflow.v1.QueuePolicy.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -56,7 +58,7 @@ impl QueuePolicy {
     }
 
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(2);
+        let mut fields = ::std::vec::Vec::with_capacity(3);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
             "queue_max_bytes",
@@ -67,6 +69,11 @@ impl QueuePolicy {
             "batch_fill_wait",
             |m: &QueuePolicy| { &m.batch_fill_wait },
             |m: &mut QueuePolicy| { &mut m.batch_fill_wait },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+            "concurrent_batch_queues",
+            |m: &QueuePolicy| { &m.concurrent_batch_queues },
+            |m: &mut QueuePolicy| { &mut m.concurrent_batch_queues },
         ));
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<QueuePolicy>(
             "QueuePolicy",
@@ -92,6 +99,9 @@ impl ::protobuf::Message for QueuePolicy {
                 18 => {
                     ::protobuf::rt::read_singular_message_into_field(is, &mut self.batch_fill_wait)?;
                 },
+                24 => {
+                    self.concurrent_batch_queues = ::std::option::Option::Some(is.read_uint64()?);
+                },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                 },
@@ -111,6 +121,9 @@ impl ::protobuf::Message for QueuePolicy {
             let len = v.compute_size();
             my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
         }
+        if let Some(v) = self.concurrent_batch_queues {
+            my_size += ::protobuf::rt::uint64_size(3, v);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
         my_size
@@ -122,6 +135,9 @@ impl ::protobuf::Message for QueuePolicy {
         }
         if let Some(v) = self.batch_fill_wait.as_ref() {
             ::protobuf::rt::write_message_field_with_cached_size(2, v, os)?;
+        }
+        if let Some(v) = self.concurrent_batch_queues {
+            os.write_uint64(3, v)?;
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -142,6 +158,7 @@ impl ::protobuf::Message for QueuePolicy {
     fn clear(&mut self) {
         self.queue_max_bytes = ::std::option::Option::None;
         self.batch_fill_wait.clear();
+        self.concurrent_batch_queues = ::std::option::Option::None;
         self.special_fields.clear();
     }
 
@@ -149,6 +166,7 @@ impl ::protobuf::Message for QueuePolicy {
         static instance: QueuePolicy = QueuePolicy {
             queue_max_bytes: ::std::option::Option::None,
             batch_fill_wait: ::protobuf::MessageField::none(),
+            concurrent_batch_queues: ::std::option::Option::None,
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -175,10 +193,12 @@ impl ::protobuf::reflect::ProtobufValue for QueuePolicy {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n*pulse/config/outflow/v1/queue_policy.proto\x12\x17pulse.config.outflo\
     w.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x17validate/validate.prot\
-    o\"\x9b\x01\n\x0bQueuePolicy\x12+\n\x0fqueue_max_bytes\x18\x01\x20\x01(\
+    o\"\xf4\x01\n\x0bQueuePolicy\x12+\n\x0fqueue_max_bytes\x18\x01\x20\x01(\
     \x04H\0R\rqueueMaxBytes\x88\x01\x01\x12K\n\x0fbatch_fill_wait\x18\x02\
     \x20\x01(\x0b2\x19.google.protobuf.DurationR\rbatchFillWaitB\x08\xfaB\
-    \x05\xaa\x01\x02*\0B\x12\n\x10_queue_max_bytesb\x06proto3\
+    \x05\xaa\x01\x02*\0\x12;\n\x17concurrent_batch_queues\x18\x03\x20\x01(\
+    \x04H\x01R\x15concurrentBatchQueues\x88\x01\x01B\x12\n\x10_queue_max_byt\
+    esB\x1a\n\x18_concurrent_batch_queuesb\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
