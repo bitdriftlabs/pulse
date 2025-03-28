@@ -38,7 +38,8 @@ use k8s_prom::kubernetes_prometheus_config::{HttpServiceDiscovery, UseK8sHttpsSe
 use parking_lot::Mutex;
 use prometheus::labels;
 use pulse_common::k8s::pods_info::container::PodsInfo;
-use pulse_common::k8s::pods_info::{ContainerPort, PodsInfoSingleton, ServiceInfo};
+use pulse_common::k8s::pods_info::{ContainerPort, PodsInfoSingleton};
+use pulse_common::k8s::services::ServiceInfo;
 use pulse_common::k8s::test::{make_node_info, make_pod_info};
 use pulse_common::metadata::{Metadata, PodMetadata};
 use pulse_protobuf::protos::pulse::config::inflow::v1::k8s_prom;

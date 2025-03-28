@@ -10,25 +10,24 @@
 mod pods_info_test;
 
 use self::container::PodsInfo;
-use super::{NodeInfo, missing_node_name_error};
+use super::services::{ServiceCache, ServiceInfo};
+use super::{NodeInfo, missing_node_name_error, object_namespace};
+use crate::k8s::services::RealServiceFetcher;
 use crate::proto::env_or_inline_to_string;
 use crate::singleton::{SingletonHandle, SingletonManager};
 use backoff::backoff::Backoff;
 use backoff::{ExponentialBackoff, ExponentialBackoffBuilder};
 use futures_util::future::BoxFuture;
-use futures_util::{Stream, TryStreamExt, pin_mut};
-use k8s_openapi::api::core::v1::{Pod, Service};
-use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
-use kube::core::ObjectMeta;
-use kube::runtime::watcher::{self, Event, ListSemantic};
-use kube::{Api, ResourceExt};
-use parking_lot::RwLock;
+use futures_util::{TryStreamExt, pin_mut};
+use k8s_openapi::api::core::v1::Pod;
+use kube::Api;
+use kube::runtime::watcher::{self, ListSemantic};
 use protobuf::Chars;
 use pulse_protobuf::protos::pulse::config::bootstrap::v1::bootstrap::KubernetesBootstrapConfig;
 use std::collections::{BTreeMap, HashMap};
 use std::net::IpAddr;
 use std::sync::{Arc, OnceLock};
-use time::ext::NumericalStdDuration;
+use time::ext::{NumericalDuration, NumericalStdDuration};
 use tokio::sync::oneshot;
 use tokio::sync::watch::{self, Ref};
 
@@ -118,18 +117,19 @@ impl PodsInfoSingleton {
       .get_or_init(handle, async {
         let (pods_info_tx, pods_info_rx) = watch::channel(PodsInfo::default());
         let node_info = NodeInfo::new(&node_name).await?;
+        let service_cache = if load_services {
+          Some(ServiceCache::new(
+            k8s_config
+              .services_cache_interval
+              .as_ref()
+              .map_or(15.minutes(), bd_time::ProtoDurationExt::to_time_duration),
+            Box::new(RealServiceFetcher),
+          ))
+        } else {
+          None
+        };
 
-        watch_pods(
-          k8s_config,
-          node_info.clone(),
-          pods_info_tx,
-          if load_services {
-            Some(service_watch_stream().await?)
-          } else {
-            None
-          },
-        )
-        .await?;
+        watch_pods(k8s_config, node_info.clone(), pods_info_tx, service_cache).await?;
         Ok::<_, anyhow::Error>(Arc::new(Self::new(pods_info_rx, node_info)))
       })
       .await
@@ -137,9 +137,9 @@ impl PodsInfoSingleton {
 }
 
 pub mod container {
-  use super::{PodInfo, ServiceMonitor, make_namespace_and_name};
-  use crate::k8s::NodeInfo;
-  use crate::k8s::pods_info::object_namespace;
+  use super::{PodInfo, make_namespace_and_name};
+  use crate::k8s::services::ServiceCache;
+  use crate::k8s::{NodeInfo, object_namespace};
   use crate::metadata::PodMetadata;
   use bd_log::warn_every;
   use k8s_openapi::api::core::v1::Pod;
@@ -213,11 +213,11 @@ pub mod container {
       self.by_name.iter()
     }
 
-    pub fn apply_pod(
+    pub async fn apply_pod(
       &mut self,
       node_info: &NodeInfo,
       pod: &Pod,
-      service_cache: Option<&ServiceMonitor>,
+      service_cache: Option<&mut ServiceCache>,
       pod_phases: &[Chars],
     ) -> bool {
       log::debug!("processing pod candidate");
@@ -314,7 +314,7 @@ pub mod container {
       };
 
       if let Some(service_cache) = service_cache {
-        let services = service_cache.find_services(pod);
+        let services = service_cache.find_services(pod).await;
         for service in services {
           let previous = pod_info.services.insert(service.name.clone(), service);
           debug_assert!(previous.is_none());
@@ -354,36 +354,6 @@ impl PodInfo {
   }
 }
 
-#[derive(Debug, Clone)]
-#[cfg_attr(test, derive(PartialEq, Eq))]
-pub struct ServiceInfo {
-  pub name: String,
-  pub annotations: BTreeMap<String, String>,
-  pub selector: BTreeMap<String, String>,
-  pub maybe_service_port: Option<IntOrString>,
-}
-
-pub async fn service_watch_stream() -> anyhow::Result<
-  impl Stream<Item = kube::runtime::watcher::Result<Event<Service>>> + Send + 'static,
-> {
-  let client = kube::Client::try_default().await?;
-  let api = kube::Api::all(client);
-
-  // Note that we unset page size because the Rust library won't set resourceVersion=0 when
-  // page size is set because apparently K8s ignores it. See:
-  // https://github.com/kubernetes/kubernetes/issues/118394
-  // TODO(mattklein123): This entire mechanism should be redone so that we only watch services
-  // scoped to the namespaces that we are actually dealing with which will perform better overall.
-  Ok(watcher::watcher(
-    api,
-    watcher::Config {
-      list_semantic: ListSemantic::Any,
-      page_size: None,
-      ..Default::default()
-    },
-  ))
-}
-
 fn make_k8s_backoff() -> ExponentialBackoff {
   // This matches the k8s client which says that it matches the Go client. This is done manually
   // as there appears to be a bug in the k8s client where it keeps resetting if the failure is
@@ -402,20 +372,8 @@ pub async fn watch_pods(
   config: KubernetesBootstrapConfig,
   node_info: Arc<NodeInfo>,
   update_tx: tokio::sync::watch::Sender<PodsInfo>,
-  watch_service_stream: Option<
-    impl Stream<Item = kube::runtime::watcher::Result<Event<Service>>> + Send + 'static,
-  >,
-) -> kube::Result<()> {
-  // First we need to track active services, as this is necessary in order to read the service
-  // annotations for a given pod.
-  let service_cache = if let Some(watch_service_stream) = watch_service_stream {
-    let service_cache = Arc::new(ServiceMonitor::default());
-    service_cache.monitor_services(watch_service_stream).await?;
-    Some(service_cache)
-  } else {
-    None
-  };
-
+  mut service_cache: Option<ServiceCache>,
+) -> anyhow::Result<()> {
   log::info!("starting pod watcher");
   let client = kube::Client::try_default().await?;
   let pod_api: Api<Pod> = kube::Api::all(client);
@@ -449,19 +407,24 @@ pub async fn watch_pods(
 
       match update {
         watcher::Event::Apply(pod) => {
-          pods_info_cache.apply_pod(&pod, service_cache.as_deref());
+          pods_info_cache
+            .apply_pod(&pod, service_cache.as_mut())
+            .await;
         },
         watcher::Event::Delete(pod) => pods_info_cache.remove_pod(&pod),
         watcher::Event::Init => {
           log::info!("starting pod resync");
         },
         watcher::Event::InitApply(pod) => {
-          initial_state.get_or_insert(PodsInfo::default()).apply_pod(
-            &pods_info_cache.node_info,
-            &pod,
-            service_cache.as_deref(),
-            &pods_info_cache.pod_phases,
-          );
+          initial_state
+            .get_or_insert(PodsInfo::default())
+            .apply_pod(
+              &pods_info_cache.node_info,
+              &pod,
+              service_cache.as_mut(),
+              &pods_info_cache.pod_phases,
+            )
+            .await;
         },
         watcher::Event::InitDone => {
           pods_info_cache.swap_state(initial_state.take().unwrap_or_default());
@@ -541,10 +504,11 @@ impl PodsInfoCache {
     self.broadcast();
   }
 
-  fn apply_pod(&mut self, pod: &Pod, service_cache: Option<&ServiceMonitor>) {
+  async fn apply_pod(&mut self, pod: &Pod, service_cache: Option<&mut ServiceCache>) {
     if self
       .state
       .apply_pod(&self.node_info, pod, service_cache, &self.pod_phases)
+      .await
     {
       self.broadcast();
     }
@@ -569,178 +533,4 @@ impl PodsInfoCache {
     log::debug!("broadcasting state: {:?}", self.state);
     let _ignored = self.update_tx.send(self.state.clone());
   }
-}
-
-//
-// ServiceCache
-//
-
-#[derive(Default)]
-struct ServiceCache {
-  services_by_namespace: HashMap<String, HashMap<String, Arc<ServiceInfo>>>,
-}
-
-impl ServiceCache {
-  fn apply_service(&mut self, service: Service) {
-    let maybe_service_port = service
-      .spec
-      .as_ref()
-      .and_then(|spec| spec.ports.as_ref())
-      .and_then(|ports| ports.first())
-      .and_then(|port| port.target_port.clone());
-
-    self
-      .services_by_namespace
-      .entry(object_namespace(&service.metadata).to_string())
-      .or_default()
-      .insert(
-        service.metadata.name.as_deref().unwrap().to_string(),
-        Arc::new(ServiceInfo {
-          name: service.metadata.name.clone().unwrap_or_default(),
-          annotations: service.annotations().clone(),
-          selector: service
-            .spec
-            .and_then(|spec| spec.selector)
-            .unwrap_or_default(),
-          maybe_service_port,
-        }),
-      );
-  }
-
-  fn remove_service(&mut self, service: Service) {
-    let namespace = object_namespace(&service.metadata).to_string();
-
-    let entry = self
-      .services_by_namespace
-      .entry(namespace.to_string())
-      .or_default();
-    entry.remove_entry(&service.metadata.name.unwrap());
-
-    if entry.is_empty() {
-      self.services_by_namespace.remove_entry(&namespace);
-    }
-  }
-}
-
-//
-// ServiceMonitor
-//
-
-/// Cache of service entites per namespace. We use this to resolve the service annotations for pods
-/// found on the local node. For now we watch all services, but this could be optimized to only
-/// look for services in the namespaces we care about.
-#[derive(Default)]
-pub struct ServiceMonitor {
-  cache: RwLock<ServiceCache>,
-}
-
-type ServiceResult = kube::runtime::watcher::Result<Event<Service>>;
-
-impl ServiceMonitor {
-  /// Syncs the current set of services to the internal cache and sets up a watch to watch for
-  /// any changes to the set of services.
-  async fn monitor_services(
-    self: &Arc<Self>,
-    watch_stream: impl Stream<Item = ServiceResult> + Send + 'static,
-  ) -> kube::Result<()> {
-    let watcher = watch_stream;
-    let self_clone = self.clone();
-    let (initial_sync_tx, initial_sync_rx) = oneshot::channel();
-    let mut backoff = make_k8s_backoff();
-    tokio::spawn(async move {
-      pin_mut!(watcher);
-      let mut initial_state = None;
-      let mut initial_sync_tx = Some(initial_sync_tx);
-      loop {
-        let Some(service_update) =
-          process_resource_update(watcher.try_next().await, &mut backoff).await
-        else {
-          continue;
-        };
-
-        match service_update {
-          watcher::Event::Apply(service) => {
-            self_clone.cache.write().apply_service(service);
-          },
-          watcher::Event::Delete(service) => {
-            self_clone.cache.write().remove_service(service);
-          },
-          watcher::Event::Init => {
-            log::info!("starting service resync");
-          },
-          watcher::Event::InitApply(service) => {
-            initial_state
-              .get_or_insert(ServiceCache::default())
-              .apply_service(service);
-          },
-          watcher::Event::InitDone => {
-            *self_clone.cache.write() = initial_state.take().unwrap_or_default();
-            log::info!("service resync complete");
-            if let Some(initial_sync_tx) = initial_sync_tx.take() {
-              let _ignored = initial_sync_tx.send(());
-            }
-          },
-        };
-      }
-    });
-
-    let _ignored = initial_sync_rx.await;
-    log::info!("initial service sync complete");
-
-    // TODO(snowp): We may do a periodic reconciliation pass to make sure that we don't drift out
-    // of sync.
-
-    Ok(())
-  }
-
-  /// Attempts to resolve an active service for the provided pod. This is done by attempting to
-  /// match the pod against all active services in the namespace of the pod.
-  fn find_services(&self, pod: &Pod) -> Vec<Arc<ServiceInfo>> {
-    let cache = self.cache.read();
-
-    let Some(services) = cache
-      .services_by_namespace
-      .get(object_namespace(&pod.metadata))
-    else {
-      return vec![];
-    };
-
-    // TODO(snowp): There is a use case for collecting metrics for each active service, so this
-    // should return all matching services instead.
-    services
-      .iter()
-      .filter_map(|(_, service)| {
-        if matching_label_selector(&service.selector, pod.labels()) {
-          Some(service)
-        } else {
-          None
-        }
-      })
-      .cloned()
-      .collect()
-  }
-}
-
-/// Returns the namespace for the provided object.
-fn object_namespace(meta: &ObjectMeta) -> &str {
-  meta.namespace.as_deref().unwrap_or("default")
-}
-
-/// Matches the provided label selector against a set of labels, returning true if the selector
-/// matches the labels.
-fn matching_label_selector(
-  label_selector: &BTreeMap<String, String>,
-  labels: &BTreeMap<String, String>,
-) -> bool {
-  for (k, v) in label_selector {
-    let Some(value) = labels.get(k) else {
-      return false;
-    };
-
-    if value != v {
-      return false;
-    }
-  }
-
-  true
 }

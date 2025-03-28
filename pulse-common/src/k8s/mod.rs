@@ -6,11 +6,12 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
 pub mod pods_info;
+pub mod services;
 pub mod test;
 
 use anyhow::anyhow;
 use k8s_openapi::api::core::v1::Node;
-use kube::api::GetParams;
+use kube::api::{GetParams, ObjectMeta};
 use kube::{Api, ResourceExt};
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -19,6 +20,15 @@ use std::sync::Arc;
 pub fn missing_node_name_error() -> anyhow::Error {
   anyhow!("Kubernetes node name not specified in bootstrap")
 }
+
+/// Returns the namespace for the provided object.
+fn object_namespace(meta: &ObjectMeta) -> &str {
+  meta.namespace.as_deref().unwrap_or("default")
+}
+
+//
+// NodeInfo
+//
 
 /// Information about a Kubernetes node fetched via the kube API.
 pub struct NodeInfo {

@@ -6,10 +6,26 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
 use super::NodeInfo;
-use super::pods_info::{ContainerPort, PodInfo, ServiceInfo};
+use super::pods_info::{ContainerPort, PodInfo};
+use super::services::ServiceInfo;
 use crate::metadata::{Metadata, PodMetadata};
+use kube::api::ObjectMeta;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
+
+#[must_use]
+pub fn make_object_meta(
+  name: &str,
+  labels: BTreeMap<String, String>,
+  annotations: BTreeMap<String, String>,
+) -> ObjectMeta {
+  ObjectMeta {
+    name: Some(name.to_string()),
+    labels: Some(labels),
+    annotations: Some(annotations),
+    ..Default::default()
+  }
+}
 
 #[must_use]
 pub fn make_node_info() -> NodeInfo {

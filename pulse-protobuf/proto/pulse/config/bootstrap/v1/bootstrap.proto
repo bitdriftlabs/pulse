@@ -98,10 +98,13 @@ message KubernetesBootstrapConfig {
   common.v1.EnvOrInline node_name = 1;
 
   // Determines whether service evaluation will occur, typically to look for Prometheus scrape
-  // labels on the service. This can be expensive as all services need to be loaded for this
-  // to be evaluated. If only pod labels/annotations are being used this can be disabled. Defaults
-  // to true.
+  // labels on the service. If only pod labels/annotations are being used this can be disabled.
+  // Defaults to true.
   optional bool evaluate_services = 2;
+
+  // Services are fetched by namespace on demand, and then cached, with the assumption that they
+  // rarely change. This configures the cache time. The default is 15 minutes.
+  google.protobuf.Duration services_cache_interval = 4;
 
   // Specified which pod phases should be included in the cache, and as a result scraped, used for
   // metadata attachment, etc. Defaults to ["Pending", "Running"] if empty. "Pending" is included by
