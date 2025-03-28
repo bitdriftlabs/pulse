@@ -123,7 +123,8 @@ struct K8sPodLimiter<H> {
 
 impl<H: Hasher + Default + Send> Limiter for K8sPodLimiter<H> {
   fn limit(&self, metric: &MetricId, metadata: Option<&Arc<Metadata>>) -> LimitResult {
-    let Some(metadata) = metadata else {
+    let Some(k8s_namespace_and_pod_name) = metadata.and_then(|m| m.k8s_namespace_and_pod_name())
+    else {
       // We assume that if someone configured per-pod limiting they also configured k8s discovery
       // on the inflow which should force metadata to be set. If there is no metadata on the
       // metric just drop.
@@ -137,10 +138,8 @@ impl<H: Hasher + Default + Send> Limiter for K8sPodLimiter<H> {
     self
       .active_pods
       .read()
-      .get(metadata.k8s_namespace_and_pod_name())
-      .map_or(LimitResult::Ok, |limiter| {
-        limiter.limit(metric, Some(metadata))
-      })
+      .get(k8s_namespace_and_pod_name)
+      .map_or(LimitResult::Ok, |limiter| limiter.limit(metric, metadata))
   }
 
   fn rotate(&self) {

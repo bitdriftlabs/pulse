@@ -17,34 +17,13 @@ use crate::protos::metric::{
   SummaryData,
   default_timestamp,
 };
-use crate::test::{make_abs_counter_with_metadata, make_gauge_with_metadata, make_metric_ex};
+use crate::test::{make_abs_counter, make_gauge, make_metric_ex};
 use pretty_assertions::assert_eq;
-use pulse_common::metadata::Metadata;
-use std::collections::BTreeMap;
-use std::sync::Arc;
 use std::time::Instant;
 use time::OffsetDateTime;
 use time::macros::datetime;
 
 const TIMESTAMP: OffsetDateTime = datetime!(2021-02-04 04:05:06 UTC);
-
-fn expected_metadata() -> Metadata {
-  Metadata::new(
-    "",
-    "",
-    "",
-    &BTreeMap::default(),
-    &BTreeMap::default(),
-    None,
-    "",
-    "",
-    None,
-  )
-}
-
-fn test_metadata() -> Arc<Metadata> {
-  Arc::new(expected_metadata())
-}
 
 #[test]
 fn counter() {
@@ -55,19 +34,12 @@ fn counter() {
             ";
 
   assert_eq!(
-    parse_as_metrics(
-      exp,
-      default_timestamp(),
-      Instant::now(),
-      Some(&test_metadata())
-    )
-    .unwrap(),
-    vec![make_abs_counter_with_metadata(
+    parse_as_metrics(exp, default_timestamp(), Instant::now(), None).unwrap(),
+    vec![make_abs_counter(
       "uptime",
       &[],
       TIMESTAMP.unix_timestamp().try_into().unwrap(),
       123.0,
-      expected_metadata()
     )]
   );
 }
@@ -85,23 +57,21 @@ fn mixed() {
 
   let timestamp = default_timestamp();
   assert_eq!(
-    parse_as_metrics(exp, timestamp, Instant::now(), Some(&test_metadata())).unwrap(),
+    parse_as_metrics(exp, timestamp, Instant::now(), None).unwrap(),
     vec![
-      make_abs_counter_with_metadata(
+      make_abs_counter(
         "uptime",
         &[],
         TIMESTAMP.unix_timestamp().try_into().unwrap(),
         123.0,
-        expected_metadata()
       ),
-      make_gauge_with_metadata(
+      make_gauge(
         "temperature",
         &[],
         TIMESTAMP.unix_timestamp().try_into().unwrap(),
         -1.5,
-        expected_metadata()
       ),
-      make_abs_counter_with_metadata("launch_count", &[], timestamp, 10.0, expected_metadata())
+      make_abs_counter("launch_count", &[], timestamp, 10.0)
     ]
   );
 }
@@ -123,13 +93,7 @@ fn test_histogram() {
             "#;
 
   assert_eq!(
-    parse_as_metrics(
-      exp,
-      default_timestamp(),
-      Instant::now(),
-      Some(&test_metadata())
-    )
-    .unwrap(),
+    parse_as_metrics(exp, default_timestamp(), Instant::now(), None).unwrap(),
     vec![make_metric_ex(
       "http_request_duration_seconds",
       &[],
@@ -164,7 +128,7 @@ fn test_histogram() {
       }),
       MetricSource::PromRemoteWrite,
       DownstreamId::LocalOrigin,
-      Some(expected_metadata())
+      None
     )]
   );
 }
@@ -184,13 +148,7 @@ fn test_summary() {
             "#;
 
   assert_eq!(
-    parse_as_metrics(
-      exp,
-      default_timestamp(),
-      Instant::now(),
-      Some(&test_metadata())
-    )
-    .unwrap(),
+    parse_as_metrics(exp, default_timestamp(), Instant::now(), None).unwrap(),
     vec![make_metric_ex(
       "rpc_duration_seconds",
       &[("service", "a")],
@@ -225,20 +183,12 @@ fn test_summary() {
       }),
       MetricSource::PromRemoteWrite,
       DownstreamId::LocalOrigin,
-      Some(expected_metadata())
+      None
     )]
   );
 }
 
 #[test]
 fn test_invalid() {
-  assert!(
-    parse_as_metrics(
-      "not prom",
-      default_timestamp(),
-      Instant::now(),
-      Some(&test_metadata())
-    )
-    .is_err()
-  );
+  assert!(parse_as_metrics("not prom", default_timestamp(), Instant::now(), None).is_err());
 }

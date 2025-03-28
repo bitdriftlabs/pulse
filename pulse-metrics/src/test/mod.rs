@@ -29,6 +29,7 @@ use futures_util::FutureExt;
 use pulse_common::bind_resolver::MockBindResolver;
 use pulse_common::k8s::pods_info::PodsInfoSingleton;
 use pulse_common::k8s::pods_info::container::PodsInfo;
+use pulse_common::k8s::test::make_node_info;
 use pulse_common::metadata::Metadata;
 use pulse_common::singleton::SingletonManager;
 use pulse_protobuf::protos::pulse::config::common::v1::common::WireProtocol;
@@ -324,7 +325,13 @@ pub fn processor_factory_context_for_test()
       time_provider: Box::<TestTimeProvider>::default(),
       k8s_watch_factory: Arc::new(move || {
         let cloned_k8s_receiver = k8s_receiver.clone();
-        async move { Ok(Arc::new(PodsInfoSingleton::new(cloned_k8s_receiver))) }.boxed()
+        async move {
+          Ok(Arc::new(PodsInfoSingleton::new(
+            cloned_k8s_receiver,
+            Arc::new(make_node_info()),
+          )))
+        }
+        .boxed()
       }),
     },
   )

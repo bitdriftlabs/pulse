@@ -28,6 +28,8 @@ import "validate/validate.proto";
 // %k8s.pod.annotations are the annotations of the pod.
 // %k8s.node.name is the name of the node.
 // %k8s.node.ip is the IP of the node.
+// %k8s.node.labels are the labels of the node.
+// %k8s.node.annotations are the annotations of the node.
 // %prom.scrape.address is <IP>:<PORT> if the target has been scraped.
 //
 // Errors and abort() are handled differently. Errors will emit a periodic warnings and are

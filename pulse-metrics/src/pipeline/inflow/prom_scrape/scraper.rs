@@ -41,11 +41,9 @@ use k8s_prom::kubernetes_prometheus_config::use_k8s_https_service_auth_matcher::
 use k8s_prom::kubernetes_prometheus_config::{self, TLS, Target, UseK8sHttpsServiceAuthMatcher};
 use parking_lot::Mutex;
 use prometheus::IntCounter;
+use pulse_common::k8s::NodeInfo;
 use pulse_common::k8s::pods_info::{OwnedPodsInfoSingleton, PodInfo};
-use pulse_common::k8s::{NodeInfo, missing_node_name_error};
-use pulse_common::metadata::Metadata;
-use pulse_common::proto::env_or_inline_to_string;
-use pulse_protobuf::protos::pulse::config::bootstrap::v1::bootstrap::KubernetesBootstrapConfig;
+use pulse_common::metadata::{Metadata, PodMetadata};
 use pulse_protobuf::protos::pulse::config::inflow::v1::k8s_prom;
 use regex::Regex;
 use std::collections::{BTreeMap, HashMap};
@@ -141,6 +139,7 @@ pub fn resolve_ports(
 fn create_endpoints(
   inclusion_filters: &[InclusionFilter],
   use_k8s_https_service_auth_matchers: &[UseK8sHttpsServiceAuthMatcher],
+  node_info: &NodeInfo,
   pod_info: &PodInfo,
   service_name: Option<&str>,
   maybe_service_port: Option<&IntOrString>,
@@ -207,14 +206,15 @@ fn create_endpoints(
         *port,
         prom_endpoint_path.clone(),
         Some(Arc::new(Metadata::new(
-          &prom_namespace,
-          &pod_info.name,
-          &pod_info.ip.to_string(),
-          &pod_info.labels,
-          &pod_info.annotations,
-          service_name,
-          &pod_info.node_name,
-          &pod_info.node_ip,
+          node_info,
+          Some(PodMetadata {
+            namespace: &prom_namespace,
+            pod_name: &pod_info.name,
+            pod_ip: &pod_info.ip.to_string(),
+            pod_labels: &pod_info.labels,
+            pod_annotations: &pod_info.annotations,
+            service: service_name,
+          }),
           Some(format!("{}:{port}", pod_info.ip)),
         ))),
         use_k8s_https_service_auth,
@@ -723,7 +723,14 @@ pub async fn make(
       stats,
       context.dispatcher,
       context.shutdown_trigger_handle,
-      NodeEndpointsTarget::new(context.k8s_config, details).await?,
+      NodeEndpointsTarget::new(
+        &(context.k8s_watch_factory)()
+          .await?
+          .make_owned()
+          .node_info(),
+        details,
+      )
+      .await?,
       scrape_interval,
       ticker_factory,
       config.emit_up_metric,
@@ -757,6 +764,7 @@ struct KubePodTarget {
 #[async_trait]
 impl EndpointProvider for KubePodTarget {
   fn get(&mut self) -> HashMap<String, PromEndpoint> {
+    let node_info = self.pods_info.node_info();
     self
       .pods_info
       .borrow_and_update()
@@ -765,6 +773,7 @@ impl EndpointProvider for KubePodTarget {
         create_endpoints(
           &self.inclusion_filters,
           &self.use_k8s_https_service_auth_matchers,
+          &node_info,
           pod_info,
           None,
           None,
@@ -793,12 +802,14 @@ struct KubeEndpointsTarget {
 impl EndpointProvider for KubeEndpointsTarget {
   fn get(&mut self) -> HashMap<String, PromEndpoint> {
     let mut endpoints = HashMap::new();
+    let node_info = self.pods_info.node_info();
     let pods = self.pods_info.borrow_and_update();
     for (_, pod_info) in pods.pods() {
       for service in pod_info.services.values() {
         endpoints.extend(create_endpoints(
           &[],
           &self.use_k8s_https_service_auth_matchers,
+          &node_info,
           pod_info,
           Some(&service.name),
           service.maybe_service_port.as_ref(),
@@ -826,27 +837,17 @@ struct NodeEndpointsTarget {
 
 impl NodeEndpointsTarget {
   async fn new(
-    kubernetes: KubernetesBootstrapConfig,
+    node_info: &NodeInfo,
     details: kubernetes_prometheus_config::Node,
   ) -> anyhow::Result<Self> {
-    let node_name = env_or_inline_to_string(
-      &kubernetes
-        .node_name
-        .into_option()
-        .ok_or_else(missing_node_name_error)?,
-    )
-    .ok_or_else(missing_node_name_error)?;
-    let node_info = NodeInfo::new(&node_name).await;
-
     Ok(Self {
       endpoints: HashMap::from([(
-        node_name.to_string(),
-        // TODO(mattklein123): Potentially merge in node level metadata?
+        node_info.name.to_string(),
         PromEndpoint::new(
-          node_name,
+          node_info.name.to_string(),
           node_info.kubelet_port,
           details.path.to_string(),
-          None,
+          Some(Arc::new(Metadata::new(node_info, None, None))),
           true,
           "https".to_string(), // Node endpoints always use HTTPS.
         ),

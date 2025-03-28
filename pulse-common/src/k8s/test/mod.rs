@@ -5,10 +5,22 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
+use super::NodeInfo;
 use super::pods_info::{ContainerPort, PodInfo, ServiceInfo};
-use crate::metadata::Metadata;
+use crate::metadata::{Metadata, PodMetadata};
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
+
+#[must_use]
+pub fn make_node_info() -> NodeInfo {
+  NodeInfo {
+    name: "node_name".to_string(),
+    ip: "node_ip".to_string(),
+    kubelet_port: 0,
+    labels: BTreeMap::default(),
+    annotations: BTreeMap::default(),
+  }
+}
 
 #[must_use]
 #[allow(clippy::implicit_hasher)]
@@ -22,14 +34,15 @@ pub fn make_pod_info(
   container_ports: Vec<ContainerPort>,
 ) -> PodInfo {
   let metadata = Arc::new(Metadata::new(
-    namespace,
-    name,
-    ip,
-    labels,
-    &annotations,
-    None,
-    "node",
-    "node_ip",
+    &make_node_info(),
+    Some(PodMetadata {
+      namespace,
+      pod_name: name,
+      pod_ip: ip,
+      pod_labels: labels,
+      pod_annotations: &annotations,
+      service: None,
+    }),
     None,
   ));
   PodInfo {
@@ -41,7 +54,5 @@ pub fn make_pod_info(
     annotations,
     metadata,
     container_ports,
-    node_name: "node".to_string(),
-    node_ip: "node_ip".to_string(),
   }
 }
