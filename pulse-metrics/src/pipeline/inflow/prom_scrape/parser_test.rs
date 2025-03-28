@@ -34,7 +34,7 @@ fn counter() {
             ";
 
   assert_eq!(
-    parse_as_metrics(exp, default_timestamp(), Instant::now(), None).unwrap(),
+    parse_as_metrics(exp, default_timestamp(), Instant::now(), None, &[]).unwrap(),
     vec![make_abs_counter(
       "uptime",
       &[],
@@ -57,7 +57,7 @@ fn mixed() {
 
   let timestamp = default_timestamp();
   assert_eq!(
-    parse_as_metrics(exp, timestamp, Instant::now(), None).unwrap(),
+    parse_as_metrics(exp, timestamp, Instant::now(), None, &[]).unwrap(),
     vec![
       make_abs_counter(
         "uptime",
@@ -93,7 +93,7 @@ fn test_histogram() {
             "#;
 
   assert_eq!(
-    parse_as_metrics(exp, default_timestamp(), Instant::now(), None).unwrap(),
+    parse_as_metrics(exp, default_timestamp(), Instant::now(), None, &[]).unwrap(),
     vec![make_metric_ex(
       "http_request_duration_seconds",
       &[],
@@ -148,7 +148,7 @@ fn test_summary() {
             "#;
 
   assert_eq!(
-    parse_as_metrics(exp, default_timestamp(), Instant::now(), None).unwrap(),
+    parse_as_metrics(exp, default_timestamp(), Instant::now(), None, &[]).unwrap(),
     vec![make_metric_ex(
       "rpc_duration_seconds",
       &[("service", "a")],
@@ -190,5 +190,5 @@ fn test_summary() {
 
 #[test]
 fn test_invalid() {
-  assert!(parse_as_metrics("not prom", default_timestamp(), Instant::now(), None).is_err());
+  assert!(parse_as_metrics("not prom", default_timestamp(), Instant::now(), None, &[]).is_err());
 }

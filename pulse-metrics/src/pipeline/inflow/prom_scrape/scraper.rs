@@ -9,6 +9,7 @@
 #[path = "./scraper_test.rs"]
 mod scraper_test;
 
+use super::http_sd::{TargetBlock, make_fetcher};
 use crate::pipeline::PipelineDispatch;
 use crate::pipeline::inflow::prom_scrape::parser::parse_as_metrics;
 use crate::pipeline::inflow::{DynamicPipelineInflow, InflowFactoryContext, PipelineInflow};
@@ -38,7 +39,13 @@ use k8s_prom::KubernetesPrometheusConfig;
 use k8s_prom::kubernetes_prometheus_config::pod::InclusionFilter;
 use k8s_prom::kubernetes_prometheus_config::pod::inclusion_filter::Filter_type;
 use k8s_prom::kubernetes_prometheus_config::use_k8s_https_service_auth_matcher::Auth_matcher;
-use k8s_prom::kubernetes_prometheus_config::{self, TLS, Target, UseK8sHttpsServiceAuthMatcher};
+use k8s_prom::kubernetes_prometheus_config::{
+  self,
+  HttpServiceDiscovery,
+  TLS,
+  Target,
+  UseK8sHttpsServiceAuthMatcher,
+};
 use parking_lot::Mutex;
 use prometheus::IntCounter;
 use pulse_common::k8s::NodeInfo;
@@ -48,12 +55,13 @@ use pulse_protobuf::protos::pulse::config::inflow::v1::k8s_prom;
 use regex::Regex;
 use std::collections::{BTreeMap, HashMap};
 use std::hash::{Hash, Hasher};
-use std::iter::empty;
+use std::iter::{empty, once};
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::time::Instant;
 use time::Duration;
 use time::ext::NumericalDuration;
+use tokio::sync::watch;
 use tokio::time::MissedTickBehavior;
 use xxhash_rust::xxh64::Xxh64Builder;
 
@@ -219,6 +227,7 @@ fn create_endpoints(
         ))),
         use_k8s_https_service_auth,
         scheme.clone(),
+        vec![],
       );
       // We use a stable hash to make sure the ID changes when the endpoint changes.
       let mut hasher = Xxh64Builder::new(0).build();
@@ -257,6 +266,7 @@ struct PromEndpoint {
   metadata: Option<Arc<Metadata>>,
   use_https_k8s_service_auth: bool,
   scheme: String,
+  extra_tags: Vec<TagValue>,
 }
 
 impl PromEndpoint {
@@ -267,6 +277,7 @@ impl PromEndpoint {
     metadata: Option<Arc<Metadata>>,
     use_https_k8s_service_auth: bool,
     scheme: String,
+    extra_tags: Vec<TagValue>,
   ) -> Self {
     Self {
       address,
@@ -275,6 +286,7 @@ impl PromEndpoint {
       metadata,
       use_https_k8s_service_auth,
       scheme,
+      extra_tags,
     }
   }
 
@@ -347,12 +359,12 @@ impl Stats {
 /// Monitors Prometheus endpoints and collects metrics from each active endpoint. The main loop
 /// awaits changes to the watched pod set, which then spawns tasks that are responsible for polling
 /// the relevant endpoints at the correct frequency.
-struct Scraper<Provider: EndpointProvider, Jitter: DurationJitter> {
+struct Scraper<Jitter: DurationJitter> {
   name: String,
   stats: Stats,
   dispatcher: Arc<dyn PipelineDispatch>,
   shutdown_trigger_handle: ComponentShutdownTriggerHandle,
-  endpoints: Mutex<Option<Provider>>,
+  endpoints: Mutex<Option<Box<dyn EndpointProvider>>>,
   scrape_interval: Duration,
   http_client: reqwest::Client,
   ticker_factory: Box<dyn Fn() -> Box<dyn Ticker> + Send + Sync>,
@@ -360,15 +372,13 @@ struct Scraper<Provider: EndpointProvider, Jitter: DurationJitter> {
   emit_up_metric: bool,
 }
 
-impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
-  Scraper<Provider, Jitter>
-{
+impl<Jitter: DurationJitter + 'static> Scraper<Jitter> {
   fn create(
     name: String,
     stats: Stats,
     dispatcher: Arc<dyn PipelineDispatch>,
     shutdown_trigger_handle: ComponentShutdownTriggerHandle,
-    endpoints: Provider,
+    endpoints: Box<dyn EndpointProvider>,
     scrape_interval: Duration,
     ticker_factory: Box<dyn Fn() -> Box<dyn Ticker> + Send + Sync>,
     emit_up_metric: bool,
@@ -497,7 +507,13 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
       let timestamp = default_timestamp();
       let now = Instant::now();
       let parsed_metrics = lines.and_then(|lines| {
-        match parse_as_metrics(&lines, timestamp, now, prom_endpoint.metadata()) {
+        match parse_as_metrics(
+          &lines,
+          timestamp,
+          now,
+          prom_endpoint.metadata(),
+          &prom_endpoint.extra_tags,
+        ) {
           Ok(metrics) => {
             self.stats.scrape_complete.inc();
             Some(metrics)
@@ -517,16 +533,22 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
 
       let success = parsed_metrics.is_some();
       let mut parsed_metrics = parsed_metrics.unwrap_or_default();
+      log::debug!("scraped {} metrics", parsed_metrics.len());
       if self.emit_up_metric {
         let mut metric = ParsedMetric::new(
           Metric::new(
             MetricId::new(
               "up".into(),
               Some(MetricType::Gauge),
-              vec![TagValue {
-                tag: "instance".into(),
-                value: format!("{}:{}", prom_endpoint.address, prom_endpoint.port).into(),
-              }],
+              prom_endpoint
+                .extra_tags
+                .iter()
+                .cloned()
+                .chain(once(TagValue {
+                  tag: "instance".into(),
+                  value: format!("{}:{}", prom_endpoint.address, prom_endpoint.port).into(),
+                }))
+                .collect(),
               false,
             )
             .unwrap(),
@@ -555,7 +577,7 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
   async fn reload(
     self: &Arc<Self>,
     active_jobs: &mut HashMap<String, ComponentShutdownTrigger>,
-    endpoints: &mut Provider,
+    endpoints: &mut dyn EndpointProvider,
   ) {
     log::info!("({}) starting reload", self.name);
 
@@ -616,16 +638,14 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static>
 }
 
 #[async_trait]
-impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static> PipelineInflow
-  for Scraper<Provider, Jitter>
-{
+impl<Jitter: DurationJitter + 'static> PipelineInflow for Scraper<Jitter> {
   async fn start(self: Arc<Self>) {
     log::info!("starting k8s prometheus scraper");
 
     let mut active_jobs = HashMap::new();
     let mut endpoints = self.endpoints.lock().take().unwrap();
 
-    self.reload(&mut active_jobs, &mut endpoints).await;
+    self.reload(&mut active_jobs, endpoints.as_mut()).await;
 
     tokio::spawn(async move {
       let mut shutdown = self.shutdown_trigger_handle.make_shutdown();
@@ -634,7 +654,7 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static> Pip
       loop {
         tokio::select! {
            () = endpoints.changed() => {
-             self.reload(&mut active_jobs, &mut endpoints).await;
+             self.reload(&mut active_jobs, endpoints.as_mut()).await;
            }
            () = &mut shutdown => {
             log::info!("prometheus scraper cancelled");
@@ -654,7 +674,7 @@ impl<Provider: EndpointProvider + 'static, Jitter: DurationJitter + 'static> Pip
 
 // We use our own ticker implementation to control when scraping occurs in test.
 #[async_trait]
-trait Ticker: Send + Sync {
+pub trait Ticker: Send + Sync {
   async fn next(&mut self);
 }
 
@@ -687,56 +707,83 @@ pub async fn make(
   });
   let tls_config = config.tls_config.into_option();
   match config.target.expect("pgv") {
-    Target::Pod(pod_config) => Scraper::<_, RealDurationJitter>::create(
+    Target::Pod(pod_config) => Scraper::<RealDurationJitter>::create(
       context.name,
       stats,
       context.dispatcher,
       context.shutdown_trigger_handle,
-      KubePodTarget {
+      Box::new(KubePodTarget {
         inclusion_filters: pod_config.inclusion_filters,
         use_k8s_https_service_auth_matchers: pod_config.use_k8s_https_service_auth_matchers,
         pods_info: (context.k8s_watch_factory)().await?.make_owned(),
-      },
+      }),
       scrape_interval,
       ticker_factory,
       config.emit_up_metric,
       tls_config.as_ref(),
       timeout,
     ),
-    Target::Endpoint(endpoint_config) => Scraper::<_, RealDurationJitter>::create(
+    Target::Endpoint(endpoint_config) => Scraper::<RealDurationJitter>::create(
       context.name,
       stats,
       context.dispatcher,
       context.shutdown_trigger_handle,
-      KubeEndpointsTarget {
+      Box::new(KubeEndpointsTarget {
         pods_info: (context.k8s_watch_factory)().await?.make_owned(),
         use_k8s_https_service_auth_matchers: endpoint_config.use_k8s_https_service_auth_matchers,
-      },
+      }),
       scrape_interval,
       ticker_factory,
       config.emit_up_metric,
       tls_config.as_ref(),
       timeout,
     ),
-    Target::Node(details) => Scraper::<_, RealDurationJitter>::create(
+    Target::Node(details) => Scraper::<RealDurationJitter>::create(
       context.name,
       stats,
       context.dispatcher,
       context.shutdown_trigger_handle,
-      NodeEndpointsTarget::new(
-        &(context.k8s_watch_factory)()
-          .await?
-          .make_owned()
-          .node_info(),
-        details,
-      )
-      .await?,
+      Box::new(
+        NodeEndpointsTarget::new(
+          &(context.k8s_watch_factory)()
+            .await?
+            .make_owned()
+            .node_info(),
+          details,
+        )
+        .await?,
+      ),
       scrape_interval,
       ticker_factory,
       config.emit_up_metric,
       tls_config.as_ref(),
       timeout,
     ),
+    Target::HttpServiceDiscovery(http_service_discovery) => {
+      let interval = http_service_discovery
+        .fetch_interval
+        .as_ref()
+        .map_or(1.minutes(), bd_time::ProtoDurationExt::to_time_duration)
+        .interval(MissedTickBehavior::Delay);
+      let target = HttpServiceDiscoveryEndpointTarget::new(
+        http_service_discovery,
+        context.shutdown_trigger_handle.make_shutdown(),
+        Box::new(interval),
+      )
+      .await;
+      Scraper::<RealDurationJitter>::create(
+        context.name,
+        stats,
+        context.dispatcher,
+        context.shutdown_trigger_handle,
+        Box::new(target),
+        scrape_interval,
+        ticker_factory,
+        config.emit_up_metric,
+        tls_config.as_ref(),
+        timeout,
+      )
+    },
   }
 }
 
@@ -850,6 +897,7 @@ impl NodeEndpointsTarget {
           Some(Arc::new(Metadata::new(node_info, None, None))),
           true,
           "https".to_string(), // Node endpoints always use HTTPS.
+          vec![],
         ),
       )]),
     })
@@ -864,5 +912,71 @@ impl EndpointProvider for NodeEndpointsTarget {
 
   async fn changed(&mut self) {
     pending::<()>().await;
+  }
+}
+
+//
+// HttpServiceDiscoveryEndpointTarget
+//
+
+struct HttpServiceDiscoveryEndpointTarget {
+  targets: watch::Receiver<Vec<TargetBlock>>,
+}
+
+impl HttpServiceDiscoveryEndpointTarget {
+  async fn new(
+    config: HttpServiceDiscovery,
+    shutdown: ComponentShutdown,
+    ticker: Box<dyn Ticker>,
+  ) -> Self {
+    Self {
+      targets: make_fetcher(config, shutdown, ticker).await,
+    }
+  }
+}
+
+#[async_trait]
+impl EndpointProvider for HttpServiceDiscoveryEndpointTarget {
+  fn get(&mut self) -> HashMap<String, PromEndpoint> {
+    let mut endpoints = HashMap::new();
+    for target_block in self.targets.borrow_and_update().iter() {
+      let extra_tags = target_block
+        .labels
+        .iter()
+        .map(|(k, v)| TagValue {
+          tag: k.clone().into(),
+          value: v.clone().into(),
+        })
+        .collect::<Vec<TagValue>>();
+
+      for target in &target_block.targets {
+        let address_and_port = target.split(':').collect_vec();
+        if address_and_port.len() != 2 {
+          log::warn!("invalid target format: {target}, expected <address>:<port>");
+          continue;
+        }
+
+        let Ok(port) = address_and_port[1].parse() else {
+          log::warn!("invalid port in target {target}: {}", address_and_port[1]);
+          continue;
+        };
+
+        let endpoint = PromEndpoint::new(
+          address_and_port[0].to_string(),
+          port,
+          "/metrics".to_string(),
+          None,
+          false,
+          "http".to_string(),
+          extra_tags.clone(),
+        );
+        endpoints.insert(target.clone(), endpoint);
+      }
+    }
+    endpoints
+  }
+
+  async fn changed(&mut self) {
+    let _ignored = self.targets.changed().await;
   }
 }

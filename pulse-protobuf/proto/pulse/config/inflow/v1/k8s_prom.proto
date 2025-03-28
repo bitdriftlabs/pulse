@@ -69,12 +69,24 @@ message KubernetesPrometheusConfig {
     repeated UseK8sHttpsServiceAuthMatcher use_k8s_https_service_auth_matchers = 2;
   }
 
+  // An implementation of the Prometheus HTTP service discovery protocol as documented here:
+  // https://prometheus.io/docs/prometheus/latest/http_sd/
+  message HttpServiceDiscovery {
+    // The URL to scrape for service discovery. This should be a valid URL.
+    string url = 1 [(validate.rules).string = {min_len: 1}];
+
+    // The interval to use for fetching the service discovery config. If not set default to
+    // 1 minute.
+    google.protobuf.Duration fetch_interval = 2;
+  }
+
   oneof target {
     option (validate.required) = true;
 
     Endpoint endpoint = 2;
     Node node = 3;
     Pod pod = 4;
+    HttpServiceDiscovery http_service_discovery = 8;
   }
 
   // Whether to emit the synthetic "up" metric as per

@@ -98,12 +98,17 @@ protobuf = { git = "https://github.com/bitdriftlabs/rust-protobuf.git", branch =
 protobuf-codegen = { git = "https://github.com/bitdriftlabs/rust-protobuf.git", branch = "patch-stack" }
 protobuf-json-mapping = { git = "https://github.com/bitdriftlabs/rust-protobuf.git", branch = "patch-stack" }
 
-quickcheck                 = "1"
-quickcheck_macros          = "1"
-rand                       = { version = "0.9", features = ["small_rng"] }
-rand_xoshiro               = "0.7"
-regex                      = "1"
-reqwest                    = { version = "0.12.15", default-features = false, features = ["rustls-tls-webpki-roots"] }
+quickcheck        = "1"
+quickcheck_macros = "1"
+rand              = { version = "0.9", features = ["small_rng"] }
+rand_xoshiro      = "0.7"
+regex             = "1"
+
+reqwest = { version = "0.12.15", default-features = false, features = [
+  "rustls-tls-webpki-roots",
+  "json",
+] }
+
 reusable-fmt               = "0.2.0"
 rustls                     = "0.23.25"
 serde                      = { version = "1", features = ["derive"] }

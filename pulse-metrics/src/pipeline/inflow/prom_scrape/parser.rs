@@ -34,13 +34,14 @@ pub fn parse_as_metrics(
   timestamp: u64,
   now: Instant,
   metadata: Option<&Arc<Metadata>>,
+  extra_tags: &[TagValue],
 ) -> Result<Vec<ParsedMetric>, ParserError> {
   let parsed = prometheus_parser::parse_text(data)?;
 
   Ok(
     parsed
       .into_iter()
-      .flat_map(|group| sample_as_metric(group, timestamp, now, metadata))
+      .flat_map(|group| sample_as_metric(group, timestamp, now, metadata, extra_tags))
       .collect(),
   )
 }
@@ -51,6 +52,7 @@ fn sample_as_metric(
   timestamp: u64,
   now: Instant,
   metadata: Option<&Arc<Metadata>>,
+  extra_tags: &[TagValue],
 ) -> Vec<ParsedMetric> {
   let mut events = Vec::new();
   match group.metrics {
@@ -75,6 +77,7 @@ fn sample_as_metric(
           timestamp,
           now,
           metadata.cloned(),
+          extra_tags,
         ));
       }
     },
@@ -107,6 +110,7 @@ fn sample_as_metric(
           timestamp,
           now,
           metadata.cloned(),
+          extra_tags,
         ));
       }
     },
@@ -120,6 +124,7 @@ fn sample_as_metric(
           timestamp,
           now,
           metadata.cloned(),
+          extra_tags,
         ));
       }
     },
@@ -133,6 +138,7 @@ fn sample_as_metric(
           timestamp,
           now,
           metadata.cloned(),
+          extra_tags,
         ));
       }
     },
@@ -148,6 +154,7 @@ fn sample_as_metric(
           timestamp,
           now,
           metadata.cloned(),
+          extra_tags,
         ));
       }
     },
@@ -164,6 +171,7 @@ fn make_metric(
   now_unix: u64,
   now: Instant,
   metadata: Option<Arc<Metadata>>,
+  extra_tags: &[TagValue],
 ) -> ParsedMetric {
   let timestamp = group_key.timestamp.map_or(now_unix, |timestamp| {
     (timestamp / 1000).try_into().unwrap_or(now_unix)
@@ -183,6 +191,7 @@ fn make_metric(
             tag: k.as_bytes().to_vec().into(),
             value: v.as_bytes().to_vec().into(),
           })
+          .chain(extra_tags.iter().cloned())
           .collect(),
         false,
       )
