@@ -433,9 +433,7 @@ impl PromRemoteWriteOutflow {
 #[async_trait]
 impl PipelineOutflow for PromRemoteWriteOutflow {
   async fn recv_samples(&self, samples: Vec<ParsedMetric>) {
-    for sample in samples {
-      self.batch_router.send(sample);
-    }
+    self.batch_router.send(samples);
   }
 }
 
@@ -446,7 +444,7 @@ impl PipelineOutflow for PromRemoteWriteOutflow {
 // Wraps potentially routing batches differently.
 #[async_trait]
 trait BatchRouter: Send + Sync {
-  fn send(&self, sample: ParsedMetric);
+  fn send(&self, samples: Vec<ParsedMetric>);
   async fn next_batch_set(&self, max_items: Option<usize>) -> Option<Vec<PromBatch>>;
 }
 
@@ -504,8 +502,8 @@ impl DefaultBatchRouter {
 
 #[async_trait]
 impl BatchRouter for DefaultBatchRouter {
-  fn send(&self, sample: ParsedMetric) {
-    self.builder.send(sample);
+  fn send(&self, samples: Vec<ParsedMetric>) {
+    self.builder.send(samples.into_iter());
   }
 
   async fn next_batch_set(&self, max_items: Option<usize>) -> Option<Vec<PromBatch>> {
@@ -601,21 +599,39 @@ impl LyftBatchRouter {
 
 #[async_trait]
 impl BatchRouter for LyftBatchRouter {
-  fn send(&self, sample: ParsedMetric) {
-    if self.cloudwatch.is_some()
-      && sample
-        .metric()
-        .get_id()
-        .tag("source")
-        .is_some_and(|v| !v.value.starts_with(b"statsd"))
-      && Self::is_cloudwatch(sample.metric().get_id().name())
-    {
-      self.cloudwatch.as_ref().unwrap().send(sample);
-    } else if self.instance.is_some() && sample.metric().get_id().tag("host").is_some() {
-      self.instance.as_ref().unwrap().send(sample);
-    } else {
-      self.generic.send(sample);
+  fn send(&self, samples: Vec<ParsedMetric>) {
+    let mut cloudwatch = Vec::new();
+    let mut instance = Vec::new();
+    let mut generic = Vec::new();
+
+    for sample in samples {
+      if self.cloudwatch.is_some()
+        && sample
+          .metric()
+          .get_id()
+          .tag("source")
+          .is_some_and(|v| !v.value.starts_with(b"statsd"))
+        && Self::is_cloudwatch(sample.metric().get_id().name())
+      {
+        cloudwatch.push(sample);
+      } else if self.instance.is_some() && sample.metric().get_id().tag("host").is_some() {
+        instance.push(sample);
+      } else {
+        generic.push(sample);
+      }
     }
+
+    if !cloudwatch.is_empty() {
+      self
+        .cloudwatch
+        .as_ref()
+        .unwrap()
+        .send(cloudwatch.into_iter());
+    }
+    if !instance.is_empty() {
+      self.instance.as_ref().unwrap().send(instance.into_iter());
+    }
+    self.generic.send(generic.into_iter());
   }
 
   async fn next_batch_set(&self, max_items: Option<usize>) -> Option<Vec<PromBatch>> {
@@ -676,7 +692,7 @@ impl PromBatch {
 }
 
 impl Batch<ParsedMetric> for PromBatch {
-  fn push(&mut self, item: ParsedMetric) -> Option<usize> {
+  fn push(&mut self, items: impl Iterator<Item = ParsedMetric>) -> Option<usize> {
     let (samples, max_samples) = match self {
       Self::Building {
         samples,
@@ -686,7 +702,7 @@ impl Batch<ParsedMetric> for PromBatch {
       Self::Complete { .. } => unreachable!(),
     };
 
-    samples.push(item);
+    samples.extend(items.take(*max_samples - samples.len()));
     if samples.len() == *max_samples {
       return Some(self.finish());
     }
