@@ -100,7 +100,7 @@ impl SessionManager for PreBufferSessionManager {
       .entry(peer_ip)
       .or_insert_with(|| {
         let (tx, rx) = mpsc::channel(1);
-        log::debug!("creating new session for {}", peer_ip);
+        log::debug!("creating new session for {peer_ip}");
         tokio::spawn(
           PreBufferSession::new(
             self.shared.clone(),
@@ -361,7 +361,7 @@ async fn udp_reader(
             debug_assert!(buf.is_empty());
             session_manager.recv_lines(lines, peer_addr.ip()).await;
           },
-          Err(e) => warn!("udp receiver error: {}", e),
+          Err(e) => warn!("udp receiver error: {e}"),
         }
       }
       () = shutdown.cancelled() => {

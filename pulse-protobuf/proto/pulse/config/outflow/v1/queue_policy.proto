@@ -26,6 +26,12 @@ message QueuePolicy {
   // Defaults to 50ms.
   google.protobuf.Duration batch_fill_wait = 2 [(validate.rules).duration.gt = {}];
 
-  // fixfix
+  // The number of concurrent pending batches to maintain. In a high throughput environment it is
+  // possible for the pending batch to become a point of contention, especially for Prometheus
+  // remote write where this is significant computation required to complete a batch (proto
+  // encoding and compression). By increasing concurrency it is more likely that CPU can become
+  // saturated. Currently this must be set manually and should be tuned depending on the
+  // environment. A good setting for a high throughput scenario is likely somewhere between CPU
+  // requests and limit. If not set, this default to 1.
   optional uint64 concurrent_batch_queues = 3;
 }

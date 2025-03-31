@@ -441,7 +441,7 @@ impl MetricCache {
     // LRU map a bit and seems not worth it right now.
     if self
       .max_cached_metrics
-      .is_some_and(|max| self.cache.len() >= max.try_into().unwrap())
+      .is_some_and(|max| self.cache.len() >= max as usize)
       && self
         .cache
         .try_evict_lru(|_, value| received_at - value.last_seen >= MAX_AGE)

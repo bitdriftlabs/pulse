@@ -24,7 +24,7 @@ fn main() -> anyhow::Result<()> {
   let proxy_config = options
     .proxy_config
     .map(|proxy_config| {
-      log::info!("loading proxy config from: {}", proxy_config);
+      log::info!("loading proxy config from: {proxy_config}");
       std::fs::read_to_string(proxy_config)
     })
     .transpose()?;

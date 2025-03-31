@@ -55,7 +55,7 @@ impl LocalFileWatcher {
             _ => (),
           },
           Err(e) => {
-            warn!("failed to watch local file for changes: {}", e);
+            warn!("failed to watch local file for changes: {e}");
           },
         };
       })?;

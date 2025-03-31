@@ -167,21 +167,16 @@ impl GaugeAggregation {
     metric: &MetricId,
     downstream_id: &DownstreamId,
   ) {
-    log::trace!(
-      "aggregating gauge sample: {}/{:?}: {}",
-      metric,
-      downstream_id,
-      sample
-    );
+    log::trace!("aggregating gauge sample: {metric}/{downstream_id:?}: {sample}");
     if self.values.is_empty() {
-      log::trace!("setting min/max: {}: {}", metric, sample);
+      log::trace!("setting min/max: {metric}: {sample}");
       self.min = sample;
       self.max = sample;
     } else if self.min > sample {
-      log::trace!("setting min: {}: {}", metric, sample);
+      log::trace!("setting min: {metric}: {sample}");
       self.min = sample;
     } else if self.max < sample {
-      log::trace!("setting max: {}: {}", metric, sample);
+      log::trace!("setting max: {metric}: {sample}");
       self.max = sample;
     }
 

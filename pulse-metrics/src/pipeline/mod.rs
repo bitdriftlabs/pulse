@@ -72,10 +72,10 @@ impl<T: ?Sized> MapEntry<T> {
   }
 
   pub async fn shutdown(self, component_type: &str, name: String) {
-    log::info!("shutting down \"{}\" {}", name, component_type);
+    log::info!("shutting down \"{name}\" {component_type}");
     self.trigger.shutdown().await;
     debug_assert_eq!(1, Arc::strong_count(&self.item));
-    log::info!("successfully shut down \"{}\" {}", name, component_type);
+    log::info!("successfully shut down \"{name}\" {component_type}");
   }
 
   #[must_use]

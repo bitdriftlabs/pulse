@@ -196,7 +196,7 @@ impl<I: Send + Sync + 'static, B: Batch<I> + Send + Sync + 'static> BatchBuilder
     while items.peek().is_some() {
       let pending_index = self.concurrent_batch_index.fetch_add(1, Ordering::Relaxed)
         % self.concurrent_pending_batches.len();
-      log::trace!("using batch pending index: {}", pending_index);
+      log::trace!("using batch pending index: {pending_index}");
 
       let mut locked_pending_data = self.concurrent_pending_batches[pending_index].lock();
       let pending_batch = locked_pending_data.pending_batch.get_or_insert_with(|| {
@@ -313,7 +313,7 @@ impl<I: Send + Sync + 'static, B: Batch<I> + Send + Sync + 'static> BatchBuilder
       locked_data.waiters = false;
       notify_on_data.notify_waiters();
     }
-    log::trace!("finalizing and pushing batch with size: {}", size);
+    log::trace!("finalizing and pushing batch with size: {size}");
     locked_data.batch_queue.push_front(QueueEntry {
       size,
       item: pending_batch,

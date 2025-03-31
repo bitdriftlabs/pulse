@@ -66,14 +66,14 @@ impl<H: Hasher + Default + Send> Limiter for GlobalLimiter<H> {
   fn limit(&self, metric: &MetricId, _metadata: Option<&Arc<Metadata>>) -> LimitResult {
     let mut filters = self.buckets.lock();
     if filters[0].contains(metric) {
-      log::trace!("metric '{}' might already be in filter", metric);
+      log::trace!("metric '{metric}' might already be in filter");
       LimitResult::Ok
     } else if filters[0].len() >= self.size_limit {
       LimitResult::Drop
     } else {
       for filter in &mut *filters {
         let result = filter.add(metric);
-        log::trace!("added metric '{}' to filter: {result:?}", metric);
+        log::trace!("added metric '{metric}' to filter: {result:?}");
       }
       LimitResult::Ok
     }

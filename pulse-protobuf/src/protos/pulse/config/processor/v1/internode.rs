@@ -379,6 +379,8 @@ pub mod internode_config {
         pub retry_policy: ::protobuf::MessageField<super::super::retry::RetryPolicy>,
         // @@protoc_insertion_point(field:pulse.config.processor.v1.InternodeConfig.RequestPolicy.max_concurrent_requests)
         pub max_concurrent_requests: ::std::option::Option<u32>,
+        // @@protoc_insertion_point(field:pulse.config.processor.v1.InternodeConfig.RequestPolicy.max_pending_requests)
+        pub max_pending_requests: ::std::option::Option<u32>,
         // special fields
         // @@protoc_insertion_point(special_field:pulse.config.processor.v1.InternodeConfig.RequestPolicy.special_fields)
         pub special_fields: ::protobuf::SpecialFields,
@@ -396,7 +398,7 @@ pub mod internode_config {
         }
 
         pub(in super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-            let mut fields = ::std::vec::Vec::with_capacity(3);
+            let mut fields = ::std::vec::Vec::with_capacity(4);
             let mut oneofs = ::std::vec::Vec::with_capacity(0);
             fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, ::protobuf::well_known_types::duration::Duration>(
                 "timeout",
@@ -412,6 +414,11 @@ pub mod internode_config {
                 "max_concurrent_requests",
                 |m: &RequestPolicy| { &m.max_concurrent_requests },
                 |m: &mut RequestPolicy| { &mut m.max_concurrent_requests },
+            ));
+            fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+                "max_pending_requests",
+                |m: &RequestPolicy| { &m.max_pending_requests },
+                |m: &mut RequestPolicy| { &mut m.max_pending_requests },
             ));
             ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<RequestPolicy>(
                 "InternodeConfig.RequestPolicy",
@@ -440,6 +447,9 @@ pub mod internode_config {
                     24 => {
                         self.max_concurrent_requests = ::std::option::Option::Some(is.read_uint32()?);
                     },
+                    32 => {
+                        self.max_pending_requests = ::std::option::Option::Some(is.read_uint32()?);
+                    },
                     tag => {
                         ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                     },
@@ -463,6 +473,9 @@ pub mod internode_config {
             if let Some(v) = self.max_concurrent_requests {
                 my_size += ::protobuf::rt::uint32_size(3, v);
             }
+            if let Some(v) = self.max_pending_requests {
+                my_size += ::protobuf::rt::uint32_size(4, v);
+            }
             my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
             self.special_fields.cached_size().set(my_size as u32);
             my_size
@@ -477,6 +490,9 @@ pub mod internode_config {
             }
             if let Some(v) = self.max_concurrent_requests {
                 os.write_uint32(3, v)?;
+            }
+            if let Some(v) = self.max_pending_requests {
+                os.write_uint32(4, v)?;
             }
             os.write_unknown_fields(self.special_fields.unknown_fields())?;
             ::std::result::Result::Ok(())
@@ -498,6 +514,7 @@ pub mod internode_config {
             self.timeout.clear();
             self.retry_policy.clear();
             self.max_concurrent_requests = ::std::option::Option::None;
+            self.max_pending_requests = ::std::option::Option::None;
             self.special_fields.clear();
         }
 
@@ -506,6 +523,7 @@ pub mod internode_config {
                 timeout: ::protobuf::MessageField::none(),
                 retry_policy: ::protobuf::MessageField::none(),
                 max_concurrent_requests: ::std::option::Option::None,
+                max_pending_requests: ::std::option::Option::None,
                 special_fields: ::protobuf::SpecialFields::new(),
             };
             &instance
@@ -533,7 +551,7 @@ pub mod internode_config {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n)pulse/config/processor/v1/internode.proto\x12\x19pulse.config.process\
     or.v1\x1a\"pulse/config/common/v1/retry.proto\x1a\x1egoogle/protobuf/dur\
-    ation.proto\x1a\x17validate/validate.proto\"\x9a\x05\n\x0fInternodeConfi\
+    ation.proto\x1a\x17validate/validate.proto\"\xea\x05\n\x0fInternodeConfi\
     g\x12\x1f\n\x06listen\x18\x01\x20\x01(\tR\x06listenB\x07\xfaB\x04r\x02\
     \x10\x01\x12$\n\x0btotal_nodes\x18\x02\x20\x01(\rH\0R\ntotalNodes\x88\
     \x01\x01\x12)\n\x0cthis_node_id\x18\x03\x20\x01(\tR\nthisNodeIdB\x07\xfa\
@@ -543,13 +561,14 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     g.processor.v1.InternodeConfig.RequestPolicyR\rrequestPolicyB\x08\xfaB\
     \x05\xaa\x01\x02*\0\x1aQ\n\nNodeConfig\x12\x20\n\x07node_id\x18\x01\x20\
     \x01(\tR\x06nodeIdB\x07\xfaB\x04r\x02\x10\x01\x12!\n\x07address\x18\x02\
-    \x20\x01(\tR\x07addressB\x07\xfaB\x04r\x02\x10\x01\x1a\xef\x01\n\rReques\
+    \x20\x01(\tR\x07addressB\x07\xfaB\x04r\x02\x10\x01\x1a\xbf\x02\n\rReques\
     tPolicy\x12=\n\x07timeout\x18\x01\x20\x01(\x0b2\x19.google.protobuf.Dura\
     tionR\x07timeoutB\x08\xfaB\x05\xaa\x01\x02*\0\x12F\n\x0cretry_policy\x18\
     \x02\x20\x01(\x0b2#.pulse.config.common.v1.RetryPolicyR\x0bretryPolicy\
     \x12;\n\x17max_concurrent_requests\x18\x03\x20\x01(\rH\0R\x15maxConcurre\
-    ntRequests\x88\x01\x01B\x1a\n\x18_max_concurrent_requestsB\x0e\n\x0c_tot\
-    al_nodesb\x06proto3\
+    ntRequests\x88\x01\x01\x125\n\x14max_pending_requests\x18\x04\x20\x01(\r\
+    H\x01R\x12maxPendingRequests\x88\x01\x01B\x1a\n\x18_max_concurrent_reque\
+    stsB\x17\n\x15_max_pending_requestsB\x0e\n\x0c_total_nodesb\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file

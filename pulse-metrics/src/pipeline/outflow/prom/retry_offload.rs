@@ -150,7 +150,7 @@ pub async fn maybe_queue_for_retry(
   serialized.inc_retry_attempts();
   if offload_queue_config
     .max_send_attempts
-    .is_some_and(|max_send_attempts| serialized.retry_attempts() > max_send_attempts.into())
+    .is_some_and(|max_send_attempts| serialized.retry_attempts() > u64::from(max_send_attempts))
   {
     log::debug!("dropping due to max attempts");
     return false;

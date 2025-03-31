@@ -5,6 +5,10 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
+#[cfg(test)]
+#[path = "./mod_test.rs"]
+mod mod_test;
+
 use self::convert::proto_metric_to_parsed_metric;
 use self::shard_map::{ShardMap, shardmap_from_config};
 use super::elision::get_last_elided::GetLastElided;
@@ -48,6 +52,7 @@ use pulse_protobuf::protos::pulse::internode::v1::internode::{
 };
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 use time::Duration;
 use time::ext::NumericalDuration;
 use tokio::sync::Semaphore;
@@ -71,6 +76,7 @@ struct Stats {
   internode_connect_timeout: IntCounter,
   internode_request_timeout: IntCounter,
   internode_retry: IntCounter,
+  internode_overflow: IntCounter,
   internode_time: Histogram,
   internode_received: IntCounter,
   internode_convert_failure: IntCounter,
@@ -90,6 +96,7 @@ impl Stats {
       internode_connect_timeout: scope.counter("internode_connect_timeout"),
       internode_request_timeout: scope.counter("internode_request_timeout"),
       internode_retry: scope.counter("internode_retry"),
+      internode_overflow: scope.counter("internode_overflow"),
       internode_time: scope.histogram("internode_time"),
       internode_received: scope.scope("server").counter("internode_received"),
       internode_convert_failure: scope.scope("server").counter("internode_convert_failure"),
@@ -143,6 +150,8 @@ pub struct InternodeProcessor {
   retry: Arc<Retry>,
   concurrent_requests_semaphore: Arc<Semaphore>,
   socket: Mutex<Option<BoundTcpSocket>>,
+  max_pending_requests: u32,
+  current_pending_requests: AtomicU32,
 }
 
 impl InternodeProcessor {
@@ -164,7 +173,7 @@ impl InternodeProcessor {
     }) {
       Ok(s) => Ok(s),
       Err(e) => {
-        error!("failed to load shardmap due to error {:?}", e);
+        error!("failed to load shardmap due to error {e:?}");
         Err(e)
       },
     }?;
@@ -176,10 +185,13 @@ impl InternodeProcessor {
       .unwrap_or_else(|| (4 * shardmap.nodes.len()).try_into().unwrap())
       .try_into()
       .unwrap();
-    log::info!(
-      "internode max concurrent requests: {}",
-      max_concurrent_requests
-    );
+    log::info!("internode max concurrent requests: {max_concurrent_requests}");
+    let max_pending_requests = config
+      .request_policy
+      .get_or_default()
+      .max_pending_requests
+      .unwrap_or_else(|| u32::try_from(max_concurrent_requests * 2).unwrap());
+    log::info!("internode max pending requests: {max_pending_requests}");
 
     let socket = context.bind_resolver.resolve_tcp(&config.listen).await?;
     info!("starting internode server on {}", socket.local_addr());
@@ -207,6 +219,8 @@ impl InternodeProcessor {
       retry,
       concurrent_requests_semaphore: Arc::new(Semaphore::new(max_concurrent_requests)),
       socket: Mutex::new(Some(socket)),
+      max_pending_requests,
+      current_pending_requests: AtomicU32::new(0),
     }))
   }
 
@@ -216,7 +230,7 @@ impl InternodeProcessor {
       (Vec::<ParsedMetric>::default(), outbound_map),
       |(mut local_lines, mut outbound_map), parsed_metric| {
         if let (index, Some(client)) = self.shardmap.pick_node(parsed_metric.metric().get_id()) {
-          trace!("determined client {:?}", index);
+          trace!("determined client {index:?}");
           let (_, entry) = outbound_map
             .entry(index)
             .or_insert_with(|| (client.clone(), Vec::default()));
@@ -235,7 +249,27 @@ impl InternodeProcessor {
     client: Arc<Client>,
     outbound_metrics: Vec<ParsedMetric>,
   ) {
-    trace!("sending internode {:?}", outbound_metrics);
+    trace!("sending internode {outbound_metrics:?}");
+
+    if self
+      .current_pending_requests
+      .fetch_add(1, Ordering::Relaxed)
+      >= self.max_pending_requests
+    {
+      // We have too many pending requests already, so we can't send this one.
+      // This can happen if the internode pipeline is overloaded or if there are
+      // too many slow nodes in the pipeline.
+      self.stats.internode_overflow.inc();
+      warn_every!(
+        15.seconds(),
+        "{}",
+        "internode max pending requests exceeded, dropping request"
+      );
+      self
+        .current_pending_requests
+        .fetch_sub(1, Ordering::Relaxed);
+      return;
+    }
 
     // TODO(mattklein123): The purpose of this sempahore is to allow some amount of progress for
     // the pipeline if there is a slow internode node. This is imperfect as the slow node can
@@ -247,6 +281,9 @@ impl InternodeProcessor {
       .acquire_owned()
       .await
       .unwrap();
+    self
+      .current_pending_requests
+      .fetch_sub(1, Ordering::Relaxed);
     tokio::spawn(async move {
       self.stats.internode_attempts.inc();
       let _timer = self.stats.internode_time.start_timer();
@@ -380,7 +417,7 @@ impl InternodeProcessor {
     while let Some(async_result) = requests.next().await {
       match async_result {
         (Ok(rpc_response), addr) => {
-          debug!("Received shardmap from {:?}", addr);
+          debug!("Received shardmap from {addr:?}");
           let peers_peers: Vec<Chars> = rpc_response.peer;
           let matches = peer_list_is_match(&peer_list, peers_peers.as_ref(), addr.as_str());
           if matches {
@@ -394,7 +431,7 @@ impl InternodeProcessor {
           }
         },
         (Err(e), addr) => {
-          warn!("Unable to fetch shardmap from {:?}. Got error: {}", addr, e);
+          warn!("Unable to fetch shardmap from {addr:?}. Got error: {e}");
         },
       }
     }
@@ -446,10 +483,7 @@ impl InternodeProcessor {
           last_elided = last_elided.max(timestamp);
         },
         (Err(e), addr) => {
-          warn!(
-            "unable to fetch last_elided from {:?}. got error: {}",
-            addr, e
-          );
+          warn!("unable to fetch last_elided from {addr:?}. got error: {e}");
           sample_err = Some(e);
         },
       }
@@ -470,7 +504,9 @@ impl InternodeProcessor {
 impl PipelineProcessor for InternodeProcessor {
   async fn recv_samples(self: Arc<Self>, samples: Vec<ParsedMetric>) {
     let local_samples = self.dispatch_outbound_metrics(samples).await;
-    self.dispatcher.send(local_samples).await;
+    if !local_samples.is_empty() {
+      self.dispatcher.send(local_samples).await;
+    }
   }
 
   async fn start(self: Arc<Self>) {
@@ -493,7 +529,7 @@ impl PipelineProcessor for InternodeProcessor {
     tokio::spawn(async move {
       // TODO(mattklein123): If this fails the server should fail to startup.
       if let Err(e) = server(socket, handler, shutdown.clone()).await {
-        error!("internode server start failed: {:?}", e);
+        error!("internode server start failed: {e:?}");
       } else {
         info!("internode server stopped");
       }

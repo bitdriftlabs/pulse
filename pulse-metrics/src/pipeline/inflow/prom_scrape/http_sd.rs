@@ -31,7 +31,7 @@ async fn do_fetch(config: &HttpServiceDiscovery) -> anyhow::Result<Vec<TargetBlo
     .send()
     .await?;
   let target_blocks: Vec<TargetBlock> = response.json().await?;
-  log::debug!("Fetched target blocks: {:?}", target_blocks);
+  log::debug!("Fetched target blocks: {target_blocks:?}");
   Ok(target_blocks)
 }
 

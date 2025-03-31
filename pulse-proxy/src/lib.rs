@@ -194,10 +194,7 @@ pub async fn run_server<
   shutdown().await;
 
   if !shutdown_delay.is_zero() {
-    info!(
-      "waiting {:?} before shutting down (--shutdown-delay set)",
-      shutdown_delay
-    );
+    info!("waiting {shutdown_delay:?} before shutting down (--shutdown-delay set)");
     tokio::time::sleep(shutdown_delay).await;
   }
   pipeline.shutdown().await;

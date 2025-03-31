@@ -365,7 +365,7 @@ impl MetaStatsEmitter {
 
     for result in results {
       if let Err(e) = result {
-        warn!("error writing meta stats to sink due to: {}", e);
+        warn!("error writing meta stats to sink due to: {e}");
       }
     }
   }

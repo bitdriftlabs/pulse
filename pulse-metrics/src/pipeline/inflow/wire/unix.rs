@@ -73,7 +73,7 @@ async fn accept_unix_connections(
       res = listener.accept() => {
         match res {
           Ok((socket, peer_addr)) => {
-            debug!("accepted unix connection from {:?}", peer_addr);
+            debug!("accepted unix connection from {peer_addr:?}");
             stats.accepts.inc();
             tokio::spawn(SocketHandler::new(
               stats.clone(),
@@ -88,7 +88,7 @@ async fn accept_unix_connections(
             ).run(socket, shutdown.clone()));
           },
           Err(e) => {
-            info!("unix accept error: {}", e);
+            info!("unix accept error: {e}");
             stats.accept_failures.inc();
           },
         }

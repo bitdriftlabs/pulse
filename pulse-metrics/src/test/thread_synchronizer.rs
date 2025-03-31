@@ -51,14 +51,14 @@ impl ThreadSynchronizer {
 
     // See if we are ignoring waits. If so, just return.
     if !locked_data.wait_on {
-      log::debug!("sync point {}: ignoring", name);
+      log::debug!("sync point {name}: ignoring");
       return;
     }
     locked_data.wait_on = false;
 
     // See if we are already signaled. If so, just clear signaled and return.
     if locked_data.signaled {
-      log::debug!("sync point {}: already signaled", name);
+      log::debug!("sync point {name}: already signaled");
       locked_data.signaled = false;
       return;
     }
@@ -68,7 +68,7 @@ impl ThreadSynchronizer {
     entry.at_barrier_condition.notify_one();
 
     // Now wait to be signaled.
-    log::debug!("blocking on sync point {}", name);
+    log::debug!("blocking on sync point {name}");
     while !locked_data.signaled {
       let mut notified = Box::pin(entry.signal_condition.notified());
       notified.as_mut().enable();
@@ -76,7 +76,7 @@ impl ThreadSynchronizer {
       notified.await;
       locked_data = entry.locked_data.lock().await;
     }
-    log::debug!("done blocking for sync point {}", name);
+    log::debug!("done blocking for sync point {name}");
 
     // Clear the barrier and signaled before unlocking and returning.
     assert!(locked_data.at_barrier);
@@ -91,7 +91,7 @@ impl ThreadSynchronizer {
   pub async fn wait_on(&self, name: &str) {
     let entry = self.entry(name).await;
     let mut locked_data = entry.locked_data.lock().await;
-    log::debug!("waiting on next {}", name);
+    log::debug!("waiting on next {name}");
     assert!(!locked_data.wait_on);
     locked_data.wait_on = true;
   }
@@ -103,7 +103,7 @@ impl ThreadSynchronizer {
   pub async fn barrier_on(&self, name: &str) {
     let entry = self.entry(name).await;
     let mut locked_data = entry.locked_data.lock().await;
-    log::debug!("barrier on {}", name);
+    log::debug!("barrier on {name}");
     while !locked_data.at_barrier {
       let mut notified = Box::pin(entry.at_barrier_condition.notified());
       notified.as_mut().enable();
@@ -111,7 +111,7 @@ impl ThreadSynchronizer {
       notified.await;
       locked_data = entry.locked_data.lock().await;
     }
-    log::debug!("barrier complete {}", name);
+    log::debug!("barrier complete {name}");
   }
 
   // Signal an event such that a thread that is blocked within sync_point() will now proceed.
@@ -119,7 +119,7 @@ impl ThreadSynchronizer {
     let entry = self.entry(name).await;
     let mut locked_data = entry.locked_data.lock().await;
     assert!(!locked_data.signaled);
-    log::debug!("signaling {}", name);
+    log::debug!("signaling {name}");
     locked_data.signaled = true;
     entry.signal_condition.notify_one();
   }
