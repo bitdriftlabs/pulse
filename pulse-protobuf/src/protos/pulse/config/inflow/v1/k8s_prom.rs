@@ -1770,7 +1770,7 @@ pub mod kubernetes_prometheus_config {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n%pulse/config/inflow/v1/k8s_prom.proto\x12\x16pulse.config.inflow.v1\
     \x1a#pulse/config/common/v1/common.proto\x1a\x1egoogle/protobuf/duration\
-    .proto\x1a\x17validate/validate.proto\"\xc4\x0e\n\x1aKubernetesPrometheu\
+    .proto\x1a\x17validate/validate.proto\"\xc5\x0e\n\x1aKubernetesPrometheu\
     sConfig\x12L\n\x0fscrape_interval\x18\x01\x20\x01(\x0b2\x19.google.proto\
     buf.DurationR\x0escrapeIntervalB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12Y\n\
     \x08endpoint\x18\x02\x20\x01(\x0b2;.pulse.config.inflow.v1.KubernetesPro\
@@ -1800,15 +1800,15 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     config.inflow.v1.KubernetesPrometheusConfig.UseK8sHttpsServiceAuthMatche\
     rR\x1euseK8sHttpsServiceAuthMatchers\x1ab\n\x0fInclusionFilter\x12;\n\
     \x19container_port_name_regex\x18\x01\x20\x01(\tH\0R\x16containerPortNam\
-    eRegexB\x12\n\x0bfilter_type\x12\x03\xf8B\x01\x1a\x98\x01\n\x14HttpServi\
-    ceDiscovery\x12>\n\x03url\x18\x01\x20\x01(\x0b2#.pulse.config.common.v1.\
-    EnvOrInlineR\x03urlB\x07\xfaB\x04r\x02\x10\x01\x12@\n\x0efetch_interval\
-    \x18\x02\x20\x01(\x0b2\x19.google.protobuf.DurationR\rfetchInterval\x1a\
-    \x94\x01\n\x03TLS\x12\x20\n\tcert_file\x18\x01\x20\x01(\tH\0R\x08certFil\
-    e\x88\x01\x01\x12\x1e\n\x08key_file\x18\x02\x20\x01(\tH\x01R\x07keyFile\
-    \x88\x01\x01\x120\n\x14insecure_skip_verify\x18\x03\x20\x01(\x08R\x12ins\
-    ecureSkipVerifyB\x0c\n\n_cert_fileB\x0b\n\t_key_fileB\r\n\x06target\x12\
-    \x03\xf8B\x01b\x06proto3\
+    eRegexB\x12\n\x0bfilter_type\x12\x03\xf8B\x01\x1a\x99\x01\n\x14HttpServi\
+    ceDiscovery\x12?\n\x03url\x18\x01\x20\x01(\x0b2#.pulse.config.common.v1.\
+    EnvOrInlineR\x03urlB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12@\n\x0efetch_in\
+    terval\x18\x02\x20\x01(\x0b2\x19.google.protobuf.DurationR\rfetchInterva\
+    l\x1a\x94\x01\n\x03TLS\x12\x20\n\tcert_file\x18\x01\x20\x01(\tH\0R\x08ce\
+    rtFile\x88\x01\x01\x12\x1e\n\x08key_file\x18\x02\x20\x01(\tH\x01R\x07key\
+    File\x88\x01\x01\x120\n\x14insecure_skip_verify\x18\x03\x20\x01(\x08R\
+    \x12insecureSkipVerifyB\x0c\n\n_cert_fileB\x0b\n\t_key_fileB\r\n\x06targ\
+    et\x12\x03\xf8B\x01b\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file

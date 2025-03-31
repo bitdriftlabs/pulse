@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use time::ext::NumericalStdDuration;
 use tokio::sync::watch;
+use anyhow::anyhow;
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct TargetBlock {
@@ -27,7 +28,7 @@ async fn do_fetch(config: &HttpServiceDiscovery) -> anyhow::Result<Vec<TargetBlo
     env_or_inline_to_string(&config.url).unwrap_or_default()
   );
   let response = reqwest::Client::new()
-    .get(env_or_inline_to_string(&config.url).unwrap_or_default())
+    .get(env_or_inline_to_string(&config.url).ok_or_else(|| anyhow!("HTTP SD URL is not set"))?)
     .timeout(15.std_seconds())
     .send()
     .await?;

@@ -74,7 +74,7 @@ message KubernetesPrometheusConfig {
   // https://prometheus.io/docs/prometheus/latest/http_sd/
   message HttpServiceDiscovery {
     // The URL to scrape for service discovery. This should be a valid URL.
-    common.v1.EnvOrInline url = 1 [(validate.rules).string = {min_len: 1}];
+    common.v1.EnvOrInline url = 1 [(validate.rules).message = {required: true}];
 
     // The interval to use for fetching the service discovery config. If not set default to
     // 1 minute.
