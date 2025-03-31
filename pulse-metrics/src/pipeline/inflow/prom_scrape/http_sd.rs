@@ -6,6 +6,7 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
 use super::scraper::Ticker;
+use anyhow::anyhow;
 use bd_shutdown::ComponentShutdown;
 use k8s_prom::kubernetes_prometheus_config::HttpServiceDiscovery;
 use pulse_common::proto::env_or_inline_to_string;
@@ -14,7 +15,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use time::ext::NumericalStdDuration;
 use tokio::sync::watch;
-use anyhow::anyhow;
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct TargetBlock {
