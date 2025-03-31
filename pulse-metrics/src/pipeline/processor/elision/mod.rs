@@ -143,7 +143,7 @@ async fn build_metric_filters(
           metric_filters.push(f);
         },
         Err(e) => {
-          error!("failed to load metric allowlist fst filter: {}", e);
+          error!("failed to load metric allowlist fst filter: {e}");
           return Err(e);
         },
       }
@@ -171,7 +171,7 @@ async fn build_metric_filters(
           metric_filters.push(f);
         },
         Err(e) => {
-          error!("failed to load metric allowlist regex filter: {}", e);
+          error!("failed to load metric allowlist regex filter: {e}");
           return Err(e);
         },
       }
@@ -198,7 +198,7 @@ async fn build_metric_filters(
         metric_filters.push(f);
       },
       Err(e) => {
-        error!("failed to load metric blocklist fst filter: {}", e);
+        error!("failed to load metric blocklist fst filter: {e}");
         return Err(e);
       },
     }

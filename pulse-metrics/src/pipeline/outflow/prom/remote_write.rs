@@ -243,7 +243,7 @@ impl PromRemoteWriteOutflow {
           ),
         };
 
-      log::debug!("sending batch of {} metric(s)", num_metrics);
+      log::debug!("sending batch of {num_metrics} metric(s)");
       let time = self.stats.requests_time.start_timer();
       let res = self
         .retry
@@ -741,7 +741,7 @@ impl Batch<ParsedMetric> for PromBatch {
       },
       changed_type_tracker,
     );
-    log::trace!("WriteRequest batched and ready to send: {}", write_request);
+    log::trace!("WriteRequest batched and ready to send: {write_request}");
     let compressed_write_request = compress_write_request(&write_request);
     let size = compressed_write_request.len();
     *self = Self::Complete {

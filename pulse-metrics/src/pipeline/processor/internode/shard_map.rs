@@ -33,7 +33,7 @@ impl<T> Node<T> {
   pub fn new(id: String, address: String, inner: Option<T>) -> anyhow::Result<Self> {
     let network_address: Regex = Regex::new(r"^.+:\d+$").unwrap();
     if !network_address.is_match(address.as_str()) {
-      warn!("Unable to parse node address: {}", address);
+      warn!("Unable to parse node address: {address}");
     }
     Ok(Self {
       id,
@@ -174,7 +174,7 @@ where
 
   // Sorting shards by ID so they're consistent across servers
   nodes.sort_by(|s1, s2| s1.id.cmp(&s2.id));
-  debug!("shardmap load: {:?}", nodes);
+  debug!("shardmap load: {nodes:?}");
   Ok(ShardMap {
     nodes,
     hash_builder: Xxh64Builder::new(0),
@@ -202,10 +202,7 @@ pub fn peer_list_is_match(our_peers: &[Chars], their_peers: &[Chars], peer: &str
         return acc; // this is their address
       }
 
-      warn!(
-        "Internode issue: {} reported node {} but we have {}",
-        peer, them, us
-      );
+      warn!("Internode issue: {peer} reported node {them} but we have {us}");
       acc + 1
     });
 

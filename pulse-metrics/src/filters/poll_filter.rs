@@ -183,7 +183,7 @@ impl PollFilter {
     singleton_manager: &SingletonManager,
     admin: Arc<dyn Admin>,
   ) -> anyhow::Result<Arc<Self>> {
-    info!("loading file from {}", source);
+    info!("loading file from {source}");
     let scope = &scope.scope("poll");
     let stats = PollFilterStats::new_with_scope(scope);
     stats.load_total.inc();
@@ -258,14 +258,14 @@ impl PollFilter {
         Ok(file) => file,
         Err(e) => {
           stats.poll_fail.inc();
-          warn!("failed to poll watcher: {}", e);
+          warn!("failed to poll watcher: {e}");
           // Avoid spin loops, even if the underlying impl sleeps.
           1.seconds().sleep().await;
           continue;
         },
       };
 
-      info!("changed detected, reloading from {}", source);
+      info!("changed detected, reloading from {source}");
       stats.load_total.inc();
       match self.provider.update(file).await {
         Ok(()) => {
@@ -275,7 +275,7 @@ impl PollFilter {
             .set(self.provider.set_size().try_into().unwrap());
         },
         Err(e) => {
-          warn!("failed to update filter: {}", e);
+          warn!("failed to update filter: {e}");
           stats.load_fail.inc();
         },
       }

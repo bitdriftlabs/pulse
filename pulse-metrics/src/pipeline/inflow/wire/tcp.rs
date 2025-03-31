@@ -90,7 +90,7 @@ async fn accept_tcp_connections(
       res = listener.accept() => {
         match res {
           Ok((socket, peer_addr)) => {
-            debug!("accepted tcp connection from {:?}", peer_addr);
+            debug!("accepted tcp connection from {peer_addr:?}");
             stats.accepts.inc();
             tokio::spawn(SocketHandler::new(
               stats.clone(),
@@ -106,7 +106,7 @@ async fn accept_tcp_connections(
             ).run(socket, shutdown.clone()));
           }
           Err(e) => {
-            info!("tcp accept error: {}", e);
+            info!("tcp accept error: {e}");
             stats.accept_failures.inc();
           }
         }

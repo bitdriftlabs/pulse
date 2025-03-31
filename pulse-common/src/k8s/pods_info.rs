@@ -162,11 +162,7 @@ pub mod container {
     pub fn insert(&mut self, pod_info: PodInfo) {
       let namespace_and_name = pod_info.namespace_and_name();
       let canonical_ip = pod_info.ip.to_canonical();
-      log::info!(
-        "discovered pod '{}' at ip '{}'",
-        namespace_and_name,
-        canonical_ip
-      );
+      log::info!("discovered pod '{namespace_and_name}' at ip '{canonical_ip}'");
       let pod_info = Arc::new(pod_info);
       self.by_name.insert(namespace_and_name, pod_info.clone());
       self.by_ip.insert(canonical_ip, pod_info);
@@ -181,7 +177,7 @@ pub mod container {
     pub fn remove(&mut self, namespace: &str, pod_name: &str) -> bool {
       let namespace_and_name = make_namespace_and_name(namespace, pod_name);
       if let Some(pod_info) = self.by_name.remove(&namespace_and_name) {
-        log::info!("removing pod '{}'", namespace_and_name);
+        log::info!("removing pod '{namespace_and_name}'");
         let canonical_ip = pod_info.ip.to_canonical();
         if self.by_ip.remove(&canonical_ip).is_none() {
           warn_every!(
@@ -463,7 +459,7 @@ async fn process_resource_update<T>(
     // TODO(snowp): Would this ever happen?
     Ok(None) => None,
     Err(e) => {
-      log::warn!("Error watching pods, backing off: {}", e);
+      log::warn!("Error watching pods, backing off: {e}");
       tokio::time::sleep(backoff.next_backoff().unwrap()).await;
       None
     },

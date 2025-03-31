@@ -386,7 +386,7 @@ impl SocketHandler {
           let remaining = buf.clone().freeze();
           lines.push(remaining);
           self.process(lines).await;
-          debug!("remaining {:?}", buf);
+          debug!("remaining {buf:?}");
           debug!("closing reader {:?}", self.downstream_id);
           break;
         },

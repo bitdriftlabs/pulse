@@ -291,6 +291,7 @@ pub struct ProcessorFactoryContextHelper {
   pub shutdown_trigger: ComponentShutdownTrigger,
   pub admin: Arc<MockAdmin>,
   pub k8s_sender: watch::Sender<PodsInfo>,
+  pub bind_resolver: Arc<MockBindResolver>,
 }
 
 #[must_use]
@@ -304,6 +305,7 @@ pub fn processor_factory_context_for_test()
   let scope = stats_helper.collector().scope("processor");
   let admin = Arc::new(MockAdmin::default());
   let (k8s_sender, k8s_receiver) = watch::channel(PodsInfo::default());
+  let bind_resolver = Arc::new(MockBindResolver::new());
   (
     ProcessorFactoryContextHelper {
       stats_helper,
@@ -312,6 +314,7 @@ pub fn processor_factory_context_for_test()
       shutdown_trigger,
       admin: admin.clone(),
       k8s_sender,
+      bind_resolver: bind_resolver.clone(),
     },
     ProcessorFactoryContext {
       name: "test".to_string(),
@@ -321,7 +324,7 @@ pub fn processor_factory_context_for_test()
       shutdown_trigger_handle,
       singleton_manager: Arc::new(SingletonManager::default()),
       admin,
-      bind_resolver: Arc::new(MockBindResolver::new()),
+      bind_resolver,
       time_provider: Box::<TestTimeProvider>::default(),
       k8s_watch_factory: Arc::new(move || {
         let cloned_k8s_receiver = k8s_receiver.clone();

@@ -183,9 +183,7 @@ impl AbsoluteCounterAggregation {
         // This branch means we are able to grab the delta using data from the previous window.
         log::log!(
           level,
-          "computing delta via previous interval for {}/{:?}",
-          metric_id,
-          downstream_id
+          "computing delta via previous interval for {metric_id}/{downstream_id:?}"
         );
         *delta.get_or_insert(0.0) += current_delta;
       } else if generation > 2 {
@@ -197,17 +195,13 @@ impl AbsoluteCounterAggregation {
         // have to evolve this over time.
         log::log!(
           level,
-          "assuming new source for {}/{:?}",
-          metric_id,
-          downstream_id
+          "assuming new source for {metric_id}/{downstream_id:?}"
         );
         *delta.get_or_insert(0.0) += current_value.last_absolute_value.unwrap();
       } else {
         log::log!(
           level,
-          "{}/{:?} first flush interval, cannot emit",
-          metric_id,
-          downstream_id
+          "{metric_id}/{downstream_id:?} first flush interval, cannot emit"
         );
         return None;
       }
@@ -226,7 +220,7 @@ impl AbsoluteCounterAggregation {
             .flush_interval
             .unwrap_duration_or(default_aggregation_flush_interval())
             .as_seconds_f64();
-        log::log!(level, "emitting rate={rate} for {}", metric_id);
+        log::log!(level, "emitting rate={rate} for {metric_id}");
         (rate, CounterType::Delta)
       } else {
         log::log!(

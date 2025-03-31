@@ -40,6 +40,11 @@ message InternodeConfig {
     // nodes. If not specified defaults to 4 times the number of nodes. This allows for some
     // amount of progress if there is a slow/bad internode node.
     optional uint32 max_concurrent_requests = 3;
+
+    // Defines a circuit breaker for the maximum pending internode requests that can be waiting
+    // for a request slot (the number of request slots is defined by max_concurrent_requests). By
+    // default this is equal to 2x max_concurrent_requests.
+    optional uint32 max_pending_requests = 4;
   }
 
   // The address the processor listens on for internode connections.

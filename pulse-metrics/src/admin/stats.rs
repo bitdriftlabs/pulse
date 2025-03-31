@@ -93,7 +93,7 @@ impl StatsProvider {
     let mut metadata = Vec::new();
     let metrics = self.collector.gather();
     for metric_family in &metrics {
-      let metric_name: Chars = metric_family.get_name().to_string().into();
+      let metric_name: Chars = metric_family.name().to_string().into();
       metadata.push(MetricMetadata {
         type_: match metric_family.get_field_type() {
           MetricType::COUNTER => prompb::types::metric_metadata::MetricType::COUNTER,
@@ -112,8 +112,8 @@ impl StatsProvider {
           .iter()
           .map(|label| {
             make_label(
-              label.get_name().to_string().into(),
-              label.get_value().to_string().into(),
+              label.name().to_string().into(),
+              label.value().to_string().into(),
             )
           })
           .collect();
@@ -129,7 +129,7 @@ impl StatsProvider {
             timeseries.push(make_timeseries(
               metric_name.clone(),
               labels,
-              metric.get_counter().get_value(),
+              metric.get_counter().value(),
               timestamp,
               vec![],
             ));
@@ -138,7 +138,7 @@ impl StatsProvider {
             timeseries.push(make_timeseries(
               metric_name.clone(),
               labels,
-              metric.get_gauge().get_value(),
+              metric.get_gauge().value(),
               timestamp,
               vec![],
             ));
@@ -149,32 +149,32 @@ impl StatsProvider {
             let histogram = metric.get_histogram();
             for bucket in histogram.get_bucket() {
               timeseries.push(make_timeseries(
-                format!("{}_bucket", metric_family.get_name()).into(),
+                format!("{}_bucket", metric_family.name()).into(),
                 labels.clone(),
-                bucket.get_cumulative_count() as f64,
+                bucket.cumulative_count() as f64,
                 timestamp,
                 vec![make_label(
                   "le".into(),
-                  bucket.get_upper_bound().to_string().into(),
+                  bucket.upper_bound().to_string().into(),
                 )],
               ));
             }
             timeseries.push(make_timeseries(
-              format!("{}_bucket", metric_family.get_name()).into(),
+              format!("{}_bucket", metric_family.name()).into(),
               labels.clone(),
               histogram.get_sample_count() as f64,
               timestamp,
               vec![make_label("le".into(), "+Inf".into())],
             ));
             timeseries.push(make_timeseries(
-              format!("{}_count", metric_family.get_name()).into(),
+              format!("{}_count", metric_family.name()).into(),
               labels.clone(),
               histogram.get_sample_count() as f64,
               timestamp,
               vec![],
             ));
             timeseries.push(make_timeseries(
-              format!("{}_sum", metric_family.get_name()).into(),
+              format!("{}_sum", metric_family.name()).into(),
               labels.clone(),
               histogram.get_sample_sum(),
               timestamp,
@@ -202,8 +202,8 @@ impl StatsProvider {
     let host = self.host.as_ref().map_or("0", |h| &**h);
     let mut point_tags = format!("source:{host}");
     for l in m.get_label() {
-      let key = l.get_name();
-      let val = l.get_value();
+      let key = l.name();
+      let val = l.value();
       point_tags = format!("{point_tags},{key}:{val}");
     }
     for (key, val) in &self.meta_tags {
@@ -212,10 +212,10 @@ impl StatsProvider {
 
     match metric_type {
       MetricType::COUNTER => {
-        let value = m.get_counter().get_value().to_string();
+        let value = m.get_counter().value().to_string();
 
         vec![Self::format_statsd_line(
-          mf.get_name(),
+          mf.name(),
           "count",
           value.as_str(),
           "c",
@@ -223,9 +223,9 @@ impl StatsProvider {
         )]
       },
       MetricType::GAUGE => {
-        let value = m.get_gauge().get_value().to_string();
+        let value = m.get_gauge().value().to_string();
         vec![Self::format_statsd_line(
-          mf.get_name(),
+          mf.name(),
           "gauge",
           value.as_str(),
           "g",
@@ -274,8 +274,8 @@ impl StatsProvider {
     let host = self.host.as_ref().map_or("0", |h| &**h);
     let mut point_tags = format!("source=\"{host}\"");
     for l in m.get_label() {
-      let key = l.get_name();
-      let val = l.get_value();
+      let key = l.name();
+      let val = l.value();
       point_tags = format!("{point_tags} {key}=\"{val}\"");
     }
     for (key, val) in &self.meta_tags {
@@ -284,9 +284,9 @@ impl StatsProvider {
 
     match metric_type {
       MetricType::COUNTER => {
-        let value = m.get_counter().get_value().to_string();
+        let value = m.get_counter().value().to_string();
         vec![Self::format_carbon_line(
-          mf.get_name(),
+          mf.name(),
           "count",
           value.as_str(),
           timestamp,
@@ -294,9 +294,9 @@ impl StatsProvider {
         )]
       },
       MetricType::GAUGE => {
-        let value = m.get_gauge().get_value().to_string();
+        let value = m.get_gauge().value().to_string();
         vec![Self::format_carbon_line(
-          mf.get_name(),
+          mf.name(),
           "gauge",
           value.as_str(),
           timestamp,
@@ -310,25 +310,25 @@ impl StatsProvider {
         let buckets = histogram.get_bucket();
         let mut lines = Vec::with_capacity(buckets.len() + 2);
         lines.push(Self::format_carbon_line(
-          mf.get_name(),
+          mf.name(),
           "count",
           histogram.get_sample_count().to_string().as_str(),
           timestamp,
           point_tags.as_str(),
         ));
         lines.push(Self::format_carbon_line(
-          mf.get_name(),
+          mf.name(),
           "sum",
           histogram.get_sample_sum().to_string().as_str(),
           timestamp,
           point_tags.as_str(),
         ));
         for bucket in buckets {
-          let upper_bound = bucket.get_upper_bound();
-          let value = bucket.get_cumulative_count().to_string();
+          let upper_bound = bucket.upper_bound();
+          let value = bucket.cumulative_count().to_string();
           let point_tags = format!("{point_tags} le=\"{upper_bound}\"");
           lines.push(Self::format_carbon_line(
-            mf.get_name(),
+            mf.name(),
             "bucket",
             value.as_str(),
             timestamp,
@@ -338,7 +338,7 @@ impl StatsProvider {
         // Add the implicit "+Inf" bucket
         let point_tags = format!("{point_tags} le=\"+Inf\"");
         lines.push(Self::format_carbon_line(
-          mf.get_name(),
+          mf.name(),
           "bucket",
           histogram.get_sample_count().to_string().as_str(),
           timestamp,

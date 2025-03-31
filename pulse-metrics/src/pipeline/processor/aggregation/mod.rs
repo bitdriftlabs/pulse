@@ -321,7 +321,7 @@ impl AggregationProcessor {
     // TODO(mattklein123): We could potentially keep the length in an independent atomic to avoid
     // having to lock the metrics vector.
     let previous_capacity = self.current_snapshot.read().active_metrics.lock().len();
-    log::debug!("aggregating {} metric(s)", previous_capacity);
+    log::debug!("aggregating {previous_capacity} metric(s)");
     let new_snapshot = AggregationSnapshot::new(
       self.next_generation.fetch_add(1, Ordering::Relaxed),
       previous_capacity,
@@ -369,7 +369,7 @@ impl AggregationProcessor {
       }
 
       let metric_id = metric.metric_key.to_metric_id();
-      log::debug!("flushing {}", metric_id);
+      log::debug!("flushing {metric_id}");
       let (mut aggregation, previous_aggregation, prom_source, generation) = {
         let mut locked_state = metric.locked_state.lock();
 
@@ -392,7 +392,7 @@ impl AggregationProcessor {
         };
         locked_state.last_flushed_snapshot_generation = old_snapshot.generation;
         if let Some(next_aggregation) = locked_state.next_aggregation.take() {
-          log::debug!("{} has new data in next_aggregation", metric_id);
+          log::debug!("{metric_id} has new data in next_aggregation");
           locked_state.aggregation = Some(next_aggregation);
         }
 
@@ -480,7 +480,7 @@ impl AggregationProcessor {
 
     if let Some(post_flush_send_jitter) = self.config.config.post_flush_send_jitter.as_ref() {
       let sleep_duration: Duration = post_flush_send_jitter.to_time_duration();
-      log::debug!("sleeping for {:?}", sleep_duration);
+      log::debug!("sleeping for {sleep_duration:?}");
       JitterType::full_jitter_duration(sleep_duration)
         .sleep()
         .await;
