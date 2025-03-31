@@ -37,11 +37,14 @@ use k8s_prom::kubernetes_prometheus_config::use_k8s_https_service_auth_matcher::
 use k8s_prom::kubernetes_prometheus_config::{HttpServiceDiscovery, UseK8sHttpsServiceAuthMatcher};
 use parking_lot::Mutex;
 use prometheus::labels;
+use protobuf::MessageField;
 use pulse_common::k8s::pods_info::container::PodsInfo;
 use pulse_common::k8s::pods_info::{ContainerPort, PodsInfoSingleton};
 use pulse_common::k8s::services::ServiceInfo;
 use pulse_common::k8s::test::{make_node_info, make_pod_info};
 use pulse_common::metadata::{Metadata, PodMetadata};
+use pulse_protobuf::protos::pulse::config::common::v1::common::EnvOrInline;
+use pulse_protobuf::protos::pulse::config::common::v1::common::env_or_inline::Data_type;
 use pulse_protobuf::protos::pulse::config::inflow::v1::k8s_prom;
 use std::collections::{HashMap, VecDeque};
 use std::future::pending;
@@ -567,7 +570,12 @@ async fn test_http_sd() {
           Box::new(
             HttpServiceDiscoveryEndpointTarget::new(
               HttpServiceDiscovery {
-                url: format!("http://127.0.0.1:{port}/http_sd").into(),
+                url: MessageField::some(EnvOrInline {
+                  data_type: Some(Data_type::Inline(
+                    format!("http://127.0.0.1:{port}/http_sd").into(),
+                  )),
+                  ..Default::default()
+                }),
                 ..Default::default()
               },
               shutdown,

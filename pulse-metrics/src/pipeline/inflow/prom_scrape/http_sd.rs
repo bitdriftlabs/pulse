@@ -8,6 +8,7 @@
 use super::scraper::Ticker;
 use bd_shutdown::ComponentShutdown;
 use k8s_prom::kubernetes_prometheus_config::HttpServiceDiscovery;
+use pulse_common::proto::env_or_inline_to_string;
 use pulse_protobuf::protos::pulse::config::inflow::v1::k8s_prom;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -23,10 +24,10 @@ pub struct TargetBlock {
 async fn do_fetch(config: &HttpServiceDiscovery) -> anyhow::Result<Vec<TargetBlock>> {
   log::debug!(
     "Fetching HTTP service discovery targets from {}",
-    config.url
+    env_or_inline_to_string(&config.url).unwrap_or_default()
   );
   let response = reqwest::Client::new()
-    .get(config.url.as_str())
+    .get(env_or_inline_to_string(&config.url).unwrap_or_default())
     .timeout(15.std_seconds())
     .send()
     .await?;

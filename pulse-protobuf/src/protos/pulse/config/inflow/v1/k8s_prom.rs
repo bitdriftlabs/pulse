@@ -1471,7 +1471,7 @@ pub mod kubernetes_prometheus_config {
     pub struct HttpServiceDiscovery {
         // message fields
         // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.HttpServiceDiscovery.url)
-        pub url: ::protobuf::Chars,
+        pub url: ::protobuf::MessageField<super::super::common::EnvOrInline>,
         // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.HttpServiceDiscovery.fetch_interval)
         pub fetch_interval: ::protobuf::MessageField<::protobuf::well_known_types::duration::Duration>,
         // special fields
@@ -1493,7 +1493,7 @@ pub mod kubernetes_prometheus_config {
         pub(in super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
             let mut fields = ::std::vec::Vec::with_capacity(2);
             let mut oneofs = ::std::vec::Vec::with_capacity(0);
-            fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+            fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, super::super::common::EnvOrInline>(
                 "url",
                 |m: &HttpServiceDiscovery| { &m.url },
                 |m: &mut HttpServiceDiscovery| { &mut m.url },
@@ -1522,7 +1522,7 @@ pub mod kubernetes_prometheus_config {
             while let Some(tag) = is.read_raw_tag_or_eof()? {
                 match tag {
                     10 => {
-                        self.url = is.read_tokio_chars()?;
+                        ::protobuf::rt::read_singular_message_into_field(is, &mut self.url)?;
                     },
                     18 => {
                         ::protobuf::rt::read_singular_message_into_field(is, &mut self.fetch_interval)?;
@@ -1539,8 +1539,9 @@ pub mod kubernetes_prometheus_config {
         #[allow(unused_variables)]
         fn compute_size(&self) -> u64 {
             let mut my_size = 0;
-            if !self.url.is_empty() {
-                my_size += ::protobuf::rt::string_size(1, &self.url);
+            if let Some(v) = self.url.as_ref() {
+                let len = v.compute_size();
+                my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
             }
             if let Some(v) = self.fetch_interval.as_ref() {
                 let len = v.compute_size();
@@ -1552,8 +1553,8 @@ pub mod kubernetes_prometheus_config {
         }
 
         fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
-            if !self.url.is_empty() {
-                os.write_string(1, &self.url)?;
+            if let Some(v) = self.url.as_ref() {
+                ::protobuf::rt::write_message_field_with_cached_size(1, v, os)?;
             }
             if let Some(v) = self.fetch_interval.as_ref() {
                 ::protobuf::rt::write_message_field_with_cached_size(2, v, os)?;
@@ -1582,7 +1583,7 @@ pub mod kubernetes_prometheus_config {
 
         fn default_instance() -> &'static HttpServiceDiscovery {
             static instance: HttpServiceDiscovery = HttpServiceDiscovery {
-                url: ::protobuf::Chars::new(),
+                url: ::protobuf::MessageField::none(),
                 fetch_interval: ::protobuf::MessageField::none(),
                 special_fields: ::protobuf::SpecialFields::new(),
             };
@@ -1768,39 +1769,40 @@ pub mod kubernetes_prometheus_config {
 
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n%pulse/config/inflow/v1/k8s_prom.proto\x12\x16pulse.config.inflow.v1\
-    \x1a\x1egoogle/protobuf/duration.proto\x1a\x17validate/validate.proto\"\
-    \x9e\x0e\n\x1aKubernetesPrometheusConfig\x12L\n\x0fscrape_interval\x18\
-    \x01\x20\x01(\x0b2\x19.google.protobuf.DurationR\x0escrapeIntervalB\x08\
-    \xfaB\x05\x8a\x01\x02\x10\x01\x12Y\n\x08endpoint\x18\x02\x20\x01(\x0b2;.\
-    pulse.config.inflow.v1.KubernetesPrometheusConfig.EndpointH\0R\x08endpoi\
-    nt\x12M\n\x04node\x18\x03\x20\x01(\x0b27.pulse.config.inflow.v1.Kubernet\
-    esPrometheusConfig.NodeH\0R\x04node\x12J\n\x03pod\x18\x04\x20\x01(\x0b26\
-    .pulse.config.inflow.v1.KubernetesPrometheusConfig.PodH\0R\x03pod\x12\
-    \x7f\n\x16http_service_discovery\x18\x08\x20\x01(\x0b2G.pulse.config.inf\
-    low.v1.KubernetesPrometheusConfig.HttpServiceDiscoveryH\0R\x14httpServic\
-    eDiscovery\x12$\n\x0eemit_up_metric\x18\x05\x20\x01(\x08R\x0cemitUpMetri\
-    c\x12U\n\ntls_config\x18\x06\x20\x01(\x0b26.pulse.config.inflow.v1.Kuber\
-    netesPrometheusConfig.TLSR\ttlsConfig\x12@\n\x0escrape_timeout\x18\x07\
-    \x20\x01(\x0b2\x19.google.protobuf.DurationR\rscrapeTimeout\x1a\x8d\x02\
-    \n\x1dUseK8sHttpsServiceAuthMatcher\x12\x8a\x01\n\x12annotation_matcher\
-    \x18\x01\x20\x01(\x0b2Y.pulse.config.inflow.v1.KubernetesPrometheusConfi\
-    g.UseK8sHttpsServiceAuthMatcher.KeyValueH\0R\x11annotationMatcher\x1aJ\n\
-    \x08KeyValue\x12\x19\n\x03key\x18\x01\x20\x01(\tR\x03keyB\x07\xfaB\x04r\
-    \x02\x10\x01\x12\x19\n\x05value\x18\x02\x20\x01(\tH\0R\x05value\x88\x01\
-    \x01B\x08\n\x06_valueB\x13\n\x0cauth_matcher\x12\x03\xf8B\x01\x1a\xaa\
-    \x01\n\x08Endpoint\x12\x9d\x01\n#use_k8s_https_service_auth_matchers\x18\
-    \x02\x20\x03(\x0b2P.pulse.config.inflow.v1.KubernetesPrometheusConfig.Us\
-    eK8sHttpsServiceAuthMatcherR\x1euseK8sHttpsServiceAuthMatchers\x1a#\n\
-    \x04Node\x12\x1b\n\x04path\x18\x01\x20\x01(\tR\x04pathB\x07\xfaB\x04r\
-    \x02\x10\x01\x1a\xfe\x02\n\x03Pod\x12s\n\x11inclusion_filters\x18\x01\
-    \x20\x03(\x0b2F.pulse.config.inflow.v1.KubernetesPrometheusConfig.Pod.In\
-    clusionFilterR\x10inclusionFilters\x12\x9d\x01\n#use_k8s_https_service_a\
-    uth_matchers\x18\x02\x20\x03(\x0b2P.pulse.config.inflow.v1.KubernetesPro\
-    metheusConfig.UseK8sHttpsServiceAuthMatcherR\x1euseK8sHttpsServiceAuthMa\
-    tchers\x1ab\n\x0fInclusionFilter\x12;\n\x19container_port_name_regex\x18\
-    \x01\x20\x01(\tH\0R\x16containerPortNameRegexB\x12\n\x0bfilter_type\x12\
-    \x03\xf8B\x01\x1as\n\x14HttpServiceDiscovery\x12\x19\n\x03url\x18\x01\
-    \x20\x01(\tR\x03urlB\x07\xfaB\x04r\x02\x10\x01\x12@\n\x0efetch_interval\
+    \x1a#pulse/config/common/v1/common.proto\x1a\x1egoogle/protobuf/duration\
+    .proto\x1a\x17validate/validate.proto\"\xc4\x0e\n\x1aKubernetesPrometheu\
+    sConfig\x12L\n\x0fscrape_interval\x18\x01\x20\x01(\x0b2\x19.google.proto\
+    buf.DurationR\x0escrapeIntervalB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12Y\n\
+    \x08endpoint\x18\x02\x20\x01(\x0b2;.pulse.config.inflow.v1.KubernetesPro\
+    metheusConfig.EndpointH\0R\x08endpoint\x12M\n\x04node\x18\x03\x20\x01(\
+    \x0b27.pulse.config.inflow.v1.KubernetesPrometheusConfig.NodeH\0R\x04nod\
+    e\x12J\n\x03pod\x18\x04\x20\x01(\x0b26.pulse.config.inflow.v1.Kubernetes\
+    PrometheusConfig.PodH\0R\x03pod\x12\x7f\n\x16http_service_discovery\x18\
+    \x08\x20\x01(\x0b2G.pulse.config.inflow.v1.KubernetesPrometheusConfig.Ht\
+    tpServiceDiscoveryH\0R\x14httpServiceDiscovery\x12$\n\x0eemit_up_metric\
+    \x18\x05\x20\x01(\x08R\x0cemitUpMetric\x12U\n\ntls_config\x18\x06\x20\
+    \x01(\x0b26.pulse.config.inflow.v1.KubernetesPrometheusConfig.TLSR\ttlsC\
+    onfig\x12@\n\x0escrape_timeout\x18\x07\x20\x01(\x0b2\x19.google.protobuf\
+    .DurationR\rscrapeTimeout\x1a\x8d\x02\n\x1dUseK8sHttpsServiceAuthMatcher\
+    \x12\x8a\x01\n\x12annotation_matcher\x18\x01\x20\x01(\x0b2Y.pulse.config\
+    .inflow.v1.KubernetesPrometheusConfig.UseK8sHttpsServiceAuthMatcher.KeyV\
+    alueH\0R\x11annotationMatcher\x1aJ\n\x08KeyValue\x12\x19\n\x03key\x18\
+    \x01\x20\x01(\tR\x03keyB\x07\xfaB\x04r\x02\x10\x01\x12\x19\n\x05value\
+    \x18\x02\x20\x01(\tH\0R\x05value\x88\x01\x01B\x08\n\x06_valueB\x13\n\x0c\
+    auth_matcher\x12\x03\xf8B\x01\x1a\xaa\x01\n\x08Endpoint\x12\x9d\x01\n#us\
+    e_k8s_https_service_auth_matchers\x18\x02\x20\x03(\x0b2P.pulse.config.in\
+    flow.v1.KubernetesPrometheusConfig.UseK8sHttpsServiceAuthMatcherR\x1euse\
+    K8sHttpsServiceAuthMatchers\x1a#\n\x04Node\x12\x1b\n\x04path\x18\x01\x20\
+    \x01(\tR\x04pathB\x07\xfaB\x04r\x02\x10\x01\x1a\xfe\x02\n\x03Pod\x12s\n\
+    \x11inclusion_filters\x18\x01\x20\x03(\x0b2F.pulse.config.inflow.v1.Kube\
+    rnetesPrometheusConfig.Pod.InclusionFilterR\x10inclusionFilters\x12\x9d\
+    \x01\n#use_k8s_https_service_auth_matchers\x18\x02\x20\x03(\x0b2P.pulse.\
+    config.inflow.v1.KubernetesPrometheusConfig.UseK8sHttpsServiceAuthMatche\
+    rR\x1euseK8sHttpsServiceAuthMatchers\x1ab\n\x0fInclusionFilter\x12;\n\
+    \x19container_port_name_regex\x18\x01\x20\x01(\tH\0R\x16containerPortNam\
+    eRegexB\x12\n\x0bfilter_type\x12\x03\xf8B\x01\x1a\x98\x01\n\x14HttpServi\
+    ceDiscovery\x12>\n\x03url\x18\x01\x20\x01(\x0b2#.pulse.config.common.v1.\
+    EnvOrInlineR\x03urlB\x07\xfaB\x04r\x02\x10\x01\x12@\n\x0efetch_interval\
     \x18\x02\x20\x01(\x0b2\x19.google.protobuf.DurationR\rfetchInterval\x1a\
     \x94\x01\n\x03TLS\x12\x20\n\tcert_file\x18\x01\x20\x01(\tH\0R\x08certFil\
     e\x88\x01\x01\x12\x1e\n\x08key_file\x18\x02\x20\x01(\tH\x01R\x07keyFile\
@@ -1823,7 +1825,8 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
     static file_descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::FileDescriptor> = ::protobuf::rt::Lazy::new();
     file_descriptor.get(|| {
         let generated_file_descriptor = generated_file_descriptor_lazy.get(|| {
-            let mut deps = ::std::vec::Vec::with_capacity(2);
+            let mut deps = ::std::vec::Vec::with_capacity(3);
+            deps.push(super::common::file_descriptor().clone());
             deps.push(::protobuf::well_known_types::duration::file_descriptor().clone());
             deps.push(super::validate::file_descriptor().clone());
             let mut messages = ::std::vec::Vec::with_capacity(9);

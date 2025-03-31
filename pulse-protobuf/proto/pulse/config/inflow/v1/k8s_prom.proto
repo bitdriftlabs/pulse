@@ -8,6 +8,7 @@
 syntax = "proto3";
 package pulse.config.inflow.v1;
 
+import "pulse/config/common/v1/common.proto";
 import "google/protobuf/duration.proto";
 import "validate/validate.proto";
 
@@ -73,7 +74,7 @@ message KubernetesPrometheusConfig {
   // https://prometheus.io/docs/prometheus/latest/http_sd/
   message HttpServiceDiscovery {
     // The URL to scrape for service discovery. This should be a valid URL.
-    string url = 1 [(validate.rules).string = {min_len: 1}];
+    common.v1.EnvOrInline url = 1 [(validate.rules).string = {min_len: 1}];
 
     // The interval to use for fetching the service discovery config. If not set default to
     // 1 minute.
