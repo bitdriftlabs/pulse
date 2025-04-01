@@ -50,7 +50,7 @@ pub fn make_pod_info(
   container_ports: Vec<ContainerPort>,
 ) -> PodInfo {
   let metadata = Arc::new(Metadata::new(
-    &make_node_info(),
+    Some(&make_node_info()),
     Some(PodMetadata {
       namespace,
       pod_name: name,

@@ -214,7 +214,7 @@ fn create_endpoints(
         *port,
         prom_endpoint_path.clone(),
         Some(Arc::new(Metadata::new(
-          node_info,
+          Some(node_info),
           Some(PodMetadata {
             namespace: &prom_namespace,
             pod_name: &pod_info.name,
@@ -894,7 +894,11 @@ impl NodeEndpointsTarget {
           node_info.name.to_string(),
           node_info.kubelet_port,
           details.path.to_string(),
-          Some(Arc::new(Metadata::new(node_info, None, None))),
+          Some(Arc::new(Metadata::new(
+            Some(node_info),
+            None,
+            Some(format!("{}:{}", node_info.name, node_info.kubelet_port)),
+          ))),
           true,
           "https".to_string(), // Node endpoints always use HTTPS.
           vec![],
@@ -965,7 +969,7 @@ impl EndpointProvider for HttpServiceDiscoveryEndpointTarget {
           address_and_port[0].to_string(),
           port,
           "/metrics".to_string(),
-          None,
+          Some(Arc::new(Metadata::new(None, None, Some(target.clone())))),
           false,
           "http".to_string(),
           extra_tags.clone(),

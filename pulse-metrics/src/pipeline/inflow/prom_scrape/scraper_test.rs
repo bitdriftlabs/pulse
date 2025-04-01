@@ -728,7 +728,7 @@ impl EndpointProvider for FakeEndpointProvider {
         },
         String::new(),
         Some(Arc::new(Metadata::new(
-          &make_node_info(),
+          Some(&make_node_info()),
           Some(PodMetadata {
             namespace: "namespace",
             pod_name: "pod",

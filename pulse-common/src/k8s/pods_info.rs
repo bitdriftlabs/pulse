@@ -293,7 +293,7 @@ pub mod container {
           labels: pod.labels().clone(),
           annotations: pod.annotations().clone(),
           metadata: Arc::new(crate::metadata::Metadata::new(
-            node_info,
+            Some(node_info),
             Some(PodMetadata {
               namespace,
               pod_name,

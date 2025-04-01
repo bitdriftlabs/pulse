@@ -41,7 +41,7 @@ bd-time                = { git = "https://github.com/bitdriftlabs/shared-core.gi
 built                  = { version = "0.7", features = ["git2"] }
 bytes                  = "1"
 cc                     = "1.2.17"
-clap                   = { version = "4.5.34", features = ["derive", "env"] }
+clap                   = { version = "4.5.35", features = ["derive", "env"] }
 comfy-table            = "7.1.4"
 console-subscriber     = "0.4.1"
 criterion              = { version = "0.5", features = ["html_reports"] }
@@ -67,7 +67,7 @@ hyper-rustls = { version = "0.27.5", default-features = false, features = [
   "aws-lc-rs",
 ] }
 
-hyper-util            = { version = "0.1.10", features = ["client", "client-legacy"] }
+hyper-util            = { version = "0.1.11", features = ["client", "client-legacy"] }
 hyperloglogplus       = "0.4.1"
 intrusive-collections = "0.9.7"
 itertools             = "0.14.0"
