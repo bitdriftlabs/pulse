@@ -107,13 +107,13 @@ async fn node_only() {
         0,
         1.0,
         Metadata::new(
-          &NodeInfo {
+          Some(&NodeInfo {
             name: "node_name".to_string(),
             ip: "node_ip".to_string(),
             labels: btreemap!("k1" => "v1"),
             annotations: btreemap!("a1" => "b1"),
             kubelet_port: 123,
-          },
+          }),
           None,
           None,
         ),
@@ -130,13 +130,13 @@ async fn node_only() {
         0,
         1.0,
         Metadata::new(
-          &NodeInfo {
+          Some(&NodeInfo {
             name: "node_name".to_string(),
             ip: "node_ip".to_string(),
             labels: btreemap!("k1" => "v1"),
             annotations: btreemap!("a1" => "b1"),
             kubelet_port: 123,
-          },
+          }),
           None,
           None,
         ),
@@ -175,7 +175,7 @@ if string!(%k8s.service.name) == "kube_state_metrics" &&
       0,
       1.0,
       Metadata::new(
-        &make_node_info(),
+        Some(&make_node_info()),
         Some(PodMetadata {
           namespace: "default",
           pod_name: "podA",
@@ -200,7 +200,7 @@ if string!(%k8s.service.name) == "kube_state_metrics" &&
         0,
         1.0,
         Metadata::new(
-          &make_node_info(),
+          Some(&make_node_info()),
           Some(PodMetadata {
             namespace: "default",
             pod_name: "podA",
@@ -218,7 +218,7 @@ if string!(%k8s.service.name) == "kube_state_metrics" &&
         0,
         1.0,
         Metadata::new(
-          &make_node_info(),
+          Some(&make_node_info()),
           Some(PodMetadata {
             namespace: "default",
             pod_name: "podA",
@@ -263,7 +263,7 @@ if is_null(.tags.namespace) {
         0,
         1.0,
         Metadata::new(
-          &make_node_info(),
+          Some(&make_node_info()),
           Some(PodMetadata {
             namespace: "default",
             pod_name: "podA",
@@ -281,7 +281,7 @@ if is_null(.tags.namespace) {
         0,
         1.0,
         Metadata::new(
-          &make_node_info(),
+          Some(&make_node_info()),
           Some(PodMetadata {
             namespace: "default",
             pod_name: "podA",
@@ -321,7 +321,7 @@ async fn test_transformation_kubernetes_service_name() {
         0,
         1.0,
         Metadata::new(
-          &make_node_info(),
+          Some(&make_node_info()),
           Some(PodMetadata {
             namespace: "default",
             pod_name: "podA",
@@ -345,7 +345,7 @@ async fn test_transformation_kubernetes_service_name() {
         0,
         1.0,
         Metadata::new(
-          &make_node_info(),
+          Some(&make_node_info()),
           Some(PodMetadata {
             namespace: "default",
             pod_name: "podA",
@@ -388,7 +388,7 @@ async fn test_transformation_kubernetes_namespace() {
         0,
         1.0,
         Metadata::new(
-          &make_node_info(),
+          Some(&make_node_info()),
           Some(PodMetadata {
             namespace: "default",
             pod_name: "podA",
@@ -414,7 +414,7 @@ async fn test_transformation_kubernetes_namespace() {
         0,
         1.0,
         Metadata::new(
-          &make_node_info(),
+          Some(&make_node_info()),
           Some(PodMetadata {
             namespace: "default",
             pod_name: "podA",
@@ -447,7 +447,7 @@ del(.tags.key1)
         0,
         1.0,
         Metadata::new(
-          &make_node_info(),
+          Some(&make_node_info()),
           Some(PodMetadata {
             namespace: "default",
             pod_name: "podA",
@@ -465,7 +465,7 @@ del(.tags.key1)
         0,
         1.0,
         Metadata::new(
-          &make_node_info(),
+          Some(&make_node_info()),
           Some(PodMetadata {
             namespace: "default",
             pod_name: "podA",
@@ -500,7 +500,7 @@ if exists(.tags.key1) {
         0,
         1.0,
         Metadata::new(
-          &make_node_info(),
+          Some(&make_node_info()),
           Some(PodMetadata {
             namespace: "default",
             pod_name: "podA",
@@ -518,7 +518,7 @@ if exists(.tags.key1) {
         0,
         1.0,
         Metadata::new(
-          &make_node_info(),
+          Some(&make_node_info()),
           Some(PodMetadata {
             namespace: "default",
             pod_name: "podA",

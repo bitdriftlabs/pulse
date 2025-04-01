@@ -28,7 +28,7 @@ use xxhash_rust::xxh64::Xxh64;
 
 fn make_metadata(pod_name: &str) -> Metadata {
   Metadata::new(
-    &make_node_info(),
+    Some(&make_node_info()),
     Some(PodMetadata {
       namespace: "default",
       pod_name,

@@ -113,13 +113,13 @@ fn run_test_case(test_case: VrlTestCase, proxy_config: Option<&Config>) -> anyho
     .into_option()
     .map(|kubernetes_metadata| {
       Arc::new(Metadata::new(
-        &NodeInfo {
+        Some(&NodeInfo {
           name: kubernetes_metadata.host_name.to_string(),
           ip: kubernetes_metadata.host_ip.to_string(),
           kubelet_port: 0,
           labels: BTreeMap::new(),
           annotations: BTreeMap::new(),
-        },
+        }),
         Some(PodMetadata {
           namespace: &kubernetes_metadata.namespace,
           pod_name: &kubernetes_metadata.pod_name,

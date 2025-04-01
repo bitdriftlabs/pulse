@@ -39,7 +39,7 @@ pub struct PodMetadata<'a> {
 impl Metadata {
   #[must_use]
   pub fn new(
-    node_info: &NodeInfo,
+    node_info: Option<&NodeInfo>,
     pod_metadata: Option<PodMetadata<'_>>,
     prom_scrape_address: Option<String>,
   ) -> Self {
@@ -60,10 +60,10 @@ impl Metadata {
     let pod_annotations = pod_metadata
       .as_ref()
       .map(|p| btree_to_value(p.pod_annotations));
-    let node_name = node_info.name.to_string();
-    let node_ip = node_info.ip.to_string();
-    let node_labels = btree_to_value(&node_info.labels);
-    let node_annotations = btree_to_value(&node_info.annotations);
+    let node_name = node_info.as_ref().map(|n| n.name.to_string());
+    let node_ip = node_info.as_ref().map(|n| n.ip.to_string());
+    let node_labels = node_info.as_ref().map(|n| btree_to_value(&n.labels));
+    let node_annotations = node_info.as_ref().map(|n| btree_to_value(&n.annotations));
     let service = pod_metadata.and_then(|p| p.service.map(|s| value!({"name": s})));
     let value = value!({
       "prom": {
