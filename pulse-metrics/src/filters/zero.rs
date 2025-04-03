@@ -46,7 +46,7 @@ impl MetricFilter for ZeroFilter {
         Some(MetricType::Counter(CounterType::Absolute)),
       ) => {
         if self.config.counters.absolute_counters.elide_if_no_change {
-          return if metric.value.to_simple() == last_value.to_simple() {
+          return if (metric.value.to_simple() - last_value.to_simple()).abs() < f64::EPSILON {
             MetricFilterDecision::Fail
           } else {
             MetricFilterDecision::NotCovered
@@ -57,8 +57,10 @@ impl MetricFilter for ZeroFilter {
         // Generally histograms are absolute counters, though they may have been made into delta
         // counters via the aggregation processor.
         if self.config.histograms.elide_if_no_change {
-          return if metric.value.to_histogram().sample_count
-            == last_value.to_histogram().sample_count
+          return if (metric.value.to_histogram().sample_count
+            - last_value.to_histogram().sample_count)
+            .abs()
+            < f64::EPSILON
           {
             MetricFilterDecision::Fail
           } else {
@@ -75,7 +77,10 @@ impl MetricFilter for ZeroFilter {
       },
       (Some(MetricType::Summary), Some(MetricType::Summary)) => {
         // We assume summary counts are absolute counters.
-        return if metric.value.to_summary().sample_count == last_value.to_summary().sample_count {
+        return if (metric.value.to_summary().sample_count - last_value.to_summary().sample_count)
+          .abs()
+          < f64::EPSILON
+        {
           MetricFilterDecision::Fail
         } else {
           MetricFilterDecision::NotCovered

@@ -221,7 +221,7 @@ impl BindResolver for HelperBindResolver {
 pub struct Helper {
   shutdown_trigger: Option<ComponentShutdownTrigger>,
   shutdown: bool,
-  stats_helper: StatsHelper,
+  stats: StatsHelper,
 }
 
 impl Drop for Helper {
@@ -269,7 +269,7 @@ impl Helper {
     Self {
       shutdown_trigger: Some(shutdown_trigger),
       shutdown: false,
-      stats_helper: StatsHelper::new_with_collector(collector),
+      stats: StatsHelper::new_with_collector(collector),
     }
   }
 
@@ -279,7 +279,7 @@ impl Helper {
   }
 
   pub const fn stats_helper(&self) -> &StatsHelper {
-    &self.stats_helper
+    &self.stats
   }
 }
 
@@ -293,6 +293,7 @@ struct FakeRemoteFileSource {
 }
 
 impl FakeRemoteFileSource {
+  #[allow(clippy::unused_async)]
   async fn handler(
     State(state): State<Arc<Self>>,
     request: Request,

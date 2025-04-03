@@ -9,6 +9,7 @@ use super::{make_metric, make_name};
 use crate::protos::metric::{DownstreamId, MetricId, MetricType, MetricValue, ParsedMetric};
 use crate::protos::prom::prom_stale_marker;
 use ahash::AHashMap;
+use pulse_common::LossyIntoToFloat;
 use pulse_protobuf::protos::pulse::config::processor::v1::aggregation::AggregationConfig;
 use tokio::time::Instant;
 
@@ -135,7 +136,7 @@ impl GaugeProducer for RealProducer<'_> {
     if self.aggregation.values.is_empty() {
       0.0
     } else {
-      self.aggregation.values.values().sum::<f64>() / self.aggregation.values.len() as f64
+      self.aggregation.values.values().sum::<f64>() / self.aggregation.values.len().lossy_to_f64()
     }
   }
   fn min(&self) -> f64 {

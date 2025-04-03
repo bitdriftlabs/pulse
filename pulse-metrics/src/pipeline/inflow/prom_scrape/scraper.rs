@@ -574,7 +574,7 @@ impl<Jitter: DurationJitter + 'static> Scraper<Jitter> {
     }
   }
 
-  async fn reload(
+  fn reload(
     self: &Arc<Self>,
     active_jobs: &mut HashMap<String, ComponentShutdownTrigger>,
     endpoints: &mut dyn EndpointProvider,
@@ -645,7 +645,7 @@ impl<Jitter: DurationJitter + 'static> PipelineInflow for Scraper<Jitter> {
     let mut active_jobs = HashMap::new();
     let mut endpoints = self.endpoints.lock().take().unwrap();
 
-    self.reload(&mut active_jobs, endpoints.as_mut()).await;
+    self.reload(&mut active_jobs, endpoints.as_mut());
 
     tokio::spawn(async move {
       let mut shutdown = self.shutdown_trigger_handle.make_shutdown();
@@ -654,7 +654,7 @@ impl<Jitter: DurationJitter + 'static> PipelineInflow for Scraper<Jitter> {
       loop {
         tokio::select! {
            () = endpoints.changed() => {
-             self.reload(&mut active_jobs, endpoints.as_mut()).await;
+             self.reload(&mut active_jobs, endpoints.as_mut());
            }
            () = &mut shutdown => {
             log::info!("prometheus scraper cancelled");
@@ -743,16 +743,13 @@ pub async fn make(
       stats,
       context.dispatcher,
       context.shutdown_trigger_handle,
-      Box::new(
-        NodeEndpointsTarget::new(
-          &(context.k8s_watch_factory)()
-            .await?
-            .make_owned()
-            .node_info(),
-          details,
-        )
-        .await?,
-      ),
+      Box::new(NodeEndpointsTarget::new(
+        &(context.k8s_watch_factory)()
+          .await?
+          .make_owned()
+          .node_info(),
+        &details,
+      )),
       scrape_interval,
       ticker_factory,
       config.emit_up_metric,
@@ -883,11 +880,8 @@ struct NodeEndpointsTarget {
 }
 
 impl NodeEndpointsTarget {
-  async fn new(
-    node_info: &NodeInfo,
-    details: kubernetes_prometheus_config::Node,
-  ) -> anyhow::Result<Self> {
-    Ok(Self {
+  fn new(node_info: &NodeInfo, details: &kubernetes_prometheus_config::Node) -> Self {
+    Self {
       endpoints: HashMap::from([(
         node_info.name.to_string(),
         PromEndpoint::new(
@@ -904,7 +898,7 @@ impl NodeEndpointsTarget {
           vec![],
         ),
       )]),
-    })
+    }
   }
 }
 

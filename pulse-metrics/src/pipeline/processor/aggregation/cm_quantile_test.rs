@@ -6,6 +6,7 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
 use super::*;
+use bd_test_helpers::float_eq;
 
 #[test]
 fn add() {
@@ -17,35 +18,35 @@ fn add() {
 fn cm_add_loop() {
   let mut cm = Quantile::new(0.01, vec![0.5, 0.9, 0.99]);
   for i in 0 .. 1000u64 {
-    cm.add_sample(i as f64);
+    cm.add_sample(i.lossy_to_f64());
   }
 }
 
 #[test]
 fn query() {
   let cm = Quantile::new(0.01, vec![0.5, 0.9, 0.99]);
-  assert_eq!(0.0, cm.query(0.5));
+  assert!(float_eq!(0.0, cm.query(0.5)));
 }
 
 #[test]
 fn add_query() {
   let mut cm = Quantile::new(0.01, vec![0.5, 0.9, 0.99]);
   cm.add_sample(100.0);
-  assert_eq!(100.0, cm.query(0.5));
+  assert!(float_eq!(100.0, cm.query(0.5)));
 }
 
 #[test]
 fn add_negative_query() {
   let mut cm = Quantile::new(0.01, vec![0.5, 0.9, 0.99]);
   cm.add_sample(-100.0);
-  assert_eq!(-100.0, cm.query(0.5));
+  assert!(float_eq!(-100.0, cm.query(0.5)));
 }
 
 #[test]
 fn add_loop_query() {
   let mut cm = Quantile::new(0.01, vec![0.5, 0.9, 0.99]);
   for i in 0 .. 100_000u64 {
-    cm.add_sample(i as f64);
+    cm.add_sample(i.lossy_to_f64());
   }
   cm.flush();
 
@@ -63,7 +64,7 @@ fn add_loop_query() {
 fn add_loop_rev_query() {
   let mut cm = Quantile::new(0.01, vec![0.5, 0.9, 0.99]);
   for i in (0 .. 100_000u64).rev() {
-    cm.add_sample(i as f64);
+    cm.add_sample(i.lossy_to_f64());
   }
   cm.flush();
 
@@ -89,7 +90,7 @@ fn add_loop_random_query() {
 
   let mut cm = Quantile::new(0.01, vec![0.5, 0.9, 0.99]);
   for _ in 0 .. 100_000 {
-    cm.add_sample(unsafe { cm_quantile_test_random_c() } as f64);
+    cm.add_sample(unsafe { cm_quantile_test_random_c() }.lossy_to_f64());
   }
   cm.flush();
 

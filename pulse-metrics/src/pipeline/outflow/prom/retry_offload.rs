@@ -125,7 +125,7 @@ pub async fn create_offload_queue(
   queue_type: &Queue_type,
 ) -> anyhow::Result<Arc<dyn OffloadQueue>> {
   match queue_type {
-    Queue_type::LoopbackForTest(_) => LoopbackForTestOffloadQueue::create(),
+    Queue_type::LoopbackForTest(_) => Ok(LoopbackForTestOffloadQueue::create()),
     Queue_type::AwsSqs(aws_sqs) => AwsSqsOffloadQueue::create(aws_sqs).await,
   }
 }
@@ -167,7 +167,7 @@ pub async fn maybe_queue_for_retry(
   let backoff = offload_queue_config
     .backoff
     .unwrap_duration_or(20.seconds())
-    * (serialized.retry_attempts() as u32);
+    * (u32::try_from(serialized.retry_attempts()).unwrap());
 
   if let Err(e) = offload_queue.queue_write_request(serialized, backoff).await {
     warn_every!(15.seconds(), "failed to queue to offload: {}", e);
@@ -190,13 +190,13 @@ struct LoopbackForTestOffloadQueue {
 }
 
 impl LoopbackForTestOffloadQueue {
-  fn create() -> anyhow::Result<Arc<dyn OffloadQueue>> {
+  fn create() -> Arc<dyn OffloadQueue> {
     let (tx, rx) = mpsc::channel(16);
 
-    Ok(Arc::new(Self {
+    Arc::new(Self {
       tx,
       rx: Mutex::new(rx),
-    }))
+    })
   }
 }
 

@@ -320,9 +320,9 @@ fn state_skip_decider() {
   let mut outputs = 0;
   for t in 0 .. 100 {
     match d.decide(
-      &mock_metric(Bytes::default(), None, 0_f64, t as u64),
+      &mock_metric(Bytes::default(), None, 0_f64, t),
       s.update(
-        &mock_metric(Bytes::default(), None, 0_f64, t as u64),
+        &mock_metric(Bytes::default(), None, 0_f64, t),
         &[Arc::new(ZeroFilter::new("", &ZeroElisionConfig::default()))],
       )
       .0,
@@ -351,9 +351,9 @@ fn state_skip_decider_init() {
   let mut outputs = 0;
   for t in 0 .. 100 {
     match d.decide(
-      &mock_metric(Bytes::default(), None, 0_f64, t as u64),
+      &mock_metric(Bytes::default(), None, 0_f64, t),
       s.update(
-        &mock_metric(Bytes::default(), None, 0_f64, t as u64),
+        &mock_metric(Bytes::default(), None, 0_f64, t),
         &[
           Arc::new(ZeroFilter::new("", &ZeroElisionConfig::default())),
           Arc::new(MockMetricFilter::new(

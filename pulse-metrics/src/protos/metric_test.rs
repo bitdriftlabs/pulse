@@ -249,7 +249,7 @@ fn metrics_from_write_request() {
 }
 
 #[quickcheck]
-fn metrics_to_write_request_metadata_only(input: ParsedMetric) -> anyhow::Result<()> {
+fn metrics_to_write_request_metadata_only(input: ParsedMetric) {
   let write_request = ParsedMetric::to_write_request(
     vec![input],
     &ToWriteRequestOptions {
@@ -260,5 +260,4 @@ fn metrics_to_write_request_metadata_only(input: ParsedMetric) -> anyhow::Result
   );
   assert_eq!(write_request.timeseries.len(), 1);
   assert!(write_request.timeseries[0].samples.is_empty());
-  Ok(())
 }

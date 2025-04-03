@@ -99,7 +99,7 @@ impl PollFilterAdminHandler {
             "/dump_poll_filter",
             Box::new(move |_| {
               let cloned_filters = cloned_filters.clone();
-              async move { Self::handler(cloned_filters).await }.boxed()
+              async move { Self::handler(&cloned_filters) }.boxed()
             }),
           )
           .unwrap();
@@ -116,7 +116,7 @@ impl PollFilterAdminHandler {
     handler
   }
 
-  async fn handler(filters: Arc<Mutex<Vec<Weak<PollFilter>>>>) -> Response {
+  fn handler(filters: &Mutex<Vec<Weak<PollFilter>>>) -> Response {
     let mut output = Vec::new();
     // TODO(mattklein123): The use of weak/retain here could cause unbound growth if there is a lot
     // of change without calling. We can figure out an inline delete but seems not worth it now.
@@ -168,7 +168,7 @@ impl PollFilter {
     }
   }
 
-  /// Constructs a new PollFilter from a config.
+  /// Constructs a new `PollFilter` from a config.
   pub async fn try_from_config<
     T: PollFilterProvider + 'static,
     F: Future<Output = Result<T, anyhow::Error>>,

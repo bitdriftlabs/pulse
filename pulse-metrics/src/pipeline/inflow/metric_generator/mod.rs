@@ -13,6 +13,7 @@ use async_trait::async_trait;
 use bd_shutdown::{ComponentShutdown, ComponentShutdownTriggerHandle};
 use bd_time::TimeDurationExt;
 use pulse_common::proto::ProtoDurationToStdDuration;
+use pulse_common::{LossyFloatToInt, LossyIntoToFloat};
 use pulse_protobuf::protos::pulse::config::inflow::v1::metric_generator::MetricGeneratorConfig;
 use std::sync::Arc;
 use time::Duration;
@@ -32,15 +33,12 @@ pub(super) struct MetricGeneratorInflow {
 }
 
 impl MetricGeneratorInflow {
-  pub async fn new(
-    config: MetricGeneratorConfig,
-    context: InflowFactoryContext,
-  ) -> anyhow::Result<Self> {
-    Ok(Self {
+  pub fn new(config: MetricGeneratorConfig, context: InflowFactoryContext) -> Self {
+    Self {
       config,
       dispatcher: context.dispatcher,
       shutdown_trigger_handle: context.shutdown_trigger_handle,
-    })
+    }
   }
 }
 
@@ -48,9 +46,14 @@ impl MetricGeneratorInflow {
 impl PipelineInflow for MetricGeneratorInflow {
   async fn start(self: Arc<Self>) {
     let mut generator = MetricGenerator::default();
-    let lines_per_tasks = (self.config.batch_size.unwrap_or(128) as f64
-      / self.config.n_tasks.unwrap_or(default_n_tasks()) as f64)
-      .ceil() as usize;
+    let lines_per_tasks = (self.config.batch_size.unwrap_or(128).lossy_to_f64()
+      / self
+        .config
+        .n_tasks
+        .unwrap_or(default_n_tasks())
+        .lossy_to_f64())
+    .ceil()
+    .lossy_to_usize();
     let protocol = self.config.protocol.clone().unwrap();
     for _ in 0 .. self.config.n_tasks.unwrap_or(default_n_tasks()) {
       let samples = generator.generate_metrics(lines_per_tasks, &protocol);

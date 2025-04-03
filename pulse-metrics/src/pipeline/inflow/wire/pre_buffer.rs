@@ -19,6 +19,7 @@ use crate::protos::metric::{
 use crate::reservoir_timer::ReservoirTimer;
 use bd_log::warn_every;
 use hashbrown::hash_map::RawEntryMut;
+use pulse_common::LossyIntoToFloat;
 use std::time::Instant;
 use time::ext::NumericalDuration;
 
@@ -147,7 +148,7 @@ impl PreBuffer {
         },
         PreBufferMetric::Timer(mut timer) => {
           let (reservoir, count) = timer.drain();
-          let sample_rate = reservoir.len() as f64 / count;
+          let sample_rate = reservoir.len().lossy_to_f64() / count;
           let mut metric_id = id.to_metric_id();
           debug_assert!(!reservoir.is_empty());
 

@@ -238,14 +238,14 @@ impl MetricKey {
     let len = 2 + metric_id.name().len() + 1 + tag_len;
 
     let mut data = Vec::with_capacity(len);
-    data.put_u16(metric_id.name().len() as u16);
+    data.put_u16(u16::try_from(metric_id.name().len()).unwrap());
     data.put(metric_id.name().as_ref());
     data.put_u8(Self::metric_type_to_u8(metric_id.mtype()));
-    data.put_u16(metric_id.tags().len() as u16);
+    data.put_u16(u16::try_from(metric_id.tags().len()).unwrap());
     for tag in metric_id.tags() {
-      data.put_u16(tag.tag.len() as u16);
+      data.put_u16(u16::try_from(tag.tag.len()).unwrap());
       data.put(tag.tag.as_ref());
-      data.put_u16(tag.value.len() as u16);
+      data.put_u16(u16::try_from(tag.value.len()).unwrap());
       data.put(tag.value.as_ref());
     }
     Self { data }
@@ -441,7 +441,7 @@ impl MetricCache {
     // LRU map a bit and seems not worth it right now.
     if self
       .max_cached_metrics
-      .is_some_and(|max| self.cache.len() >= max as usize)
+      .is_some_and(|max| self.cache.len() >= usize::try_from(max).unwrap())
       && self
         .cache
         .try_evict_lru(|_, value| received_at - value.last_seen >= MAX_AGE)

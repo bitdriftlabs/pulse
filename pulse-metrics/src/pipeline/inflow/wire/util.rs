@@ -93,7 +93,7 @@ pub(super) fn process_buffer_newlines(
         let frozen = incoming.freeze();
         ret.push(frozen);
       },
-    };
+    }
   }
 
   if !expect_new_lines && !buf.is_empty() {
@@ -157,7 +157,7 @@ pub(super) fn parse_lines(
 
         unparsable.inc();
       },
-    };
+    }
   }
   parsed
 }

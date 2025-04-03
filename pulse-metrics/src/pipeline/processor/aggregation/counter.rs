@@ -29,6 +29,7 @@ use bd_log::warn_every;
 use hashbrown::HashMap;
 use log::Level;
 use pulse_common::proto::ProtoDurationToStdDuration;
+use pulse_common::{LossyFloatToInt, LossyIntoToFloat};
 use pulse_protobuf::protos::pulse::config::processor::v1::aggregation::AggregationConfig;
 use time::ext::NumericalDuration;
 use tokio::time::Instant;
@@ -332,7 +333,7 @@ struct RealProducer<'a> {
 }
 impl DeltaCounterProducer for RealProducer<'_> {
   fn count(&self) -> f64 {
-    self.aggregation.count as f64
+    self.aggregation.count.lossy_to_f64()
   }
   fn sum(&self) -> f64 {
     self.aggregation.sum
@@ -386,7 +387,7 @@ impl DeltaCounterAggregation {
         self.max = sample;
       }
     }
-    self.count += (1.0 / sample_rate) as u64;
+    self.count += (1.0 / sample_rate).lossy_to_u64();
     self.sum += sample;
   }
 

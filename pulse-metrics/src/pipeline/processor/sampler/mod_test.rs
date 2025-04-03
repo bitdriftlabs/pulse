@@ -154,11 +154,7 @@ async fn sampler_processor() {
     .times(2)
     .returning(|_| ());
 
-  let sampler = Arc::new(
-    SamplerProcessor::<TestDurationJitter>::new(config, factory)
-      .await
-      .unwrap(),
-  );
+  let sampler = Arc::new(SamplerProcessor::<TestDurationJitter>::new(config, factory));
 
   let now = Instant::now();
   let sample = make_metric("hello", now, &helper.metric_cache);

@@ -205,7 +205,12 @@ impl<K: Eq + Hash, V, S: BuildHasher + Clone> LruMap<K, V, S> {
     // TODO(mattklein123): The dashmap code first shifts off the left 7 bits, before shifting right,
     // which makes no sense to me so I removed it. The checked shift is required for the single
     // shard case for testing. Perhaps this could be optimized some other way later.
-    let index = hash.checked_shr(self.shift as u32).unwrap_or(0) as usize;
+    let index = usize::try_from(
+      hash
+        .checked_shr(u32::try_from(self.shift).unwrap())
+        .unwrap_or(0),
+    )
+    .unwrap();
     unsafe { self.shards.get_unchecked(index) }
   }
 

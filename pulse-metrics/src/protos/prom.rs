@@ -438,10 +438,9 @@ fn process_in_progress_histogram(
           data.saw_count = true;
         }
 
-        if data
-          .sample_count
-          .is_some_and(|current_sample_count| current_sample_count != sample.value)
-        {
+        if data.sample_count.is_some_and(|current_sample_count| {
+          (current_sample_count - sample.value).abs() > f64::EPSILON
+        }) {
           return Err(make_remote_write_error(
             family_name,
             "mismatch +Inf and _count",
@@ -670,7 +669,7 @@ fn timeseries_to_metrics(
         } else {
           Some(s.sample_rate)
         },
-        unwrap_prom_timestamp(s.timestamp),
+        unwrap_prom_timestamp(s.timestamp).ok()?,
         metric_value,
       ))
     })
@@ -693,7 +692,7 @@ fn finalize_histogram(
       true,
     )?,
     None,
-    unwrap_prom_timestamp(timestamp),
+    unwrap_prom_timestamp(timestamp)?,
     MetricValue::Histogram(in_progress_histogram_data_to_histogram_data(name, data)?),
   ))
 }
@@ -708,7 +707,7 @@ fn finalize_summary(
   Ok(Metric::new(
     MetricId::new(name.clone(), Some(MetricType::Summary), tags.to_vec(), true)?,
     None,
-    unwrap_prom_timestamp(timestamp),
+    unwrap_prom_timestamp(timestamp)?,
     MetricValue::Summary(in_progress_summary_data_to_summary_data(name, data)?),
   ))
 }
@@ -812,14 +811,14 @@ pub fn from_write_request(
 }
 
 // Normalize an incoming Prom timestamp.
-fn unwrap_prom_timestamp(timestamp: i64) -> u64 {
-  unwrap_timestamp(
+fn unwrap_prom_timestamp(timestamp: i64) -> Result<u64, ParseError> {
+  Ok(unwrap_timestamp(
     if timestamp == 0 {
       None
     } else {
-      Some((timestamp / 1000) as u64)
+      Some(u64::try_from(timestamp / 1000).map_err(|_| ParseError::InvalidTimestamp)?)
     },
-  )
+  ))
 }
 
 // Given an internal metric, create the prom metric family name.
@@ -878,7 +877,7 @@ fn timeseries_common(
 
     timeseries.samples.push(Sample {
       value,
-      timestamp: (timestamp * 1000) as i64,
+      timestamp: i64::try_from(timestamp * 1000).unwrap(),
       sample_rate,
       bulk_values,
       ..Default::default()

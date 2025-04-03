@@ -55,17 +55,14 @@ pub(super) struct SamplerProcessor<DurationJitterType> {
 }
 
 impl<DurationJitterType: DurationJitter> SamplerProcessor<DurationJitterType> {
-  pub async fn new(
-    config: SamplerConfig,
-    context: ProcessorFactoryContext,
-  ) -> anyhow::Result<Self> {
+  pub fn new(config: SamplerConfig, context: ProcessorFactoryContext) -> Self {
     let state = SamplerState::<DurationJitterType>::new(&context.metric_cache, &context.scope);
 
-    Ok(Self {
+    Self {
       config,
       dispatcher: context.dispatcher,
       state,
-    })
+    }
   }
 }
 

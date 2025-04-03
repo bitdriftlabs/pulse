@@ -535,7 +535,9 @@ impl LyftBatchRouter {
       config.clone(),
       &scope.scope("general"),
       shutdown.clone(),
-      Self::make_storage_headers(&lyft_config.general_storage_policy),
+      Some(Self::make_storage_headers(
+        &lyft_config.general_storage_policy,
+      )),
       changed_type_tracker.clone(),
     );
     let instance = lyft_config
@@ -546,7 +548,7 @@ impl LyftBatchRouter {
           config.clone(),
           &scope.scope("instance"),
           shutdown.clone(),
-          Self::make_storage_headers(p),
+          Some(Self::make_storage_headers(p)),
           changed_type_tracker.clone(),
         )
       });
@@ -558,7 +560,7 @@ impl LyftBatchRouter {
           config.clone(),
           &scope.scope("cloudwatch"),
           shutdown,
-          Self::make_storage_headers(p),
+          Some(Self::make_storage_headers(p)),
           changed_type_tracker,
         )
       });
@@ -570,14 +572,14 @@ impl LyftBatchRouter {
     }
   }
 
-  fn make_storage_headers(storage_policy: &str) -> Option<Arc<HeaderMap>> {
+  fn make_storage_headers(storage_policy: &str) -> Arc<HeaderMap> {
     let mut header_map = HeaderMap::new();
     header_map.insert("M3-Metrics-Type", HeaderValue::from_static("aggregated"));
     header_map.insert(
       "M3-Storage-Policy",
       HeaderValue::from_str(storage_policy).unwrap(),
     );
-    Some(Arc::new(header_map))
+    Arc::new(header_map)
   }
 
   fn is_cloudwatch(name: &[u8]) -> bool {

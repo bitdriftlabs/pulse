@@ -39,7 +39,7 @@ impl SummaryAggregation {
         return Err(AggregationError::QuantileMismatch);
       }
       for (our, their) in self.data.quantiles.iter().zip(&data.quantiles) {
-        if our.quantile != their.quantile {
+        if (our.quantile - their.quantile).abs() > f64::EPSILON {
           return Err(AggregationError::QuantileMismatch);
         }
       }

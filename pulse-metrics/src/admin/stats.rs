@@ -16,6 +16,7 @@ use prometheus::proto::{Metric, MetricFamily, MetricType};
 use prompb::remote::WriteRequest;
 use prompb::types::MetricMetadata;
 use protobuf::Chars;
+use pulse_common::LossyIntoToFloat;
 use std::fmt::Write;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -85,10 +86,13 @@ impl StatsProvider {
   // Collect into a WriteRequest suitable for pushing via the Prometheus remote write API.
   #[must_use]
   pub fn prometheus_remote_write_output(&self) -> WriteRequest {
-    let timestamp = SystemTime::now()
-      .duration_since(UNIX_EPOCH)
-      .unwrap()
-      .as_millis() as i64;
+    let timestamp = i64::try_from(
+      SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis(),
+    )
+    .unwrap();
     let mut timeseries = Vec::new();
     let mut metadata = Vec::new();
     let metrics = self.collector.gather();
@@ -151,7 +155,7 @@ impl StatsProvider {
               timeseries.push(make_timeseries(
                 format!("{}_bucket", metric_family.name()).into(),
                 labels.clone(),
-                bucket.cumulative_count() as f64,
+                bucket.cumulative_count().lossy_to_f64(),
                 timestamp,
                 vec![make_label(
                   "le".into(),
@@ -159,17 +163,18 @@ impl StatsProvider {
                 )],
               ));
             }
+
             timeseries.push(make_timeseries(
               format!("{}_bucket", metric_family.name()).into(),
               labels.clone(),
-              histogram.get_sample_count() as f64,
+              histogram.get_sample_count().lossy_to_f64(),
               timestamp,
               vec![make_label("le".into(), "+Inf".into())],
             ));
             timeseries.push(make_timeseries(
               format!("{}_count", metric_family.name()).into(),
               labels.clone(),
-              histogram.get_sample_count() as f64,
+              histogram.get_sample_count().lossy_to_f64(),
               timestamp,
               vec![],
             ));

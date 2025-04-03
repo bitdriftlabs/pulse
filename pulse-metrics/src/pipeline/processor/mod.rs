@@ -86,9 +86,9 @@ pub(super) async fn to_processor(
   match config.processor_type.expect("pgv") {
     Processor_type::Elision(config) => Ok(ElisionProcessor::new(config, context).await?),
     Processor_type::Internode(config) => Ok(InternodeProcessor::new(config, context).await?),
-    Processor_type::Sampler(config) => Ok(Arc::new(
-      SamplerProcessor::<RealDurationJitter>::new(config, context).await?,
-    )),
+    Processor_type::Sampler(config) => Ok(Arc::new(SamplerProcessor::<RealDurationJitter>::new(
+      config, context,
+    ))),
     Processor_type::PopulateCache(_) => Ok(Arc::new(PopulateCacheProcessor::new(context))),
     Processor_type::Aggregation(config) => {
       Ok(AggregationProcessor::new::<RealDurationJitter>(config, context).await?)

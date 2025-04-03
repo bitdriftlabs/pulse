@@ -61,6 +61,7 @@ use bytes::{BufMut, Bytes, BytesMut};
 use futures::FutureExt;
 use parking_lot::{Mutex, RwLock};
 use prometheus::{Histogram, IntCounter};
+use pulse_common::LossyFloatToInt;
 use pulse_common::proto::ProtoDurationToStdDuration;
 use pulse_protobuf::protos::pulse::config::processor::v1::aggregation::AggregationConfig;
 use pulse_protobuf::protos::pulse::config::processor::v1::aggregation::aggregation_config::{
@@ -153,7 +154,7 @@ impl WrappedConfig {
     while quantile.fract() != 0.0 {
       quantile *= 10.0;
     }
-    format!(".p{}", quantile as u64)
+    format!(".p{}", quantile.lossy_to_u64())
   }
 
   fn new(mut config: AggregationConfig) -> anyhow::Result<Self> {

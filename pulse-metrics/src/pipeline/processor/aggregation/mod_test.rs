@@ -10,12 +10,13 @@ use crate::pipeline::processor::aggregation::test::HelperBuilder;
 use crate::pipeline::time::TestTimeProvider;
 use crate::protos::metric::{DownstreamId, MetricSource, SummaryBucket, SummaryData};
 use crate::protos::prom::prom_stale_marker;
-use bd_test_helpers::make_mut;
+use bd_test_helpers::{float_eq, make_mut};
 use bd_time::TimeDurationExt;
 use http_body_util::BodyExt;
 use mod_test::test::TimerType;
 use pretty_assertions::assert_eq;
 use prometheus::labels;
+use pulse_common::LossyIntoToFloat;
 use std::sync::atomic::AtomicI64;
 use std::time::Duration;
 use time::ext::NumericalDuration;
@@ -48,11 +49,17 @@ async fn stress() {
     tokio::spawn(async move {
       loop {
         cloned_helper
-          .recv(vec![cloned_helper.make_metric(
-            "hello",
-            MetricType::BulkTimer,
-            MetricValue::BulkTimer((0 .. 200u64).map(|i| i as f64).collect()),
-          )])
+          .recv(vec![
+            cloned_helper.make_metric(
+              "hello",
+              MetricType::BulkTimer,
+              MetricValue::BulkTimer(
+                (0 .. 200u64)
+                  .map(pulse_common::LossyIntoToFloat::lossy_to_f64)
+                  .collect(),
+              ),
+            ),
+          ])
           .await;
         tokio::task::yield_now().await;
       }
@@ -315,11 +322,17 @@ async fn bulk_timers() {
     .await;
 
   helper
-    .recv(vec![helper.make_metric(
-      "hello",
-      MetricType::BulkTimer,
-      MetricValue::BulkTimer((0 .. 200u64).map(|i| i as f64).collect()),
-    )])
+    .recv(vec![
+      helper.make_metric(
+        "hello",
+        MetricType::BulkTimer,
+        MetricValue::BulkTimer(
+          (0 .. 200u64)
+            .map(pulse_common::LossyIntoToFloat::lossy_to_f64)
+            .collect(),
+        ),
+      ),
+    ])
     .await;
 
   make_mut(&mut helper.helper.dispatcher)
@@ -327,7 +340,7 @@ async fn bulk_timers() {
     .times(1)
     .return_once(move |samples| {
       assert_eq!(100, samples.len());
-      assert_eq!(0.5, samples[0].metric().sample_rate.unwrap());
+      assert!(float_eq!(0.5, samples[0].metric().sample_rate.unwrap()));
     });
   61.seconds().sleep().await;
 }
@@ -344,7 +357,7 @@ async fn reservoir_timers() {
       .recv(vec![helper.make_metric(
         "hello",
         MetricType::Timer,
-        MetricValue::Simple(i as f64),
+        MetricValue::Simple(i.lossy_to_f64()),
       )])
       .await;
   }
@@ -354,7 +367,7 @@ async fn reservoir_timers() {
     .times(1)
     .return_once(move |samples| {
       assert_eq!(100, samples.len());
-      assert_eq!(0.5, samples[0].metric().sample_rate.unwrap());
+      assert!(float_eq!(0.5, samples[0].metric().sample_rate.unwrap()));
     });
   61.seconds().sleep().await;
 
@@ -363,7 +376,7 @@ async fn reservoir_timers() {
       .recv(vec![helper.make_metric(
         "hello",
         MetricType::Timer,
-        MetricValue::Simple(i as f64),
+        MetricValue::Simple(i.lossy_to_f64()),
       )])
       .await;
   }
@@ -373,7 +386,7 @@ async fn reservoir_timers() {
     .times(1)
     .return_once(move |samples| {
       assert_eq!(50, samples.len());
-      assert_eq!(1.0, samples[0].metric().sample_rate.unwrap());
+      assert!(float_eq!(1.0, samples[0].metric().sample_rate.unwrap()));
     });
   61.seconds().sleep().await;
 }
@@ -385,18 +398,24 @@ async fn timers_bulk() {
     .build()
     .await;
   helper
-    .recv(vec![helper.make_metric(
-      "hello",
-      MetricType::BulkTimer,
-      MetricValue::BulkTimer((0 .. 100u64).map(|i| i as f64).collect()),
-    )])
+    .recv(vec![
+      helper.make_metric(
+        "hello",
+        MetricType::BulkTimer,
+        MetricValue::BulkTimer(
+          (0 .. 100u64)
+            .map(pulse_common::LossyIntoToFloat::lossy_to_f64)
+            .collect(),
+        ),
+      ),
+    ])
     .await;
   for i in 0 .. 100u64 {
     helper
       .recv(vec![helper.make_metric(
         "hello",
         MetricType::Timer,
-        MetricValue::Simple(i as f64),
+        MetricValue::Simple(i.lossy_to_f64()),
       )])
       .await;
   }
@@ -439,7 +458,7 @@ async fn timers() {
       .recv(vec![helper.make_metric(
         "hello",
         MetricType::Timer,
-        MetricValue::Simple(i as f64),
+        MetricValue::Simple(i.lossy_to_f64()),
       )])
       .await;
   }

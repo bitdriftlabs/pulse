@@ -30,17 +30,17 @@ pub struct Node<T> {
 }
 
 impl<T> Node<T> {
-  pub fn new(id: String, address: String, inner: Option<T>) -> anyhow::Result<Self> {
+  pub fn new(id: String, address: String, inner: Option<T>) -> Self {
     let network_address: Regex = Regex::new(r"^.+:\d+$").unwrap();
     if !network_address.is_match(address.as_str()) {
       warn!("Unable to parse node address: {address}");
     }
-    Ok(Self {
+    Self {
       id,
       address,
       is_self: false,
       inner,
-    })
+    }
   }
 }
 
@@ -68,7 +68,7 @@ impl<T> ShardMap<T> {
     }
 
     let hash = self.hash_builder.hash_one(metric);
-    let index = (hash as usize) % (self.nodes.len());
+    let index = usize::try_from(hash).unwrap() % (self.nodes.len());
     if let Some(node) = self.nodes.get(index) {
       return if node.is_self {
         (index, None)
@@ -116,7 +116,7 @@ pub fn validate_shardmap_config(cfg: &InternodeConfig) -> Result<(), InternodeEr
   if let Some(total_nodes) = cfg.total_nodes {
     if total_nodes < 2 {
       return Err(InternodeError::TotalNodesMinimum);
-    } else if cfg.nodes.len() as u32 != total_nodes - 1 {
+    } else if u32::try_from(cfg.nodes.len()).unwrap() != total_nodes - 1 {
       return Err(InternodeError::TotalNodesInvalid(
         cfg.nodes.len() + 1,
         total_nodes as usize,
@@ -160,16 +160,11 @@ where
   });
   for node_cfg in &cfg.nodes {
     let inner = factory(node_cfg);
-    match Node::new(
+    nodes.push(Node::new(
       node_cfg.node_id.to_string(),
       node_cfg.address.to_string(),
       Some(inner),
-    ) {
-      Ok(node) => {
-        nodes.push(node);
-      },
-      Err(e) => return Err(e),
-    }
+    ));
   }
 
   // Sorting shards by ID so they're consistent across servers

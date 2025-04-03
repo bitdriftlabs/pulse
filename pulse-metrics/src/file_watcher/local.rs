@@ -22,7 +22,7 @@ use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use tokio::sync::watch;
 
-/// A LocalFileWatcher is used to track a local resource.
+/// A `LocalFileWatcher` is used to track a local resource.
 pub struct LocalFileWatcher {
   source: LocalFileSourceConfig,
   reload_rx: watch::Receiver<Instant>,
@@ -46,18 +46,16 @@ impl LocalFileWatcher {
   pub async fn new(source: LocalFileSourceConfig) -> Result<(Self, Bytes), WatchError> {
     let (reload_tx, reload_rx) = watch::channel(Instant::now());
     let mut watcher =
-      notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
-        match res {
-          Ok(event) => match event.kind {
-            EventKind::Modify(ModifyKind::Name(mode)) if mode == Self::rename_mode() => {
-              let _ = reload_tx.send(Instant::now());
-            },
-            _ => (),
+      notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| match res {
+        Ok(event) => match event.kind {
+          EventKind::Modify(ModifyKind::Name(mode)) if mode == Self::rename_mode() => {
+            let _ = reload_tx.send(Instant::now());
           },
-          Err(e) => {
-            warn!("failed to watch local file for changes: {e}");
-          },
-        };
+          _ => (),
+        },
+        Err(e) => {
+          warn!("failed to watch local file for changes: {e}");
+        },
       })?;
 
     watcher.watch(

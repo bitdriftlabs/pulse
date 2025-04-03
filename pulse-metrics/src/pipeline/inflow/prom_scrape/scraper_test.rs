@@ -23,7 +23,7 @@ use axum::extract::State;
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use bd_shutdown::{ComponentShutdown, ComponentShutdownTrigger};
-use bd_test_helpers::make_mut;
+use bd_test_helpers::{float_eq, make_mut};
 use futures::FutureExt;
 use http::StatusCode;
 use itertools::Itertools;
@@ -431,7 +431,7 @@ async fn test_unavailable() {
     .times(2)
     .returning(|samples| {
       assert_eq!(samples[0].metric().get_id().name(), "up");
-      assert_eq!(samples[0].metric().value.to_simple(), 0.0);
+      assert!(float_eq!(samples[0].metric().value.to_simple(), 0.0));
     });
 
   setup.tick_tx.send(()).await.unwrap();
@@ -533,7 +533,7 @@ async fn test_calls() {
     .times(2)
     .returning(|samples| {
       assert_eq!(samples[0].metric().get_id().name(), "up");
-      assert_eq!(samples[0].metric().value.to_simple(), 1.0);
+      assert!(float_eq!(samples[0].metric().value.to_simple(), 1.0));
     });
 
   setup
@@ -602,7 +602,7 @@ async fn test_http_sd() {
           value: "world".into()
         }
       );
-      assert_eq!(samples[0].metric().value.to_simple(), 1.0);
+      assert!(float_eq!(samples[0].metric().value.to_simple(), 1.0));
     });
 
   setup

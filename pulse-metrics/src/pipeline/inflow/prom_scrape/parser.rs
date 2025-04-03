@@ -25,6 +25,7 @@ use crate::protos::metric::{
   TagValue,
 };
 use prometheus_parser::{MetricGroup, ParserError};
+use pulse_common::LossyIntoToFloat;
 use pulse_common::metadata::Metadata;
 use std::sync::Arc;
 use std::time::Instant;
@@ -71,7 +72,7 @@ fn sample_as_metric(
                 value: quantile.value,
               })
               .collect(),
-            sample_count: summary.count as f64,
+            sample_count: summary.count.lossy_to_f64(),
             sample_sum: summary.sum,
           }),
           timestamp,
@@ -99,12 +100,12 @@ fn sample_as_metric(
                 } else {
                   Some(HistogramBucket {
                     le: bucket.bucket,
-                    count: bucket.count as f64,
+                    count: bucket.count.lossy_to_f64(),
                   })
                 }
               })
               .collect(),
-            sample_count: histogram.count as f64,
+            sample_count: histogram.count.lossy_to_f64(),
             sample_sum: histogram.sum,
           }),
           timestamp,

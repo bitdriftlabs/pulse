@@ -9,7 +9,7 @@ use bd_server_stats::stats::Collector;
 use bd_shutdown::ComponentShutdownTrigger;
 use bd_time::{TimeDurationExt, ToProtoDuration};
 use prom_remote_write::PromRemoteWriteClientConfig;
-use pulse_common::global_initialize;
+use pulse_common::{LossyIntoToFloat, global_initialize};
 use pulse_metrics::metric_generator::MetricGenerator;
 use pulse_metrics::pipeline::outflow::prom::remote_write::PromRemoteWriteOutflow;
 use pulse_metrics::pipeline::outflow::{OutflowFactoryContext, OutflowStats, PipelineOutflow};
@@ -98,12 +98,12 @@ pub async fn main() {
   let chunk_size = elided_metrics.len() / chunk_count;
   loop {
     // Normal metrics
-    let c = advance_metrics(metrics.as_ref(), value as f64);
+    let c = advance_metrics(metrics.as_ref(), value.lossy_to_f64());
 
     // Elided metrics
     let ce: Vec<_> = advance_metrics(
       elided_metrics.chunks(chunk_size).nth(value % 10).unwrap(),
-      value as f64,
+      value.lossy_to_f64(),
     );
 
     log::info!("sending {} samples", c.len());

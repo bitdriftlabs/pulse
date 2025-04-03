@@ -37,8 +37,9 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::RecvError;
 
-/// A RemoteFileWatcher is used to track a remote resource, such as one from S3 or any HTTP service.
-/// The remote source is continuously polled to check for modifications using the resource's ETag.
+/// A `RemoteFileWatcher` is used to track a remote resource, such as one from S3 or any HTTP
+/// service. The remote source is continuously polled to check for modifications using the
+/// resource's `ETag`.
 struct SharedState {
   config: HttpFileSourceConfig,
   #[cfg(test)]
@@ -213,9 +214,11 @@ impl<T: RemoteFileWatcherClient + Send + Sync + 'static> RemoteFileWatcher<T> {
     etag: &String,
   ) -> anyhow::Result<()> {
     let mut file = File::create(path).await?;
-    file.write_u32(etag.len() as u32).await?;
+    file.write_u32(u32::try_from(etag.len()).unwrap()).await?;
     file.write_all(etag.as_bytes()).await?;
-    file.write_u32(file_bytes.len() as u32).await?;
+    file
+      .write_u32(u32::try_from(file_bytes.len()).unwrap())
+      .await?;
     file.write_all(file_bytes).await?;
     file
       .write_u64(Self::hash_file_contents(etag, file_bytes))

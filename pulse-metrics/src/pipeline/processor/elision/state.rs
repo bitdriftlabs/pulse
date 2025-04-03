@@ -17,14 +17,15 @@ use elision::elision_config::EmitConfig;
 use elision::elision_config::emit_config::Emit_type;
 use parking_lot::Mutex;
 use prometheus::{Histogram, IntCounter};
+use pulse_common::LossyFloatToInt;
 use pulse_protobuf::protos::pulse::config::processor::v1::elision;
 use std::cmp::max;
 use std::hash::Hash;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-/// State associated with [FilterDecision::PeriodicOutput] that is used to determine the
-/// corresponding [SkipDecision].
+/// State associated with [`FilterDecision::PeriodicOutput`] that is used to determine the
+/// corresponding [`SkipDecision`].
 #[derive(PartialEq, Hash, Eq, Debug)]
 pub struct PeriodicOutputState {
   /// The number of times this metric has failed filter checks in succession.
@@ -63,7 +64,7 @@ struct State {
   last_value: Option<MetricValue>,
   /// The last reported type of this emitter.
   last_type: Option<MetricType>,
-  /// The last reported timestamp, max(incoming_timestamp, last_timestamp).
+  /// The last reported timestamp, `max(incoming_timestamp`, `last_timestamp`).
   last_timestamp: u64,
   /// The number of times this metric has failed filter checks in succession.
   successive_fails: u64,
@@ -178,7 +179,7 @@ impl SkipDecider {
     match (emit.emit_type.as_ref().unwrap(), decision) {
       (Emit_type::Ratio(ratio), _) if f64::abs(ratio - 1.0) < f64::EPSILON => SkipDecision::Output,
       (Emit_type::Ratio(ratio), FilterDecision::PeriodicOutput(s)) => {
-        let ord = (1.0 / ratio).ceil() as u64;
+        let ord = (1.0 / ratio).ceil().lossy_to_u64();
         if s.successive_fails % ord == 0 {
           SkipDecision::Output
         } else {
@@ -186,7 +187,7 @@ impl SkipDecider {
         }
       },
       (Emit_type::Interval(interval), FilterDecision::PeriodicOutput(s)) => {
-        if s.seconds_since_last_emitted >= interval.seconds as u64 {
+        if s.seconds_since_last_emitted >= u64::try_from(interval.seconds).unwrap() {
           SkipDecision::Output
         } else {
           SkipDecision::DoNotOutput
