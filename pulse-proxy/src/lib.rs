@@ -13,7 +13,7 @@ mod test;
 
 use anyhow::bail;
 use bd_server_stats::stats::{Collector, Scope};
-use bd_shutdown::ComponentShutdownTrigger;
+use bd_shutdown::{ComponentShutdownTrigger, ComponentShutdownTriggerHandle};
 use config::ConfigLoader;
 use futures::{Future, FutureExt};
 use log::info;
@@ -107,7 +107,11 @@ pub async fn run_server<
   hooks: impl ServerHooks,
   bind_resolver: Arc<dyn BindResolver>,
   singleton_manager: Arc<SingletonManager>,
-  k8s_watch_factory: impl Fn() -> K8sWatchFuture + Send + Sync + 'static,
+  // Broken formatting.
+  #[rustfmt::skip] k8s_watch_factory: impl Fn(ComponentShutdownTriggerHandle) -> K8sWatchFuture
+  + Send
+  + Sync
+  + 'static,
 ) -> anyhow::Result<()> {
   // Setup stats
   let stats_provider = build_stats_provider(&config)?;
@@ -131,12 +135,13 @@ pub async fn run_server<
   .await?;
 
   let admin_state = AdminState::new(stats_provider.collector().clone());
+  let shutdown_trigger_handle = shutdown_trigger.make_handle();
   let pipeline = Arc::new(
     MetricPipeline::new_from_config(
       Arc::new(RealItemFactory {}),
       scope.scope("pipeline"),
       config.kubernetes.clone().unwrap_or_default(),
-      Arc::new(move || k8s_watch_factory().boxed()),
+      Arc::new(move || k8s_watch_factory(shutdown_trigger_handle.clone()).boxed()),
       config_rx.recv().await.unwrap().unwrap(),
       singleton_manager,
       admin_state.clone(),
@@ -197,7 +202,9 @@ pub async fn run_server<
     info!("waiting {shutdown_delay:?} before shutting down (--shutdown-delay set)");
     tokio::time::sleep(shutdown_delay).await;
   }
+  log::info!("shutting down metric pipeline");
   pipeline.shutdown().await;
+  log::info!("metric pipeline shutdown complete");
   shutdown_trigger.shutdown().await;
   info!("runtime terminated");
   Ok(())

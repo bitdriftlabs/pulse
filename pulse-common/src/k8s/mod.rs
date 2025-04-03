@@ -5,9 +5,11 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
+pub mod endpoints;
 pub mod pods_info;
 pub mod services;
 pub mod test;
+mod watcher_base;
 
 use anyhow::anyhow;
 use k8s_openapi::api::core::v1::Node;
