@@ -28,13 +28,16 @@ use futures::FutureExt;
 use http::StatusCode;
 use itertools::Itertools;
 use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
-use k8s_prom::kubernetes_prometheus_config::pod::InclusionFilter;
-use k8s_prom::kubernetes_prometheus_config::pod::inclusion_filter::Filter_type;
+use k8s_prom::kubernetes_prometheus_config::inclusion_filter::Filter_type;
 use k8s_prom::kubernetes_prometheus_config::use_k8s_https_service_auth_matcher::{
   Auth_matcher,
   KeyValue,
 };
-use k8s_prom::kubernetes_prometheus_config::{HttpServiceDiscovery, UseK8sHttpsServiceAuthMatcher};
+use k8s_prom::kubernetes_prometheus_config::{
+  HttpServiceDiscovery,
+  InclusionFilter,
+  UseK8sHttpsServiceAuthMatcher,
+};
 use parking_lot::Mutex;
 use prometheus::labels;
 use protobuf::MessageField;
@@ -68,6 +71,8 @@ async fn create_endpoint() {
     vec![],
   );
   let endpoints = create_endpoints(
+    &pod_info.namespace,
+    &pod_info.ip_string,
     &[],
     &[UseK8sHttpsServiceAuthMatcher {
       auth_matcher: Some(Auth_matcher::AnnotationMatcher(KeyValue {
@@ -76,8 +81,9 @@ async fn create_endpoint() {
       })),
       ..Default::default()
     }],
-    &make_node_info(),
-    &pod_info,
+    Some(&make_node_info()),
+    Some(&pod_info),
+    &pod_info.container_ports,
     None,
     None,
     &pod_info.annotations,
@@ -99,6 +105,8 @@ async fn create_endpoint() {
     vec![],
   );
   let endpoints = create_endpoints(
+    &pod_info.namespace,
+    &pod_info.ip_string,
     &[],
     &[UseK8sHttpsServiceAuthMatcher {
       auth_matcher: Some(Auth_matcher::AnnotationMatcher(KeyValue {
@@ -107,8 +115,9 @@ async fn create_endpoint() {
       })),
       ..Default::default()
     }],
-    &make_node_info(),
-    &pod_info,
+    Some(&make_node_info()),
+    Some(&pod_info),
+    &pod_info.container_ports,
     None,
     None,
     &pod_info.annotations,
@@ -132,10 +141,13 @@ async fn scrape_path() {
     vec![],
   );
   let endpoints = create_endpoints(
+    &pod_info.namespace,
+    &pod_info.ip_string,
     &[],
     &[],
-    &make_node_info(),
-    &pod_info,
+    Some(&make_node_info()),
+    Some(&pod_info),
+    &pod_info.container_ports,
     None,
     None,
     &pod_info.annotations,
@@ -156,10 +168,13 @@ async fn scrape_path() {
     vec![],
   );
   let endpoints = create_endpoints(
+    &pod_info.namespace,
+    &pod_info.ip_string,
     &[],
     &[],
-    &make_node_info(),
-    &pod_info,
+    Some(&make_node_info()),
+    Some(&pod_info),
+    &pod_info.container_ports,
     None,
     None,
     &pod_info.annotations,
@@ -180,10 +195,13 @@ async fn scrape_path() {
     vec![],
   );
   let endpoints = create_endpoints(
+    &pod_info.namespace,
+    &pod_info.ip_string,
     &[],
     &[],
-    &make_node_info(),
-    &pod_info,
+    Some(&make_node_info()),
+    Some(&pod_info),
+    &pod_info.container_ports,
     None,
     None,
     &pod_info.annotations,
@@ -310,10 +328,13 @@ async fn test_scheme_annotation() {
     vec![],
   );
   let endpoints = create_endpoints(
+    &pod_info.namespace,
+    &pod_info.ip_string,
     &[],
     &[],
-    &make_node_info(),
-    &pod_info,
+    Some(&make_node_info()),
+    Some(&pod_info),
+    &pod_info.container_ports,
     None,
     None,
     &pod_info.annotations,
@@ -335,10 +356,13 @@ async fn test_scheme_annotation() {
     vec![],
   );
   let endpoints = create_endpoints(
+    &pod_info.namespace,
+    &pod_info.ip_string,
     &[],
     &[],
-    &make_node_info(),
-    &pod_info,
+    Some(&make_node_info()),
+    Some(&pod_info),
+    &pod_info.container_ports,
     None,
     None,
     &pod_info.annotations,
@@ -360,10 +384,13 @@ async fn test_scheme_annotation() {
     vec![],
   );
   let endpoints = create_endpoints(
+    &pod_info.namespace,
+    &pod_info.ip_string,
     &[],
     &[],
-    &make_node_info(),
-    &pod_info,
+    Some(&make_node_info()),
+    Some(&pod_info),
+    &pod_info.container_ports,
     None,
     None,
     &pod_info.annotations,
@@ -965,10 +992,13 @@ fn test_create_endpoints_port_resolution() {
   );
 
   let endpoints = create_endpoints(
+    &pod_info.namespace,
+    &pod_info.ip_string,
     &[],
     &[],
-    &make_node_info(),
-    &pod_info,
+    Some(&make_node_info()),
+    Some(&pod_info),
+    &pod_info.container_ports,
     None,
     None,
     &pod_info.annotations,
@@ -990,10 +1020,13 @@ fn test_create_endpoints_port_resolution() {
     }],
   );
   let endpoints = create_endpoints(
+    &pod_info.namespace,
+    &pod_info.ip_string,
     &[],
     &[],
-    &make_node_info(),
-    &pod_info,
+    Some(&make_node_info()),
+    Some(&pod_info),
+    &pod_info.container_ports,
     None,
     None,
     &pod_info.annotations,
@@ -1016,10 +1049,13 @@ fn test_create_endpoints_port_resolution() {
     }],
   );
   let endpoints = create_endpoints(
+    &pod_info.namespace,
+    &pod_info.ip_string,
     &[],
     &[],
-    &make_node_info(),
-    &pod_info,
+    Some(&make_node_info()),
+    Some(&pod_info),
+    &pod_info.container_ports,
     None,
     Some(&IntOrString::Int(8080)),
     &pod_info.annotations,
@@ -1041,10 +1077,13 @@ fn test_create_endpoints_port_resolution() {
     }],
   );
   let endpoints = create_endpoints(
+    &pod_info.namespace,
+    &pod_info.ip_string,
     &[],
     &[],
-    &make_node_info(),
-    &pod_info,
+    Some(&make_node_info()),
+    Some(&pod_info),
+    &pod_info.container_ports,
     None,
     Some(&IntOrString::String("metrics".to_string())),
     &pod_info.annotations,
@@ -1066,10 +1105,13 @@ fn test_create_endpoints_port_resolution() {
     }],
   );
   let endpoints = create_endpoints(
+    &pod_info.namespace,
+    &pod_info.ip_string,
     &[],
     &[],
-    &make_node_info(),
-    &pod_info,
+    Some(&make_node_info()),
+    Some(&pod_info),
+    &pod_info.container_ports,
     None,
     Some(&IntOrString::String("non-existent".to_string())),
     &pod_info.annotations,
@@ -1107,10 +1149,13 @@ fn test_create_endpoints_port_resolution() {
   }];
 
   let endpoints = create_endpoints(
+    &pod_info.namespace,
+    &pod_info.ip_string,
     &inclusion_filters,
     &[],
-    &make_node_info(),
-    &pod_info,
+    Some(&make_node_info()),
+    Some(&pod_info),
+    &pod_info.container_ports,
     None,
     None,
     &pod_info.annotations,
@@ -1134,10 +1179,13 @@ fn test_create_endpoints_port_resolution() {
     }],
   );
   let endpoints = create_endpoints(
+    &pod_info.namespace,
+    &pod_info.ip_string,
     &[],
     &[],
-    &make_node_info(),
-    &pod_info,
+    Some(&make_node_info()),
+    Some(&pod_info),
+    &pod_info.container_ports,
     None,
     None,
     &pod_info.annotations,
