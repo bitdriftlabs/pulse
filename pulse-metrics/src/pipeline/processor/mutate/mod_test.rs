@@ -91,12 +91,12 @@ for_each(.tags) -> |key, value| {
 #[tokio::test]
 async fn node_only() {
   let mut helper = Helper::new(
-    r#"
+    r"
 .tags.node = %k8s.node.name
 .tags.node_ip = %k8s.node.ip
 .tags.node_label = %k8s.node.labels.k1
 .tags.node_annotation = %k8s.node.annotations.a1
-    "#,
+    ",
   );
 
   helper

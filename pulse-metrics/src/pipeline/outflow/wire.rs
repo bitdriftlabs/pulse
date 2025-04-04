@@ -63,11 +63,11 @@ pub(super) struct WireOutflow {
 }
 
 impl WireOutflow {
-  pub async fn new(
-    config: CommonWireClientConfig,
+  pub fn new(
+    config: &CommonWireClientConfig,
     client: WireOutflowClient,
     context: OutflowFactoryContext,
-  ) -> anyhow::Result<Self> {
+  ) -> Self {
     let protocol = Arc::new(config.protocol.clone().unwrap());
     let batch_max_bytes: usize = config
       .batch_max_bytes
@@ -95,7 +95,7 @@ impl WireOutflow {
       batch_builder.clone(),
     ));
 
-    Ok(Self { batch_builder })
+    Self { batch_builder }
   }
 }
 
@@ -250,7 +250,7 @@ async fn send_task(
               stats.client_write_error.inc();
               on_send_error(&stats, bytes, samples, &received_at, shutdown);
               return;
-            };
+            }
           },
           WireOutflowClient::Udp(socket) => {
             if let Err(e) = socket.send(&batch.payload).await {

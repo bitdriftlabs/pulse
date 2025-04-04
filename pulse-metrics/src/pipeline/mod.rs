@@ -145,7 +145,7 @@ struct ResolvedRoute {
   target: ResolvedRouteTarget,
 }
 
-/// A PipelineRoute specifies a destination in a [PipelineConfig].
+/// A `PipelineRoute` specifies a destination in a [`PipelineConfig`].
 ///
 /// For example:
 ///
@@ -202,7 +202,7 @@ impl fmt::Display for PipelineRoute {
 // PipelineDispatcher
 //
 
-/// The PipelineDispatcher is responsible for routing messages through the pipeline.
+/// The `PipelineDispatcher` is responsible for routing messages through the pipeline.
 struct PipelineDispatcher {
   routes: Vec<PipelineRoute>,
   alt_routes: Vec<PipelineRoute>,
@@ -819,7 +819,7 @@ impl MetricPipeline {
     Ok(())
   }
 
-  async fn topological_sort(state: &PipelineState) -> TopologicalSort<PipelineComponent> {
+  fn topological_sort(state: &PipelineState) -> TopologicalSort<PipelineComponent> {
     let mut ts = TopologicalSort::new();
     for (inflow_name, inflow) in &state.inflows {
       let inflow_component = PipelineComponent {
@@ -854,7 +854,7 @@ impl MetricPipeline {
   }
 
   async fn shutdown_pipeline_state(state: &mut PipelineState) {
-    let mut ts = Self::topological_sort(state).await;
+    let mut ts = Self::topological_sort(state);
     loop {
       if ts.is_empty() {
         return;

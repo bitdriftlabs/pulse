@@ -15,6 +15,7 @@ use super::{
 };
 use crate::protos::metric::{CounterType, MetricId, MetricType, MetricValue, ParsedMetric};
 use crate::protos::prom::prom_stale_marker;
+use pulse_common::LossyIntoToFloat;
 use pulse_common::proto::ProtoDurationToStdDuration;
 use pulse_protobuf::protos::pulse::config::processor::v1::aggregation::AggregationConfig;
 use tokio::time::Instant;
@@ -91,7 +92,7 @@ struct RealProducer<'a> {
 impl TimerProducer for RealProducer<'_> {
   fn mean(&self) -> f64 {
     if self.aggregation.actual_count > 0 {
-      self.aggregation.sum / self.aggregation.actual_count as f64
+      self.aggregation.sum / self.aggregation.actual_count.lossy_to_f64()
     } else {
       0.0
     }

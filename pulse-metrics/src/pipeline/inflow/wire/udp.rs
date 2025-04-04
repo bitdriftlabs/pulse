@@ -174,14 +174,12 @@ impl PreBufferSession {
           self.pre_buffer.as_mut().unwrap().sleep.as_mut().await;
         }, if self.pre_buffer.is_some() => {
           self.flush_pre_buffer().await;
-          continue;
         },
         () = &mut idle_timeout => {
           if self.on_idle_timeout() {
             log::debug!("session idle timeout for {}", self.peer_ip);
             break;
           }
-          continue;
         },
         () = &mut shutdown_future => {
           break;

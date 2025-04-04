@@ -208,7 +208,7 @@ impl PromRemoteWriteClient for HyperPromRemoteWriteClient {
       .header("X-Prometheus-Remote-Write-Version", "0.1.0");
     if let Some(Auth::Bearer(bearer_token)) = &self.auth {
       request = request.header("x-bitdrift-api-key", bearer_token);
-    };
+    }
     for request_header in &self.request_headers {
       // TODO(mattklein123): Verify valid header names/values before we get here.
       request = match request_header.value_type.as_ref().expect("pgv") {

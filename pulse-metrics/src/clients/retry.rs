@@ -13,6 +13,7 @@ use anyhow::bail;
 use backoff::backoff::Backoff;
 use futures::Future;
 use parking_lot::Mutex;
+use pulse_common::LossyIntoToFloat;
 use pulse_protobuf::protos::pulse::config::common::v1::retry::RetryPolicy;
 use std::sync::Arc;
 use tokio::time::sleep;
@@ -70,8 +71,8 @@ impl Retry {
 
     if !{
       let mut locked_data = self.locked_data.lock();
-      let active_requests = locked_data.active_requests as f64;
-      let active_retries = locked_data.active_retries as f64;
+      let active_requests = locked_data.active_requests.lossy_to_f64();
+      let active_retries = locked_data.active_retries.lossy_to_f64();
       if active_retries >= (active_requests * self.config.budget.unwrap_or(0.1)) {
         log::debug!("retry budget not available");
         false

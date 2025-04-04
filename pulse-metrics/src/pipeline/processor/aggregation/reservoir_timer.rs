@@ -8,6 +8,7 @@
 use super::make_metric;
 use crate::protos::metric::{MetricId, MetricType, MetricValue, ParsedMetric};
 use crate::reservoir_timer::ReservoirTimer;
+use pulse_common::LossyIntoToFloat;
 use tokio::time::Instant;
 
 //
@@ -40,7 +41,7 @@ impl ReservoirTimerAggregation {
   ) -> Vec<Option<ParsedMetric>> {
     // Derive the sample rate based on the number of overall samples we got.
     let (reservoir, count) = self.reservoir.drain();
-    let sample_rate = reservoir.len() as f64 / count;
+    let sample_rate = reservoir.len().lossy_to_f64() / count;
     if self.emit_as_bulk {
       debug_assert!(!reservoir.is_empty());
       vec![make_metric(

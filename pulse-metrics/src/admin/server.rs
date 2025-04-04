@@ -131,6 +131,7 @@ impl AdminState {
     })
   }
 
+  #[allow(clippy::unused_async)]
   async fn metrics(State(state): State<Arc<Self>>) -> Response {
     let buffer = state.collector.prometheus_output();
     Response::builder()
@@ -143,14 +144,17 @@ impl AdminState {
     result.map_or_else(|e| format!("error: {e}"), |()| "OK".to_string())
   }
 
+  #[allow(clippy::unused_async)]
   async fn profile_enable() -> String {
     unsafe { Self::result_to_string(tikv_jemalloc_ctl::raw::write(b"prof.active\0", true)) }
   }
 
+  #[allow(clippy::unused_async)]
   async fn profile_disable() -> String {
     unsafe { Self::result_to_string(tikv_jemalloc_ctl::raw::write(b"prof.active\0", false)) }
   }
 
+  #[allow(clippy::unused_async)]
   async fn profile_dump() -> String {
     use std::ffi::CString;
 
@@ -164,14 +168,17 @@ impl AdminState {
     }
   }
 
+  #[allow(clippy::unused_async)]
   async fn root() -> String {
     "pulse-proxy admin server".to_string()
   }
 
+  #[allow(clippy::unused_async)]
   async fn healthcheck() -> String {
     "OK".to_string()
   }
 
+  #[allow(clippy::unused_async)]
   async fn log_filter(Query(mut params): Query<HashMap<String, String>>) -> String {
     let Some(filter) = params.remove("filter") else {
       return "usage: /log_filter?filter=RUST_LOG".to_string();

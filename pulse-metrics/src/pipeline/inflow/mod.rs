@@ -71,7 +71,7 @@ pub(super) async fn to_inflow(
       Ok(Arc::new(PromRemoteWriteInflow::new(config, context).await?))
     },
     Config_type::MetricGenerator(config) => {
-      Ok(Arc::new(MetricGeneratorInflow::new(config, context).await?))
+      Ok(Arc::new(MetricGeneratorInflow::new(config, context)))
     },
     Config_type::K8sProm(config) => prom_scrape::scraper::make(config, context).await,
   }

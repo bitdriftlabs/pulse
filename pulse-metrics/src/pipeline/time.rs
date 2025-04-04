@@ -95,12 +95,12 @@ impl RealDurationJitter {
 
 impl DurationJitter for RealDurationJitter {
   fn half_jitter_duration(input: Duration) -> Duration {
-    let as_millis = input.whole_milliseconds() as u64;
+    let as_millis = u64::try_from(input.whole_milliseconds()).unwrap();
     Self::jitter_worker(as_millis / 2, as_millis)
   }
 
   fn full_jitter_duration(input: Duration) -> Duration {
-    let as_millis = input.whole_milliseconds() as u64;
+    let as_millis = u64::try_from(input.whole_milliseconds()).unwrap();
     Self::jitter_worker(0, as_millis)
   }
 }

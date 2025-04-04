@@ -69,7 +69,7 @@ impl HistogramAggregation {
       return Err(AggregationError::BucketMismatch);
     }
     for ((_, our_le), their) in self.buckets.iter().zip(&data.buckets) {
-      if *our_le != their.le {
+      if (*our_le - their.le).abs() > f64::EPSILON {
         return Err(AggregationError::BucketMismatch);
       }
     }
@@ -144,7 +144,7 @@ impl HistogramAggregation {
     for ((_, previous_le), (_, current_le)) in
       previous_aggregation.buckets.iter().zip(self.buckets.iter())
     {
-      if *previous_le != *current_le {
+      if (*previous_le - *current_le).abs() > f64::EPSILON {
         return vec![];
       }
     }

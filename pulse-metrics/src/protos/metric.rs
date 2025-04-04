@@ -444,7 +444,7 @@ impl Metric {
   }
 
   pub fn to_datetime(&self) -> Option<OffsetDateTime> {
-    OffsetDateTime::from_unix_timestamp(self.timestamp as i64).ok()
+    OffsetDateTime::from_unix_timestamp(i64::try_from(self.timestamp).unwrap()).ok()
   }
 
   pub fn to_wire_format(&self, wire_protocol: &WireProtocol) -> bytes::Bytes {
@@ -506,6 +506,8 @@ pub enum ParseError {
   UnsupportedExtensionField,
   #[error("cannot change protocol for unparsable metric sample")]
   UnparsableMetricChangeProtocol,
+  #[error("invalid timestamp")]
+  InvalidTimestamp,
 }
 
 //

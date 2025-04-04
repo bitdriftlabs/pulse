@@ -20,10 +20,12 @@ enum TestBatchResult {
   ExpectFinish(usize),
 }
 
+#[allow(clippy::unnecessary_wraps)]
 const fn expect_finish(size: usize) -> Option<TestBatchResult> {
   Some(TestBatchResult::ExpectFinish(size))
 }
 
+#[allow(clippy::unnecessary_wraps)]
 const fn complete(size: usize) -> Option<TestBatchResult> {
   Some(TestBatchResult::Complete(size))
 }

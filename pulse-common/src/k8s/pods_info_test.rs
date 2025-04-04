@@ -17,6 +17,7 @@ use std::sync::Arc;
 use time::ext::NumericalDuration;
 use vrl::btreemap;
 
+#[allow(clippy::unnecessary_wraps)]
 fn make_pod_status(ip: &str, phase: &str) -> Option<PodStatus> {
   Some(PodStatus {
     pod_ip: Some(ip.to_string()),

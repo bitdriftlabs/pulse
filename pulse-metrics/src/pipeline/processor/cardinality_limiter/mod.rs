@@ -207,7 +207,7 @@ impl<H: Hasher + Default + Send + 'static> K8sPodLimiter<H> {
           .as_ref()
           .and_then(
             |vrl_program| match vrl_program.run_with_metadata(Some(&pod.metadata)) {
-              Ok(Value::Integer(result)) => Some(result as u32),
+              Ok(Value::Integer(result)) => u32::try_from(result).ok(),
               result => {
                 warn_every!(
                   1.minutes(),

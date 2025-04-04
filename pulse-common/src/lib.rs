@@ -44,3 +44,46 @@ pub fn global_initialize() {
     console_subscriber::init();
   }
 }
+
+pub trait LossyIntoToFloat {
+  fn lossy_to_f64(self) -> f64;
+}
+
+impl LossyIntoToFloat for u64 {
+  #[allow(clippy::cast_precision_loss)]
+  fn lossy_to_f64(self) -> f64 {
+    self as f64
+  }
+}
+
+impl LossyIntoToFloat for usize {
+  #[allow(clippy::cast_precision_loss)]
+  fn lossy_to_f64(self) -> f64 {
+    self as f64
+  }
+}
+
+pub trait LossyFloatToInt {
+  fn lossy_to_usize(self) -> usize;
+  fn lossy_to_u64(self) -> u64;
+}
+
+impl LossyFloatToInt for f64 {
+  #[allow(
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation
+  )]
+  fn lossy_to_usize(self) -> usize {
+    self as usize
+  }
+
+  #[allow(
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation
+  )]
+  fn lossy_to_u64(self) -> u64 {
+    self as u64
+  }
+}

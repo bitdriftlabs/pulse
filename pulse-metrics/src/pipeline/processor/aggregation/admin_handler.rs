@@ -13,6 +13,7 @@ use itertools::Itertools;
 use parking_lot::Mutex;
 use pulse_common::singleton::{SingletonHandle, SingletonManager};
 use std::convert::Infallible;
+use std::fmt::Write;
 use std::sync::{Arc, OnceLock, Weak};
 use unwrap_infallible::UnwrapInfallible;
 
@@ -46,7 +47,7 @@ impl LastAggregated {
             "/last_aggregation",
             Box::new(move |_request| {
               let state = cloned_state.clone();
-              async move { Self::last_aggregated_handler(&state).await }.boxed()
+              async move { Self::last_aggregated_handler(&state) }.boxed()
             }),
           )
           .unwrap();
@@ -68,7 +69,7 @@ impl LastAggregated {
   }
 
   // Admin handler for /last_aggregation, registered above.
-  async fn last_aggregated_handler(state: &State) -> Response {
+  fn last_aggregated_handler(state: &State) -> Response {
     // TODO(mattklein123): The use of weak/retain here could cause unbound growth if there is a lot
     // of change without calling. We can figure out an inline delete but seems not worth it now.
     let mut response = String::new();
@@ -76,7 +77,7 @@ impl LastAggregated {
     state.lock().retain(|(name, metrics)| {
       metrics.upgrade().is_some_and(|metrics| {
         if let Some(metrics) = &*metrics.lock() {
-          response.push_str(&format!("dumping filter: {name}\n"));
+          writeln!(&mut response, "dumping filter: {name}").unwrap();
           response.push_str(&metrics.iter().map(|m| m.to_metric_id()).join("\n"));
           response.push('\n');
         }

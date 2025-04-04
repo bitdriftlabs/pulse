@@ -113,10 +113,10 @@ pub async fn to_outflow(
 ) -> anyhow::Result<DynamicPipelineOutflow> {
   // Match out the type of inflow config and dispatch it to the correct type
   match config.config_type.expect("pgv") {
-    Config_type::Unix(config) => unix_outflow(config, context).await,
-    Config_type::Tcp(config) => tcp_outflow(config, context).await,
+    Config_type::Unix(config) => unix_outflow(config, context),
+    Config_type::Tcp(config) => tcp_outflow(config, context),
     Config_type::Udp(config) => udp_outflow(config, context).await,
-    Config_type::NullOutflow(config) => null_outflow(config, context).await,
+    Config_type::NullOutflow(config) => Ok(null_outflow(config, context)),
     Config_type::PromRemoteWrite(config) => Ok(PromRemoteWriteOutflow::new(config, context).await?),
   }
 }
@@ -128,7 +128,7 @@ fn check_send_to(config: &CommonWireClientConfig) -> anyhow::Result<()> {
   Ok(())
 }
 
-async fn unix_outflow(
+fn unix_outflow(
   config: UnixClientConfig,
   context: OutflowFactoryContext,
 ) -> anyhow::Result<DynamicPipelineOutflow> {
@@ -142,11 +142,11 @@ async fn unix_outflow(
       .into_option()
       .map(|d| d.to_time_duration()),
   ));
-  let outflow = WireOutflow::new(config.common.unwrap(), client, context).await?;
+  let outflow = WireOutflow::new(&config.common.unwrap(), client, context);
   Ok(Arc::new(outflow))
 }
 
-async fn tcp_outflow(
+fn tcp_outflow(
   config: TcpClientConfig,
   context: OutflowFactoryContext,
 ) -> anyhow::Result<DynamicPipelineOutflow> {
@@ -161,7 +161,7 @@ async fn tcp_outflow(
       .map(|d| d.to_time_duration()),
   ));
 
-  let outflow = WireOutflow::new(config.common.unwrap(), client, context).await?;
+  let outflow = WireOutflow::new(&config.common.unwrap(), client, context);
   Ok(Arc::new(outflow))
 }
 
@@ -173,19 +173,18 @@ async fn udp_outflow(
   let socket = Arc::new(UdpSocket::bind("[::]:0").await?);
   socket.connect(config.common.send_to.as_str()).await?;
   let client = WireOutflowClient::Udp(socket);
-  let outflow = WireOutflow::new(config.common.unwrap(), client, context).await?;
+  let outflow = WireOutflow::new(&config.common.unwrap(), client, context);
   Ok(Arc::new(outflow))
 }
 
-async fn null_outflow(
+fn null_outflow(
   config: NullClientConfig,
   context: OutflowFactoryContext,
-) -> anyhow::Result<DynamicPipelineOutflow> {
+) -> DynamicPipelineOutflow {
   let outflow = WireOutflow::new(
-    config.common.unwrap_or_default(),
+    &config.common.unwrap_or_default(),
     WireOutflowClient::Null(),
     context,
-  )
-  .await?;
-  Ok(Arc::new(outflow))
+  );
+  Arc::new(outflow)
 }

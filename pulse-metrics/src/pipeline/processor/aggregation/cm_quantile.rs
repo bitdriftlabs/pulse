@@ -19,6 +19,7 @@ mod cm_quantile_test;
 use adapter::SampleAdapter;
 use intrusive_collections::linked_list::Cursor;
 use intrusive_collections::{LinkedList, LinkedListLink};
+use pulse_common::{LossyFloatToInt, LossyIntoToFloat};
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::collections::binary_heap::PeekMut;
@@ -254,7 +255,9 @@ impl Quantile {
 
   // Computes the number of items to process in one iteration.
   fn cursor_increment(&self) -> u64 {
-    (self.num_samples as f64 * self.epsilon).ceil() as u64
+    (self.num_samples.lossy_to_f64() * self.epsilon)
+      .ceil()
+      .lossy_to_u64()
   }
 
   // Incrementally processes compression by using a cursor/
@@ -291,7 +294,7 @@ impl Quantile {
         &self.quantiles,
         self.epsilon,
         self.num_values,
-        max_rank as f64,
+        max_rank.lossy_to_f64(),
       );
       let test_val = compressor_ref.width + next_ref.width + next_ref.delta;
       if test_val <= threshold {
@@ -325,26 +328,35 @@ impl Quantile {
   fn threshold(quantiles: &[f64], epsilon: f64, num_values: u64, rank: f64) -> u64 {
     let mut min_val = f64::MAX;
     for quantile in quantiles {
-      let quantile_min = if rank >= quantile * num_values as f64 {
+      let quantile_min = if rank >= quantile * num_values.lossy_to_f64() {
         2.0 * epsilon * rank / quantile
       } else {
-        2.0 * epsilon * (num_values as f64 - rank) / (1.0 - quantile)
+        2.0 * epsilon * (num_values.lossy_to_f64() - rank) / (1.0 - quantile)
       };
       if quantile_min < min_val {
         min_val = quantile_min;
       }
     }
 
-    min_val as u64
+    min_val.lossy_to_u64()
   }
 
   // Query for a particular quantile.
   pub fn query(&self, quantile: f64) -> f64 {
-    let rank = (quantile * self.num_values as f64).ceil() as u64;
+    let rank = (quantile * self.num_values.lossy_to_f64())
+      .ceil()
+      .lossy_to_u64();
     let mut min_rank = 0;
-    let threshold =
-      (Self::threshold(&self.quantiles, self.epsilon, self.num_values, rank as f64) as f64 / 2.0)
-        .ceil() as u64;
+    let threshold = (Self::threshold(
+      &self.quantiles,
+      self.epsilon,
+      self.num_values,
+      rank.lossy_to_f64(),
+    )
+    .lossy_to_f64()
+      / 2.0)
+      .ceil()
+      .lossy_to_u64();
 
     let mut prev_cursor = self.samples.front();
     let mut current_cursor = self.samples.front();
