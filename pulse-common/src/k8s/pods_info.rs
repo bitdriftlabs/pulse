@@ -11,24 +11,23 @@ mod pods_info_test;
 
 use self::container::PodsInfo;
 use super::services::{ServiceCache, ServiceInfo};
+use super::watcher_base::ResourceWatchCallbacks;
 use super::{NodeInfo, missing_node_name_error, object_namespace};
 use crate::k8s::services::RealServiceFetcher;
+use crate::k8s::watcher_base::WatcherBase;
 use crate::proto::env_or_inline_to_string;
 use crate::singleton::{SingletonHandle, SingletonManager};
-use backoff::backoff::Backoff;
-use backoff::{ExponentialBackoff, ExponentialBackoffBuilder};
+use async_trait::async_trait;
+use bd_shutdown::{ComponentShutdown, ComponentShutdownTriggerHandle};
 use futures_util::future::BoxFuture;
-use futures_util::{TryStreamExt, pin_mut};
 use k8s_openapi::api::core::v1::Pod;
 use kube::Api;
-use kube::runtime::watcher::{self, ListSemantic};
 use protobuf::Chars;
 use pulse_protobuf::protos::pulse::config::bootstrap::v1::bootstrap::KubernetesBootstrapConfig;
 use std::collections::{BTreeMap, HashMap};
 use std::net::IpAddr;
 use std::sync::{Arc, OnceLock};
-use time::ext::{NumericalDuration, NumericalStdDuration};
-use tokio::sync::oneshot;
+use time::ext::NumericalDuration;
 use tokio::sync::watch::{self, Ref};
 
 pub type K8sWatchFactory =
@@ -106,6 +105,7 @@ impl PodsInfoSingleton {
   pub async fn get(
     singleton_manager: Arc<SingletonManager>,
     k8s_config: KubernetesBootstrapConfig,
+    shutdown: ComponentShutdownTriggerHandle,
   ) -> anyhow::Result<Arc<Self>> {
     static HANDLE: OnceLock<SingletonHandle> = OnceLock::new();
     let handle = HANDLE.get_or_init(SingletonHandle::default);
@@ -129,7 +129,14 @@ impl PodsInfoSingleton {
           None
         };
 
-        watch_pods(k8s_config, node_info.clone(), pods_info_tx, service_cache).await?;
+        watch_pods(
+          k8s_config,
+          node_info.clone(),
+          pods_info_tx,
+          service_cache,
+          shutdown.make_shutdown(),
+        )
+        .await?;
         Ok::<_, anyhow::Error>(Arc::new(Self::new(pods_info_rx, node_info)))
       })
       .await
@@ -305,6 +312,7 @@ pub mod container {
             None,
           )),
           ip: pod_ip,
+          ip_string: pod_ip_string.to_string(),
           container_ports,
         }
       };
@@ -340,6 +348,7 @@ pub struct PodInfo {
   pub services: HashMap<String, Arc<ServiceInfo>>,
   pub metadata: Arc<crate::metadata::Metadata>,
   pub ip: IpAddr,
+  pub ip_string: String,
   pub container_ports: Vec<ContainerPort>,
 }
 
@@ -350,120 +359,30 @@ impl PodInfo {
   }
 }
 
-fn make_k8s_backoff() -> ExponentialBackoff {
-  // This matches the k8s client which says that it matches the Go client. This is done manually
-  // as there appears to be a bug in the k8s client where it keeps resetting if the failure is
-  // during initial sync.
-  ExponentialBackoffBuilder::new()
-    .with_initial_interval(800.std_milliseconds())
-    .with_max_interval(30.std_seconds())
-    .with_max_elapsed_time(None)
-    .with_multiplier(2.0)
-    .build()
-}
-
 /// Performs a lookup of all eligible prom endpoints for the given k8s node and watches for
 /// changes to this set. The initial state and updates are provided via the watch channel.
 pub async fn watch_pods(
   config: KubernetesBootstrapConfig,
   node_info: Arc<NodeInfo>,
-  update_tx: tokio::sync::watch::Sender<PodsInfo>,
-  mut service_cache: Option<ServiceCache>,
+  update_tx: watch::Sender<PodsInfo>,
+  service_cache: Option<ServiceCache>,
+  shutdown: ComponentShutdown,
 ) -> anyhow::Result<()> {
   log::info!("starting pod watcher");
   let client = kube::Client::try_default().await?;
   let pod_api: Api<Pod> = kube::Api::all(client);
-
-  // Note that we unset page size because the Rust library won't set resourceVersion=0 when
-  // page size is set because apparently K8s ignores it. See:
-  // https://github.com/kubernetes/kubernetes/issues/118394
-  let watcher = watcher::watcher(
+  let field_selector = Some(format!("spec.nodeName={}", node_info.name));
+  let pods_info_cache = PodsInfoCache::new(node_info, update_tx, config.pod_phases, service_cache);
+  WatcherBase::create(
+    "node pod watcher".to_string(),
     pod_api,
-    watcher::Config {
-      field_selector: Some(format!("spec.nodeName={}", node_info.name)),
-      list_semantic: ListSemantic::Any,
-      page_size: None,
-      ..Default::default()
-    },
-  );
-
-  let mut pods_info_cache = PodsInfoCache::new(node_info, update_tx, config.pod_phases);
-  let (initial_sync_tx, initial_sync_rx) = oneshot::channel();
-  let mut backoff = make_k8s_backoff();
-
-  tokio::spawn(async move {
-    pin_mut!(watcher);
-    let mut initial_state = None;
-    let mut initial_sync_tx = Some(initial_sync_tx);
-    loop {
-      let Some(update) = process_resource_update(watcher.try_next().await, &mut backoff).await
-      else {
-        continue;
-      };
-
-      match update {
-        watcher::Event::Apply(pod) => {
-          pods_info_cache
-            .apply_pod(&pod, service_cache.as_mut())
-            .await;
-        },
-        watcher::Event::Delete(pod) => pods_info_cache.remove_pod(&pod),
-        watcher::Event::Init => {
-          log::info!("starting pod resync");
-        },
-        watcher::Event::InitApply(pod) => {
-          initial_state
-            .get_or_insert(PodsInfo::default())
-            .apply_pod(
-              &pods_info_cache.node_info,
-              &pod,
-              service_cache.as_mut(),
-              &pods_info_cache.pod_phases,
-            )
-            .await;
-        },
-        watcher::Event::InitDone => {
-          pods_info_cache.swap_state(initial_state.take().unwrap_or_default());
-          log::info!("pod resync complete");
-          if let Some(initial_sync_tx) = initial_sync_tx.take() {
-            let _ignored = initial_sync_tx.send(());
-          }
-        },
-      }
-    }
-
-    // TODO(snowp): We may do a periodic reconciliation pass to make sure that we don't drift out
-    // of sync.
-  });
-
-  let _ignored = initial_sync_rx.await;
-  log::info!("initial pod sync complete");
+    field_selector,
+    pods_info_cache,
+    shutdown,
+  )
+  .await;
 
   Ok(())
-}
-
-async fn process_resource_update<T>(
-  result: kube::runtime::watcher::Result<Option<kube::runtime::watcher::Event<T>>>,
-  backoff: &mut ExponentialBackoff,
-) -> Option<kube::runtime::watcher::Event<T>> {
-  match result {
-    Ok(Some(update)) => {
-      if !matches!(update, watcher::Event::Init) {
-        // The library will emit the Event::Init message in the case of a failure and the start of
-        // resync. We do not want to reset in this case, but reset in all other cases.
-        backoff.reset();
-      }
-
-      Some(update)
-    },
-    // TODO(snowp): Would this ever happen?
-    Ok(None) => None,
-    Err(e) => {
-      log::warn!("Error watching pods, backing off: {e}");
-      tokio::time::sleep(backoff.next_backoff().unwrap()).await;
-      None
-    },
-  }
 }
 
 //
@@ -473,15 +392,47 @@ async fn process_resource_update<T>(
 struct PodsInfoCache {
   node_info: Arc<NodeInfo>,
   state: PodsInfo,
-  update_tx: tokio::sync::watch::Sender<PodsInfo>,
+  update_tx: watch::Sender<PodsInfo>,
   pod_phases: Vec<Chars>,
+  service_cache: Option<ServiceCache>,
+  initializing_state: Option<PodsInfo>,
+}
+
+#[async_trait]
+impl ResourceWatchCallbacks<Pod> for PodsInfoCache {
+  async fn apply(&mut self, pod: Pod) {
+    self.apply_pod(&pod).await;
+  }
+
+  async fn delete(&mut self, pod: Pod) {
+    self.remove_pod(&pod);
+  }
+
+  async fn init_apply(&mut self, pod: Pod) {
+    self
+      .initializing_state
+      .get_or_insert(PodsInfo::default())
+      .apply_pod(
+        &self.node_info,
+        &pod,
+        self.service_cache.as_mut(),
+        &self.pod_phases,
+      )
+      .await;
+  }
+
+  async fn init_done(&mut self) {
+    let new_state = self.initializing_state.take().unwrap_or_default();
+    self.swap_state(new_state);
+  }
 }
 
 impl PodsInfoCache {
   fn new(
     node_info: Arc<NodeInfo>,
-    update_tx: tokio::sync::watch::Sender<PodsInfo>,
+    update_tx: watch::Sender<PodsInfo>,
     pod_phases: Vec<Chars>,
+    service_cache: Option<ServiceCache>,
   ) -> Self {
     Self {
       node_info,
@@ -492,6 +443,8 @@ impl PodsInfoCache {
       } else {
         pod_phases
       },
+      service_cache,
+      initializing_state: None,
     }
   }
 
@@ -500,10 +453,15 @@ impl PodsInfoCache {
     self.broadcast();
   }
 
-  async fn apply_pod(&mut self, pod: &Pod, service_cache: Option<&mut ServiceCache>) {
+  async fn apply_pod(&mut self, pod: &Pod) {
     if self
       .state
-      .apply_pod(&self.node_info, pod, service_cache, &self.pod_phases)
+      .apply_pod(
+        &self.node_info,
+        pod,
+        self.service_cache.as_mut(),
+        &self.pod_phases,
+      )
       .await
     {
       self.broadcast();

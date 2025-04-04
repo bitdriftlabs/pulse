@@ -15,9 +15,6 @@ import "validate/validate.proto";
 // Collect prometheus metrics by discovering endpoints via Kubernetes. The annotations checked are
 // the standard Prometheus annotations such as prometheus.io/scrape, prometheus.io/path, etc.
 message KubernetesPrometheusConfig {
-  // How often eligible Prometheus endpoints are scraped.
-  google.protobuf.Duration scrape_interval = 1 [(validate.rules).message.required = true];
-
   message UseK8sHttpsServiceAuthMatcher {
     message KeyValue {
       string key = 1 [(validate.rules).string = {min_len: 1}];
@@ -30,6 +27,19 @@ message KubernetesPrometheusConfig {
 
       // Matches if the supplied key/value pair is present in the pod's annotations.
       KeyValue annotation_matcher = 1;
+
+      // Always matches.
+      bool always = 2;
+    }
+  }
+
+  message InclusionFilter {
+    oneof filter_type {
+      option (validate.required) = true;
+
+      // Apply the following regex to each container port name to determine if it should be
+      // scraped. If the regex is a match, the container port will be scraped.
+      string container_port_name_regex = 1;
     }
   }
 
@@ -41,6 +51,24 @@ message KubernetesPrometheusConfig {
     repeated UseK8sHttpsServiceAuthMatcher use_k8s_https_service_auth_matchers = 2;
   }
 
+  // Watch a Kubernetes endpoints resource and scrape all ready endpoints remotely.
+  message RemoteEndpoint {
+    // The namespace of the Kubernetes endpoints resource to watch.
+    string namespace = 1 [(validate.rules).string = {min_len: 1}];
+
+    // The name of the Kubernetes endpoints resource to watch.
+    string service = 2 [(validate.rules).string = {min_len: 1}];
+
+    // Inclusion filters can be used to include endpoints to be scraped even if they do not have the
+    // standard Prometheus annotations. An inclusion filter if successful will result in a endpoint
+    // port to be scraped.
+    repeated InclusionFilter inclusion_filters = 3;
+
+    // If any of the optionally provided matchers matches, HTTPS K8s service auth will be used
+    // against the scrape target.
+    repeated UseK8sHttpsServiceAuthMatcher use_k8s_https_service_auth_matchers = 4;
+  }
+
   // Scrape metrics from endpoints discovered on the node. This will resolve to the kubelet
   // endpoint on the local node.
   message Node {
@@ -50,16 +78,6 @@ message KubernetesPrometheusConfig {
 
   // Scrapes metrics from Prometheus endpoints defined on pods via pod annotations.
   message Pod {
-    message InclusionFilter {
-      oneof filter_type {
-        option (validate.required) = true;
-
-        // Apply the following regex to each container port name to determine if it should be
-        // scraped. If the regex is a match, the container port will be scraped.
-        string container_port_name_regex = 1;
-      }
-    }
-
     // Inclusion filters can be used to include pods to be scraped even if they do not have the
     // standard Prometheus annotations. An inclusion filter if successful will result in a container
     // port to be scraped.
@@ -81,6 +99,9 @@ message KubernetesPrometheusConfig {
     google.protobuf.Duration fetch_interval = 2;
   }
 
+  // How often eligible Prometheus endpoints are scraped.
+  google.protobuf.Duration scrape_interval = 1 [(validate.rules).message.required = true];
+
   oneof target {
     option (validate.required) = true;
 
@@ -88,6 +109,7 @@ message KubernetesPrometheusConfig {
     Node node = 3;
     Pod pod = 4;
     HttpServiceDiscovery http_service_discovery = 8;
+    RemoteEndpoint remote_endpoint = 9;
   }
 
   // Whether to emit the synthetic "up" metric as per

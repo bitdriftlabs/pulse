@@ -34,22 +34,25 @@ use futures_util::future::{join_all, pending};
 use http::StatusCode;
 use http::header::{ACCEPT, AUTHORIZATION};
 use itertools::Itertools;
+use k8s_openapi::api::core::v1::{EndpointPort, Endpoints};
 use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
 use k8s_prom::KubernetesPrometheusConfig;
-use k8s_prom::kubernetes_prometheus_config::pod::InclusionFilter;
-use k8s_prom::kubernetes_prometheus_config::pod::inclusion_filter::Filter_type;
+use k8s_prom::kubernetes_prometheus_config::inclusion_filter::Filter_type;
 use k8s_prom::kubernetes_prometheus_config::use_k8s_https_service_auth_matcher::Auth_matcher;
 use k8s_prom::kubernetes_prometheus_config::{
   self,
   HttpServiceDiscovery,
+  InclusionFilter,
   TLS,
   Target,
   UseK8sHttpsServiceAuthMatcher,
 };
+use kube::ResourceExt;
 use parking_lot::Mutex;
 use prometheus::IntCounter;
 use pulse_common::k8s::NodeInfo;
-use pulse_common::k8s::pods_info::{OwnedPodsInfoSingleton, PodInfo};
+use pulse_common::k8s::endpoints::EndpointsWatcher;
+use pulse_common::k8s::pods_info::{ContainerPort, OwnedPodsInfoSingleton, PodInfo};
 use pulse_common::metadata::{Metadata, PodMetadata};
 use pulse_protobuf::protos::pulse::config::inflow::v1::k8s_prom;
 use regex::Regex;
@@ -65,9 +68,34 @@ use tokio::sync::watch;
 use tokio::time::MissedTickBehavior;
 use xxhash_rust::xxh64::Xxh64Builder;
 
-fn process_inclusion_filters(
+pub trait PortWithName {
+  fn name(&self) -> String;
+  fn port(&self) -> i32;
+}
+
+impl PortWithName for ContainerPort {
+  fn name(&self) -> String {
+    self.name.clone()
+  }
+
+  fn port(&self) -> i32 {
+    self.port
+  }
+}
+
+impl PortWithName for EndpointPort {
+  fn name(&self) -> String {
+    self.name.clone().unwrap_or_default()
+  }
+
+  fn port(&self) -> i32 {
+    self.port
+  }
+}
+
+fn process_inclusion_filters<T: PortWithName>(
   inclusion_filters: &[InclusionFilter],
-  pod_info: &PodInfo,
+  ports: &[T],
 ) -> Vec<i32> {
   inclusion_filters
     .iter()
@@ -76,12 +104,11 @@ fn process_inclusion_filters(
         Filter_type::ContainerPortNameRegex(regex) => Regex::new(regex).ok().map_or_else(
           || empty().collect(),
           |regex| {
-            pod_info
-              .container_ports
+            ports
               .iter()
               .filter_map(|port| {
-                if regex.is_match(&port.name) {
-                  Some(port.port)
+                if regex.is_match(&port.name()) {
+                  Some(port.port())
                 } else {
                   None
                 }
@@ -96,12 +123,11 @@ fn process_inclusion_filters(
 
 fn process_k8s_https_service_auth_matchers(
   use_k8s_https_service_auth_matchers: &[UseK8sHttpsServiceAuthMatcher],
-  pod_info: &PodInfo,
+  target_annotations: &BTreeMap<String, String>,
 ) -> bool {
   use_k8s_https_service_auth_matchers.iter().any(|matcher| {
     match matcher.auth_matcher.as_ref().expect("pgv") {
-      Auth_matcher::AnnotationMatcher(matcher) => pod_info
-        .annotations
+      Auth_matcher::AnnotationMatcher(matcher) => target_annotations
         .get(matcher.key.as_str())
         .is_some_and(|value| {
           matcher
@@ -109,6 +135,7 @@ fn process_k8s_https_service_auth_matchers(
             .as_ref()
             .is_none_or(|expected_value| value.as_str() == expected_value.as_str())
         }),
+      Auth_matcher::Always(_) => true,
     }
   })
 }
@@ -119,24 +146,23 @@ fn process_k8s_https_service_auth_matchers(
 /// 1. Use ports from annotations/inclusion filters if available.
 /// 2. Use service port if specified (either as number or by matching port name).
 /// 3. Fall back to default port 9090 if no other ports are available.
-pub fn resolve_ports(
-  ports: Vec<i32>,
+pub fn resolve_ports<T: PortWithName>(
+  existing_ports: Vec<i32>,
   maybe_service_port: Option<&IntOrString>,
-  pod_info: &PodInfo,
+  target_ports: &[T],
 ) -> Vec<i32> {
   // If we have ports from annotations/inclusion filters, use those.
-  if !ports.is_empty() {
-    return ports;
+  if !existing_ports.is_empty() {
+    return existing_ports;
   }
 
   // Try to resolve from service port.
   let service_port = match maybe_service_port {
     Some(IntOrString::Int(port)) => Some(vec![*port]),
-    Some(IntOrString::String(name)) => pod_info
-      .container_ports
+    Some(IntOrString::String(name)) => target_ports
       .iter()
-      .find(|port| port.name == *name)
-      .map(|port| vec![port.port]),
+      .find(|port| port.name() == *name)
+      .map(|port| vec![port.port()]),
     None => None,
   };
 
@@ -144,16 +170,19 @@ pub fn resolve_ports(
   service_port.unwrap_or_else(|| vec![9090])
 }
 
-fn create_endpoints(
+fn create_endpoints<T: PortWithName>(
+  namespace: &str,
+  ip: &str,
   inclusion_filters: &[InclusionFilter],
   use_k8s_https_service_auth_matchers: &[UseK8sHttpsServiceAuthMatcher],
-  node_info: &NodeInfo,
-  pod_info: &PodInfo,
+  node_info: Option<&NodeInfo>,
+  pod_info: Option<&PodInfo>,
+  target_ports: &[T],
   service_name: Option<&str>,
   maybe_service_port: Option<&IntOrString>,
   prom_annotations: &BTreeMap<String, String>,
 ) -> Vec<(String, PromEndpoint)> {
-  let included_ports = process_inclusion_filters(inclusion_filters, pod_info);
+  let included_ports = process_inclusion_filters(inclusion_filters, target_ports);
   if prom_annotations
     .get("prometheus.io/scrape")
     .map(String::as_str)
@@ -166,7 +195,7 @@ fn create_endpoints(
   let prom_namespace = prom_annotations
     .get("prometheus.io/namespace")
     .cloned()
-    .unwrap_or_else(|| pod_info.namespace.to_string());
+    .unwrap_or_else(|| namespace.to_string());
 
   let prom_endpoint_path = prom_annotations
     .get("prometheus.io/path")
@@ -201,29 +230,31 @@ fn create_endpoints(
     .unique()
     .collect_vec();
 
-  let ports = resolve_ports(ports, maybe_service_port, pod_info);
+  let ports = resolve_ports(ports, maybe_service_port, target_ports);
 
-  let use_k8s_https_service_auth =
-    process_k8s_https_service_auth_matchers(use_k8s_https_service_auth_matchers, pod_info);
+  let use_k8s_https_service_auth = process_k8s_https_service_auth_matchers(
+    use_k8s_https_service_auth_matchers,
+    pod_info.map_or(prom_annotations, |p| &p.annotations),
+  );
 
   ports
     .iter()
     .map(|port| {
       let endpoint = PromEndpoint::new(
-        pod_info.ip.to_string(),
+        ip.to_string(),
         *port,
         prom_endpoint_path.clone(),
         Some(Arc::new(Metadata::new(
-          Some(node_info),
-          Some(PodMetadata {
+          node_info,
+          pod_info.map(|pod_info| PodMetadata {
             namespace: &prom_namespace,
             pod_name: &pod_info.name,
-            pod_ip: &pod_info.ip.to_string(),
+            pod_ip: &pod_info.ip_string,
             pod_labels: &pod_info.labels,
             pod_annotations: &pod_info.annotations,
             service: service_name,
           }),
-          Some(format!("{}:{port}", pod_info.ip)),
+          Some(format!("{ip}:{port}")),
         ))),
         use_k8s_https_service_auth,
         scheme.clone(),
@@ -239,7 +270,7 @@ fn create_endpoints(
           "{}/{}/{}/{}/{}",
           prom_namespace,
           service_name.unwrap_or_default(),
-          pod_info.name,
+          pod_info.map_or(ip, |pod_info| &pod_info.name),
           port,
           hash
         ),
@@ -738,6 +769,32 @@ pub async fn make(
       tls_config.as_ref(),
       timeout,
     ),
+    Target::RemoteEndpoint(remote_endpoint) => {
+      let target = Box::new(RemoteEndpointsTarget {
+        endpoints: EndpointsWatcher::create(
+          &remote_endpoint.namespace,
+          &remote_endpoint.service,
+          context.shutdown_trigger_handle.make_shutdown(),
+        )
+        .await?,
+        inclusion_filters: remote_endpoint.inclusion_filters,
+        use_k8s_https_service_auth_matchers: remote_endpoint.use_k8s_https_service_auth_matchers,
+        namespace: remote_endpoint.namespace.to_string(),
+        service: remote_endpoint.service.to_string(),
+      });
+      Scraper::<RealDurationJitter>::create(
+        context.name,
+        stats,
+        context.dispatcher,
+        context.shutdown_trigger_handle,
+        target,
+        scrape_interval,
+        ticker_factory,
+        config.emit_up_metric,
+        tls_config.as_ref(),
+        timeout,
+      )
+    },
     Target::Node(details) => Scraper::<RealDurationJitter>::create(
       context.name,
       stats,
@@ -815,10 +872,13 @@ impl EndpointProvider for KubePodTarget {
       .pods()
       .flat_map(|(_, pod_info)| {
         create_endpoints(
+          &pod_info.namespace,
+          &pod_info.ip.to_string(),
           &self.inclusion_filters,
           &self.use_k8s_https_service_auth_matchers,
-          &node_info,
-          pod_info,
+          Some(&node_info),
+          Some(pod_info),
+          &pod_info.container_ports,
           None,
           None,
           &pod_info.annotations,
@@ -851,10 +911,13 @@ impl EndpointProvider for KubeEndpointsTarget {
     for (_, pod_info) in pods.pods() {
       for service in pod_info.services.values() {
         endpoints.extend(create_endpoints(
+          &pod_info.namespace,
+          &pod_info.ip.to_string(),
           &[],
           &self.use_k8s_https_service_auth_matchers,
-          &node_info,
-          pod_info,
+          Some(&node_info),
+          Some(pod_info),
+          &pod_info.container_ports,
           Some(&service.name),
           service.maybe_service_port.as_ref(),
           &service.annotations,
@@ -867,6 +930,61 @@ impl EndpointProvider for KubeEndpointsTarget {
 
   async fn changed(&mut self) {
     let _ignored = self.pods_info.changed().await;
+  }
+}
+
+//
+// RemoteEndpointsTarget
+//
+
+struct RemoteEndpointsTarget {
+  endpoints: watch::Receiver<Option<Endpoints>>,
+  inclusion_filters: Vec<InclusionFilter>,
+  use_k8s_https_service_auth_matchers: Vec<UseK8sHttpsServiceAuthMatcher>,
+  namespace: String,
+  service: String,
+}
+
+#[async_trait]
+impl EndpointProvider for RemoteEndpointsTarget {
+  fn get(&mut self) -> HashMap<String, PromEndpoint> {
+    self
+      .endpoints
+      .borrow_and_update()
+      .as_ref()
+      .map_or_else(HashMap::new, |endpoints| {
+        endpoints
+          .subsets
+          .iter()
+          .flat_map(|subset| {
+            subset.iter().flat_map(|subset| {
+              subset
+                .addresses
+                .as_ref()
+                .map_or(&[][..], |addresses| &addresses[..])
+                .iter()
+                .flat_map(|address| {
+                  create_endpoints(
+                    &self.namespace,
+                    &address.ip,
+                    &self.inclusion_filters,
+                    &self.use_k8s_https_service_auth_matchers,
+                    None,
+                    None,
+                    subset.ports.as_ref().map_or(&[], |ports| &ports[..]),
+                    Some(&self.service),
+                    None,
+                    endpoints.annotations(),
+                  )
+                })
+            })
+          })
+          .collect()
+      })
+  }
+
+  async fn changed(&mut self) {
+    let _ignored = self.endpoints.changed().await;
   }
 }
 
