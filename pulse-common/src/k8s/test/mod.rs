@@ -66,6 +66,7 @@ pub fn make_pod_info(
     namespace: namespace.to_string(),
     services,
     ip: ip.parse().unwrap(),
+    ip_string: ip.to_string(),
     labels: labels.clone(),
     annotations,
     metadata,

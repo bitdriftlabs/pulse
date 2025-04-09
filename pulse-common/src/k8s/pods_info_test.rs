@@ -30,9 +30,8 @@ fn make_pod_status(ip: &str, phase: &str) -> Option<PodStatus> {
 #[tokio::test]
 async fn pod_cache() {
   let (tx, mut rx) = tokio::sync::watch::channel(PodsInfo::default());
-  let mut cache = PodsInfoCache::new(make_node_info().into(), tx, vec![]);
-
   let mut fetcher = MockServiceFetcher::new();
+
   fetcher
     .expect_services_for_namespace()
     .withf(|namespace| namespace == "default")
@@ -80,61 +79,54 @@ async fn pod_cache() {
         },
       ])
     });
-  let mut services = ServiceCache::new(15.minutes(), Box::new(fetcher));
+
+  let services = ServiceCache::new(15.minutes(), Box::new(fetcher));
+  let mut cache = PodsInfoCache::new(make_node_info().into(), tx, vec![], Some(services));
 
   cache
-    .apply_pod(
-      &Pod {
-        metadata: make_object_meta(
-          "my-awesome-pod",
-          btreemap! {
-            "service" => "svc1"
-          },
-          btreemap! {
-            "prometheus.io/scrape" => "true",
-          },
-        ),
-        status: make_pod_status("127.0.0.1", "Running"),
-        spec: Some(PodSpec {
-          containers: vec![Container {
-            ports: Some(vec![v1::ContainerPort {
-              container_port: 1234,
-              name: Some("http".to_string()),
-              ..Default::default()
-            }]),
+    .apply_pod(&Pod {
+      metadata: make_object_meta(
+        "my-awesome-pod",
+        btreemap! {
+          "service" => "svc1"
+        },
+        btreemap! {
+          "prometheus.io/scrape" => "true",
+        },
+      ),
+      status: make_pod_status("127.0.0.1", "Running"),
+      spec: Some(PodSpec {
+        containers: vec![Container {
+          ports: Some(vec![v1::ContainerPort {
+            container_port: 1234,
+            name: Some("http".to_string()),
             ..Default::default()
-          }],
+          }]),
           ..Default::default()
-        }),
-      },
-      Some(&mut services),
-    )
+        }],
+        ..Default::default()
+      }),
+    })
     .await;
   cache
-    .apply_pod(
-      &Pod {
-        metadata: make_object_meta(
-          "my-second-awesome-pod",
-          btreemap! {
-            "service" => "svc2"
-          },
-          btreemap! {},
-        ),
-        status: make_pod_status("127.0.0.2", "Running"),
-        ..Default::default()
-      },
-      Some(&mut services),
-    )
+    .apply_pod(&Pod {
+      metadata: make_object_meta(
+        "my-second-awesome-pod",
+        btreemap! {
+          "service" => "svc2"
+        },
+        btreemap! {},
+      ),
+      status: make_pod_status("127.0.0.2", "Running"),
+      ..Default::default()
+    })
     .await;
   cache
-    .apply_pod(
-      &Pod {
-        metadata: make_object_meta("my-serviceless-pod", btreemap! {}, btreemap! {}),
-        status: make_pod_status("127.0.0.3", "Running"),
-        ..Default::default()
-      },
-      Some(&mut services),
-    )
+    .apply_pod(&Pod {
+      metadata: make_object_meta("my-serviceless-pod", btreemap! {}, btreemap! {}),
+      status: make_pod_status("127.0.0.3", "Running"),
+      ..Default::default()
+    })
     .await;
 
   let current = rx.borrow_and_update();
@@ -252,48 +244,39 @@ async fn pod_cache() {
 
   drop(current);
   cache
-    .apply_pod(
-      &Pod {
-        metadata: make_object_meta(
-          "my-awesome-pod",
-          btreemap! {
-            "service" => "svc1"
-          },
-          btreemap! {
-            "prometheus.io/scrape" => "true",
-          },
-        ),
-        status: make_pod_status("127.0.0.1", "Running"),
-        ..Default::default()
-      },
-      Some(&mut services),
-    )
+    .apply_pod(&Pod {
+      metadata: make_object_meta(
+        "my-awesome-pod",
+        btreemap! {
+          "service" => "svc1"
+        },
+        btreemap! {
+          "prometheus.io/scrape" => "true",
+        },
+      ),
+      status: make_pod_status("127.0.0.1", "Running"),
+      ..Default::default()
+    })
     .await;
   cache
-    .apply_pod(
-      &Pod {
-        metadata: make_object_meta(
-          "my-second-awesome-pod",
-          btreemap! {
-            "service" => "svc2"
-          },
-          btreemap! {},
-        ),
-        status: make_pod_status("127.0.0.2", "Running"),
-        ..Default::default()
-      },
-      Some(&mut services),
-    )
+    .apply_pod(&Pod {
+      metadata: make_object_meta(
+        "my-second-awesome-pod",
+        btreemap! {
+          "service" => "svc2"
+        },
+        btreemap! {},
+      ),
+      status: make_pod_status("127.0.0.2", "Running"),
+      ..Default::default()
+    })
     .await;
   cache
-    .apply_pod(
-      &Pod {
-        metadata: make_object_meta("my-serviceless-pod", btreemap! {}, btreemap! {}),
-        status: make_pod_status("127.0.0.3", "Succeeded"),
-        ..Default::default()
-      },
-      Some(&mut services),
-    )
+    .apply_pod(&Pod {
+      metadata: make_object_meta("my-serviceless-pod", btreemap! {}, btreemap! {}),
+      status: make_pod_status("127.0.0.3", "Succeeded"),
+      ..Default::default()
+    })
     .await;
 
   let current = rx.borrow_and_update();
