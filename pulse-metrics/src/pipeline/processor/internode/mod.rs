@@ -25,6 +25,7 @@ use axum::http::Extensions;
 use backoff::ExponentialBackoffBuilder;
 use bd_grpc::compression::Compression;
 use bd_grpc::service::ServiceMethod;
+use bd_grpc::stats::EndpointStats;
 use bd_grpc::{Handler, make_unary_router};
 use bd_log::warn_every;
 use bd_server_stats::stats::{AutoGauge, Scope};
@@ -78,11 +79,7 @@ struct Stats {
   internode_retry: IntCounter,
   internode_overflow: IntCounter,
   internode_time: Histogram,
-  internode_received: IntCounter,
   internode_convert_failure: IntCounter,
-  internode_metrics_error: IntCounter,
-  get_peers_comparison_error: IntCounter,
-  last_elided_timestamp_error: IntCounter,
 }
 
 impl Stats {
@@ -98,11 +95,7 @@ impl Stats {
       internode_retry: scope.counter("internode_retry"),
       internode_overflow: scope.counter("internode_overflow"),
       internode_time: scope.histogram("internode_time"),
-      internode_received: scope.scope("server").counter("internode_received"),
       internode_convert_failure: scope.scope("server").counter("internode_convert_failure"),
-      internode_metrics_error: scope.scope("server").counter("internode_metrics_error"),
-      get_peers_comparison_error: scope.scope("server").counter("get_peers_comparison_error"),
-      last_elided_timestamp_error: scope.scope("server").counter("last_elided_timestamp_error"),
     }
   }
 }
@@ -139,6 +132,7 @@ pub struct InternodeProcessor {
   dispatcher: Arc<dyn PipelineDispatch>,
   shutdown_trigger_handle: ComponentShutdownTriggerHandle,
   stats: Stats,
+  endpoint_stats: Arc<EndpointStats>,
   internode_metrics_service_method:
     ServiceMethod<InternodeMetricsRequest, InternodeMetricsResponse>,
   get_peers_comparison_service_method:
@@ -202,6 +196,7 @@ impl InternodeProcessor {
       dispatcher: context.dispatcher,
       shutdown_trigger_handle: context.shutdown_trigger_handle,
       stats,
+      endpoint_stats: Arc::new(EndpointStats::new(context.scope.scope("grpc"))),
       internode_metrics_service_method: ServiceMethod::<
         InternodeMetricsRequest,
         InternodeMetricsResponse,
@@ -520,6 +515,7 @@ impl PipelineProcessor for InternodeProcessor {
     let handler = InternodeHandler::new(
       self.dispatcher.clone(),
       self.stats.clone(),
+      self.endpoint_stats.clone(),
       self.shardmap.peer_list(),
       GetLastElided::register_internode(self.clone(), &self.singleton_manager, self.admin.as_ref())
         .await,
@@ -542,6 +538,7 @@ impl PipelineProcessor for InternodeProcessor {
 pub struct InternodeHandler {
   dispatcher: Arc<dyn PipelineDispatch>,
   stats: Stats,
+  endpoint_stats: Arc<EndpointStats>,
   peer_list: Vec<Chars>,
   get_last_elided: Arc<GetLastElided>,
 }
@@ -550,12 +547,14 @@ impl InternodeHandler {
   fn new(
     dispatcher: Arc<dyn PipelineDispatch>,
     stats: Stats,
+    endpoint_stats: Arc<EndpointStats>,
     peer_list: Vec<Chars>,
     get_last_elided: Arc<GetLastElided>,
   ) -> Self {
     Self {
       dispatcher,
       stats,
+      endpoint_stats,
       peer_list,
       get_last_elided,
     }
@@ -570,7 +569,6 @@ impl Handler<InternodeMetricsRequest, InternodeMetricsResponse> for InternodeHan
     _extensions: Extensions,
     request: InternodeMetricsRequest,
   ) -> bd_grpc::error::Result<InternodeMetricsResponse> {
-    self.stats.internode_received.inc();
     let metrics: Vec<ParsedMetric> = request
       .metrics
       .into_iter()
@@ -637,7 +635,7 @@ fn make_router(handler: &Arc<InternodeHandler>) -> Router {
     ),
     handler.clone(),
     |_| {},
-    handler.stats.internode_metrics_error.clone(),
+    Some(&handler.endpoint_stats),
     false,
   )
   .merge(make_unary_router(
@@ -647,7 +645,7 @@ fn make_router(handler: &Arc<InternodeHandler>) -> Router {
     ),
     handler.clone(),
     |_| {},
-    handler.stats.get_peers_comparison_error.clone(),
+    None,
     false,
   ))
   .merge(make_unary_router(
@@ -657,7 +655,7 @@ fn make_router(handler: &Arc<InternodeHandler>) -> Router {
     ),
     handler.clone(),
     |_| {},
-    handler.stats.last_elided_timestamp_error.clone(),
+    None,
     false,
   ))
 }
