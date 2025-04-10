@@ -1232,10 +1232,10 @@ pub mod elision_config {
         pub allowed_metric_patterns: ::protobuf::MessageField<super::super::file_watcher::FileSourceConfig>,
         // @@protoc_insertion_point(field:pulse.config.processor.v1.ElisionConfig.BlocklistConfig.allowed_metrics)
         pub allowed_metrics: ::protobuf::MessageField<super::super::file_watcher::FileSourceConfig>,
-        // @@protoc_insertion_point(field:pulse.config.processor.v1.ElisionConfig.BlocklistConfig.blocked_metrics)
-        pub blocked_metrics: ::protobuf::MessageField<super::super::file_watcher::FileSourceConfig>,
         // @@protoc_insertion_point(field:pulse.config.processor.v1.ElisionConfig.BlocklistConfig.prom)
         pub prom: bool,
+        // message oneof groups
+        pub blocked_metrics_type: ::std::option::Option<blocklist_config::Blocked_metrics_type>,
         // special fields
         // @@protoc_insertion_point(special_field:pulse.config.processor.v1.ElisionConfig.BlocklistConfig.special_fields)
         pub special_fields: ::protobuf::SpecialFields,
@@ -1252,9 +1252,83 @@ pub mod elision_config {
             ::std::default::Default::default()
         }
 
+        // .pulse.config.common.v1.FileSourceConfig blocked_metrics = 3;
+
+        pub fn blocked_metrics(&self) -> &super::super::file_watcher::FileSourceConfig {
+            match self.blocked_metrics_type {
+                ::std::option::Option::Some(blocklist_config::Blocked_metrics_type::BlockedMetrics(ref v)) => v,
+                _ => <super::super::file_watcher::FileSourceConfig as ::protobuf::Message>::default_instance(),
+            }
+        }
+
+        pub fn clear_blocked_metrics(&mut self) {
+            self.blocked_metrics_type = ::std::option::Option::None;
+        }
+
+        pub fn has_blocked_metrics(&self) -> bool {
+            match self.blocked_metrics_type {
+                ::std::option::Option::Some(blocklist_config::Blocked_metrics_type::BlockedMetrics(..)) => true,
+                _ => false,
+            }
+        }
+
+        // Param is passed by value, moved
+        pub fn set_blocked_metrics(&mut self, v: super::super::file_watcher::FileSourceConfig) {
+            self.blocked_metrics_type = ::std::option::Option::Some(blocklist_config::Blocked_metrics_type::BlockedMetrics(v))
+        }
+
+        // Mutable pointer to the field.
+        pub fn mut_blocked_metrics(&mut self) -> &mut super::super::file_watcher::FileSourceConfig {
+            if let ::std::option::Option::Some(blocklist_config::Blocked_metrics_type::BlockedMetrics(_)) = self.blocked_metrics_type {
+            } else {
+                self.blocked_metrics_type = ::std::option::Option::Some(blocklist_config::Blocked_metrics_type::BlockedMetrics(super::super::file_watcher::FileSourceConfig::new()));
+            }
+            match self.blocked_metrics_type {
+                ::std::option::Option::Some(blocklist_config::Blocked_metrics_type::BlockedMetrics(ref mut v)) => v,
+                _ => panic!(),
+            }
+        }
+
+        // Take field
+        pub fn take_blocked_metrics(&mut self) -> super::super::file_watcher::FileSourceConfig {
+            if self.has_blocked_metrics() {
+                match self.blocked_metrics_type.take() {
+                    ::std::option::Option::Some(blocklist_config::Blocked_metrics_type::BlockedMetrics(v)) => v,
+                    _ => panic!(),
+                }
+            } else {
+                super::super::file_watcher::FileSourceConfig::new()
+            }
+        }
+
+        // bool block_all = 5;
+
+        pub fn block_all(&self) -> bool {
+            match self.blocked_metrics_type {
+                ::std::option::Option::Some(blocklist_config::Blocked_metrics_type::BlockAll(v)) => v,
+                _ => false,
+            }
+        }
+
+        pub fn clear_block_all(&mut self) {
+            self.blocked_metrics_type = ::std::option::Option::None;
+        }
+
+        pub fn has_block_all(&self) -> bool {
+            match self.blocked_metrics_type {
+                ::std::option::Option::Some(blocklist_config::Blocked_metrics_type::BlockAll(..)) => true,
+                _ => false,
+            }
+        }
+
+        // Param is passed by value, moved
+        pub fn set_block_all(&mut self, v: bool) {
+            self.blocked_metrics_type = ::std::option::Option::Some(blocklist_config::Blocked_metrics_type::BlockAll(v))
+        }
+
         pub(in super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-            let mut fields = ::std::vec::Vec::with_capacity(4);
-            let mut oneofs = ::std::vec::Vec::with_capacity(0);
+            let mut fields = ::std::vec::Vec::with_capacity(5);
+            let mut oneofs = ::std::vec::Vec::with_capacity(1);
             fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, super::super::file_watcher::FileSourceConfig>(
                 "allowed_metric_patterns",
                 |m: &BlocklistConfig| { &m.allowed_metric_patterns },
@@ -1265,16 +1339,25 @@ pub mod elision_config {
                 |m: &BlocklistConfig| { &m.allowed_metrics },
                 |m: &mut BlocklistConfig| { &mut m.allowed_metrics },
             ));
-            fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, super::super::file_watcher::FileSourceConfig>(
+            fields.push(::protobuf::reflect::rt::v2::make_oneof_message_has_get_mut_set_accessor::<_, super::super::file_watcher::FileSourceConfig>(
                 "blocked_metrics",
-                |m: &BlocklistConfig| { &m.blocked_metrics },
-                |m: &mut BlocklistConfig| { &mut m.blocked_metrics },
+                BlocklistConfig::has_blocked_metrics,
+                BlocklistConfig::blocked_metrics,
+                BlocklistConfig::mut_blocked_metrics,
+                BlocklistConfig::set_blocked_metrics,
+            ));
+            fields.push(::protobuf::reflect::rt::v2::make_oneof_copy_has_get_set_simpler_accessors::<_, _>(
+                "block_all",
+                BlocklistConfig::has_block_all,
+                BlocklistConfig::block_all,
+                BlocklistConfig::set_block_all,
             ));
             fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
                 "prom",
                 |m: &BlocklistConfig| { &m.prom },
                 |m: &mut BlocklistConfig| { &mut m.prom },
             ));
+            oneofs.push(blocklist_config::Blocked_metrics_type::generated_oneof_descriptor_data());
             ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<BlocklistConfig>(
                 "ElisionConfig.BlocklistConfig",
                 fields,
@@ -1300,7 +1383,10 @@ pub mod elision_config {
                         ::protobuf::rt::read_singular_message_into_field(is, &mut self.allowed_metrics)?;
                     },
                     26 => {
-                        ::protobuf::rt::read_singular_message_into_field(is, &mut self.blocked_metrics)?;
+                        self.blocked_metrics_type = ::std::option::Option::Some(blocklist_config::Blocked_metrics_type::BlockedMetrics(is.read_message()?));
+                    },
+                    40 => {
+                        self.blocked_metrics_type = ::std::option::Option::Some(blocklist_config::Blocked_metrics_type::BlockAll(is.read_bool()?));
                     },
                     32 => {
                         self.prom = is.read_bool()?;
@@ -1325,12 +1411,19 @@ pub mod elision_config {
                 let len = v.compute_size();
                 my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
             }
-            if let Some(v) = self.blocked_metrics.as_ref() {
-                let len = v.compute_size();
-                my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
-            }
             if self.prom != false {
                 my_size += 1 + 1;
+            }
+            if let ::std::option::Option::Some(ref v) = self.blocked_metrics_type {
+                match v {
+                    &blocklist_config::Blocked_metrics_type::BlockedMetrics(ref v) => {
+                        let len = v.compute_size();
+                        my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+                    },
+                    &blocklist_config::Blocked_metrics_type::BlockAll(v) => {
+                        my_size += 1 + 1;
+                    },
+                };
             }
             my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
             self.special_fields.cached_size().set(my_size as u32);
@@ -1344,11 +1437,18 @@ pub mod elision_config {
             if let Some(v) = self.allowed_metrics.as_ref() {
                 ::protobuf::rt::write_message_field_with_cached_size(2, v, os)?;
             }
-            if let Some(v) = self.blocked_metrics.as_ref() {
-                ::protobuf::rt::write_message_field_with_cached_size(3, v, os)?;
-            }
             if self.prom != false {
                 os.write_bool(4, self.prom)?;
+            }
+            if let ::std::option::Option::Some(ref v) = self.blocked_metrics_type {
+                match v {
+                    &blocklist_config::Blocked_metrics_type::BlockedMetrics(ref v) => {
+                        ::protobuf::rt::write_message_field_with_cached_size(3, v, os)?;
+                    },
+                    &blocklist_config::Blocked_metrics_type::BlockAll(v) => {
+                        os.write_bool(5, v)?;
+                    },
+                };
             }
             os.write_unknown_fields(self.special_fields.unknown_fields())?;
             ::std::result::Result::Ok(())
@@ -1369,7 +1469,8 @@ pub mod elision_config {
         fn clear(&mut self) {
             self.allowed_metric_patterns.clear();
             self.allowed_metrics.clear();
-            self.blocked_metrics.clear();
+            self.blocked_metrics_type = ::std::option::Option::None;
+            self.blocked_metrics_type = ::std::option::Option::None;
             self.prom = false;
             self.special_fields.clear();
         }
@@ -1378,8 +1479,8 @@ pub mod elision_config {
             static instance: BlocklistConfig = BlocklistConfig {
                 allowed_metric_patterns: ::protobuf::MessageField::none(),
                 allowed_metrics: ::protobuf::MessageField::none(),
-                blocked_metrics: ::protobuf::MessageField::none(),
                 prom: false,
+                blocked_metrics_type: ::std::option::Option::None,
                 special_fields: ::protobuf::SpecialFields::new(),
             };
             &instance
@@ -1401,6 +1502,35 @@ pub mod elision_config {
 
     impl ::protobuf::reflect::ProtobufValue for BlocklistConfig {
         type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
+    }
+
+    /// Nested message and enums of message `BlocklistConfig`
+    pub mod blocklist_config {
+
+        #[derive(Clone,PartialEq,Debug)]
+        // @@protoc_insertion_point(oneof:pulse.config.processor.v1.ElisionConfig.BlocklistConfig.blocked_metrics_type)
+        pub enum Blocked_metrics_type {
+            // @@protoc_insertion_point(oneof_field:pulse.config.processor.v1.ElisionConfig.BlocklistConfig.blocked_metrics)
+            BlockedMetrics(super::super::super::file_watcher::FileSourceConfig),
+            // @@protoc_insertion_point(oneof_field:pulse.config.processor.v1.ElisionConfig.BlocklistConfig.block_all)
+            BlockAll(bool),
+        }
+
+        impl ::protobuf::Oneof for Blocked_metrics_type {
+        }
+
+        impl ::protobuf::OneofFull for Blocked_metrics_type {
+            fn descriptor() -> ::protobuf::reflect::OneofDescriptor {
+                static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::OneofDescriptor> = ::protobuf::rt::Lazy::new();
+                descriptor.get(|| <super::BlocklistConfig as ::protobuf::MessageFull>::descriptor().oneof_by_name("blocked_metrics_type").unwrap()).clone()
+            }
+        }
+
+        impl Blocked_metrics_type {
+            pub(in super::super) fn generated_oneof_descriptor_data() -> ::protobuf::reflect::GeneratedOneofDescriptorData {
+                ::protobuf::reflect::GeneratedOneofDescriptorData::new::<Blocked_metrics_type>("blocked_metrics_type")
+            }
+        }
     }
 
     // @@protoc_insertion_point(message:pulse.config.processor.v1.ElisionConfig.RegexOverrideConfig)
@@ -1548,20 +1678,20 @@ pub mod elision_config {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n'pulse/config/processor/v1/elision.proto\x12\x19pulse.config.processor\
     .v1\x1a)pulse/config/common/v1/file_watcher.proto\x1a\x1egoogle/protobuf\
-    /duration.proto\x1a\x17validate/validate.proto\"\xeb\r\n\rElisionConfig\
-    \x12Q\n\x04emit\x18\x01\x20\x01(\x0b23.pulse.config.processor.v1.Elision\
-    Config.EmitConfigR\x04emitB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12!\n\x0ca\
-    nalyze_mode\x18\x02\x20\x01(\x08R\x0banalyzeMode\x12e\n\x0fregex_overrid\
-    es\x18\x03\x20\x03(\x0b2<.pulse.config.processor.v1.ElisionConfig.RegexO\
-    verrideConfigR\x0eregexOverrides\x12N\n\x04zero\x18\x04\x20\x01(\x0b2:.p\
-    ulse.config.processor.v1.ElisionConfig.ZeroElisionConfigR\x04zero\x12V\n\
-    \tblocklist\x18\x05\x20\x01(\x0b28.pulse.config.processor.v1.ElisionConf\
-    ig.BlocklistConfigR\tblocklist\x1a\xfa\x02\n\nEmitConfig\x12A\n\x08inter\
-    val\x18\x01\x20\x01(\x0b2\x19.google.protobuf.DurationH\0R\x08intervalB\
-    \x08\xfaB\x05\xaa\x01\x02*\0\x12\x16\n\x05ratio\x18\x02\x20\x01(\x01H\0R\
-    \x05ratio\x12\x83\x01\n\x17consistent_every_period\x18\x03\x20\x01(\x0b2\
-    I.pulse.config.processor.v1.ElisionConfig.EmitConfig.ConsistentEveryPeri\
-    odH\0R\x15consistentEveryPeriod\x1ay\n\x15ConsistentEveryPeriod\x12!\n\
+    /duration.proto\x1a\x17validate/validate.proto\"\xa8\x0e\n\rElisionConfi\
+    g\x12Q\n\x04emit\x18\x01\x20\x01(\x0b23.pulse.config.processor.v1.Elisio\
+    nConfig.EmitConfigR\x04emitB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12!\n\x0c\
+    analyze_mode\x18\x02\x20\x01(\x08R\x0banalyzeMode\x12e\n\x0fregex_overri\
+    des\x18\x03\x20\x03(\x0b2<.pulse.config.processor.v1.ElisionConfig.Regex\
+    OverrideConfigR\x0eregexOverrides\x12N\n\x04zero\x18\x04\x20\x01(\x0b2:.\
+    pulse.config.processor.v1.ElisionConfig.ZeroElisionConfigR\x04zero\x12V\
+    \n\tblocklist\x18\x05\x20\x01(\x0b28.pulse.config.processor.v1.ElisionCo\
+    nfig.BlocklistConfigR\tblocklist\x1a\xfa\x02\n\nEmitConfig\x12A\n\x08int\
+    erval\x18\x01\x20\x01(\x0b2\x19.google.protobuf.DurationH\0R\x08interval\
+    B\x08\xfaB\x05\xaa\x01\x02*\0\x12\x16\n\x05ratio\x18\x02\x20\x01(\x01H\0\
+    R\x05ratio\x12\x83\x01\n\x17consistent_every_period\x18\x03\x20\x01(\x0b\
+    2I.pulse.config.processor.v1.ElisionConfig.EmitConfig.ConsistentEveryPer\
+    iodH\0R\x15consistentEveryPeriod\x1ay\n\x15ConsistentEveryPeriod\x12!\n\
     \x07periods\x18\x01\x20\x01(\rR\x07periodsB\x07\xfaB\x04*\x02\x20\0\x12*\
     \n\x0eperiod_seconds\x18\x02\x20\x01(\rH\0R\rperiodSeconds\x88\x01\x01B\
     \x11\n\x0f_period_secondsB\x10\n\temit_type\x12\x03\xf8B\x01\x1a\x93\x04\
@@ -1575,17 +1705,18 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     ntersR\x10absoluteCounters\x1a?\n\x10AbsoluteCounters\x12+\n\x12elide_if\
     _no_change\x18\x02\x20\x01(\x08R\x0felideIfNoChange\x1a9\n\nHistograms\
     \x12+\n\x12elide_if_no_change\x18\x03\x20\x01(\x08R\x0felideIfNoChangeB\
-    \n\n\x08_enabled\x1a\xb7\x02\n\x0fBlocklistConfig\x12`\n\x17allowed_metr\
+    \n\n\x08_enabled\x1a\xf4\x02\n\x0fBlocklistConfig\x12`\n\x17allowed_metr\
     ic_patterns\x18\x01\x20\x01(\x0b2(.pulse.config.common.v1.FileSourceConf\
     igR\x15allowedMetricPatterns\x12Q\n\x0fallowed_metrics\x18\x02\x20\x01(\
-    \x0b2(.pulse.config.common.v1.FileSourceConfigR\x0eallowedMetrics\x12[\n\
+    \x0b2(.pulse.config.common.v1.FileSourceConfigR\x0eallowedMetrics\x12S\n\
     \x0fblocked_metrics\x18\x03\x20\x01(\x0b2(.pulse.config.common.v1.FileSo\
-    urceConfigR\x0eblockedMetricsB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12\x12\
-    \n\x04prom\x18\x04\x20\x01(\x08R\x04prom\x1a\x87\x01\n\x13RegexOverrideC\
-    onfig\x12Q\n\x04emit\x18\x01\x20\x01(\x0b23.pulse.config.processor.v1.El\
-    isionConfig.EmitConfigR\x04emitB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12\
-    \x1d\n\x05regex\x18\x02\x20\x01(\tR\x05regexB\x07\xfaB\x04r\x02\x10\x01b\
-    \x06proto3\
+    urceConfigH\0R\x0eblockedMetrics\x12&\n\tblock_all\x18\x05\x20\x01(\x08H\
+    \0R\x08blockAllB\x07\xfaB\x04j\x02\x08\x01\x12\x12\n\x04prom\x18\x04\x20\
+    \x01(\x08R\x04promB\x1b\n\x14blocked_metrics_type\x12\x03\xf8B\x01\x1a\
+    \x87\x01\n\x13RegexOverrideConfig\x12Q\n\x04emit\x18\x01\x20\x01(\x0b23.\
+    pulse.config.processor.v1.ElisionConfig.EmitConfigR\x04emitB\x08\xfaB\
+    \x05\x8a\x01\x02\x10\x01\x12\x1d\n\x05regex\x18\x02\x20\x01(\tR\x05regex\
+    B\x07\xfaB\x04r\x02\x10\x01b\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file

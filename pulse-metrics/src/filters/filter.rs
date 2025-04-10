@@ -7,6 +7,10 @@
 
 use crate::protos::metric::{Metric, MetricType, MetricValue};
 
+//
+// MetricFilterDecision
+//
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MetricFilterDecision {
   Initializing,
@@ -14,6 +18,10 @@ pub enum MetricFilterDecision {
   Fail,
   NotCovered,
 }
+
+//
+// MetricFilter
+//
 
 pub trait MetricFilter {
   fn decide(
@@ -28,12 +36,16 @@ pub trait MetricFilter {
 
 pub type DynamicMetricFilter = std::sync::Arc<dyn MetricFilter + Send + Sync>;
 
-pub struct MockMetricFilter {
+//
+// SimpleMetricFilter
+//
+
+pub struct SimpleMetricFilter {
   pub match_decision: MetricFilterDecision,
   pub name: String,
 }
 
-impl MockMetricFilter {
+impl SimpleMetricFilter {
   #[must_use]
   pub fn new(match_decision: MetricFilterDecision, name: &str) -> Self {
     Self {
@@ -43,7 +55,7 @@ impl MockMetricFilter {
   }
 }
 
-impl MetricFilter for MockMetricFilter {
+impl MetricFilter for SimpleMetricFilter {
   fn decide(
     &self,
     _: &Metric,

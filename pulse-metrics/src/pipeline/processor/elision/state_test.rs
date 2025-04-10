@@ -6,7 +6,7 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
 use super::*;
-use crate::filters::filter::MockMetricFilter;
+use crate::filters::filter::SimpleMetricFilter;
 use crate::filters::zero::ZeroFilter;
 use crate::pipeline::processor::elision::SkipDecision::{DoNotOutput, Output};
 use crate::protos::carbon::parse;
@@ -45,7 +45,7 @@ fn make_emit_n_periods(periods: u32) -> EmitConfig {
 }
 
 fn mock_filter(decision: MetricFilterDecision, name: &str) -> DynamicMetricFilter {
-  Arc::new(MockMetricFilter::new(decision, name))
+  Arc::new(SimpleMetricFilter::new(decision, name))
 }
 
 fn mock_metric(
@@ -356,7 +356,7 @@ fn state_skip_decider_init() {
         &mock_metric(Bytes::default(), None, 0_f64, t),
         &[
           Arc::new(ZeroFilter::new("", &ZeroElisionConfig::default())),
-          Arc::new(MockMetricFilter::new(
+          Arc::new(SimpleMetricFilter::new(
             MetricFilterDecision::NotCovered,
             "not_covered",
           )),

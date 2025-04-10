@@ -93,10 +93,18 @@ message ElisionConfig {
     // https://github.com/BurntSushi/fst.
     common.v1.FileSourceConfig allowed_metrics = 2;
 
-    // A file source providing an FST for the exact block list. This provides a compact format for
-    // blocking a large number of individual metrics. The FST format is the same as implemented in
-    // https://github.com/BurntSushi/fst.
-    common.v1.FileSourceConfig blocked_metrics = 3 [(validate.rules).message.required = true];
+    oneof blocked_metrics_type {
+      option (validate.required) = true;
+
+      // A file source providing an FST for the exact block list. This provides a compact format for
+      // blocking a large number of individual metrics. The FST format is the same as implemented in
+      // https://github.com/BurntSushi/fst.
+      common.v1.FileSourceConfig blocked_metrics = 3;
+
+      // Block all metrics by default. This can be used in a setup where the desire is to perform
+      // elision on all metrics, and then allow list specific metrics on top.
+      bool block_all = 5 [(validate.rules).bool.const = true];
+    }
 
     // Whether blocklist metric names are provided in Prometheus naming format.
     bool prom = 4;
@@ -112,7 +120,7 @@ message ElisionConfig {
   }
 
   // Global emission settings for any metrics/samples blocked by the processor. Emission can be
-  // overriden using regex via the `regex_overrides` settings.
+  // overridden using regex via the `regex_overrides` settings.
   EmitConfig emit = 1 [(validate.rules).message.required = true];
 
   // Whether the processor runs in analyze only mode.

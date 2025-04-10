@@ -40,7 +40,7 @@ bd-test-helpers        = { git = "https://github.com/bitdriftlabs/shared-core.gi
 bd-time                = { git = "https://github.com/bitdriftlabs/shared-core.git" }
 built                  = { version = "0.7", features = ["git2"] }
 bytes                  = "1"
-cc                     = "1.2.17"
+cc                     = "1.2.18"
 clap                   = { version = "4.5.35", features = ["derive", "env"] }
 comfy-table            = "7.1.4"
 console-subscriber     = "0.4.1"
@@ -110,7 +110,7 @@ reqwest = { version = "0.12.15", default-features = false, features = [
 ] }
 
 reusable-fmt               = "0.2.0"
-rustls                     = "0.23.25"
+rustls                     = "0.23.26"
 serde                      = { version = "1", features = ["derive"] }
 serde_json                 = "1"
 serde_yaml                 = "0.9.34"

@@ -13,7 +13,7 @@ use self::get_last_elided::GetLastElided;
 use self::state::{ElisionState, SkipDecider, SkipDecision};
 use super::PipelineProcessor;
 use crate::admin::server::Admin;
-use crate::filters::filter::{DynamicMetricFilter, MetricFilterDecision};
+use crate::filters::filter::{DynamicMetricFilter, MetricFilterDecision, SimpleMetricFilter};
 use crate::filters::fst::FstFilterProvider;
 use crate::filters::poll_filter::PollFilter;
 use crate::filters::regex::RegexFilterProvider;
@@ -26,6 +26,7 @@ use async_trait::async_trait;
 use bd_server_stats::stats::Scope;
 use bd_shutdown::ComponentShutdownTriggerHandle;
 use elision::ElisionConfig;
+use elision::elision_config::blocklist_config::Blocked_metrics_type;
 use elision::elision_config::emit_config::Emit_type;
 use elision::elision_config::{
   BlocklistConfig,
@@ -179,29 +180,34 @@ async fn build_metric_filters(
 
     let filter_name = "blocklist";
     let filter_scope = build_filter_scope(filter_name, &scope);
-    match PollFilter::try_from_config(
-      |file| async { FstFilterProvider::new(file).await },
-      &filter_scope,
-      blocklist_config.blocked_metrics.unwrap(),
-      blocklist_config.prom,
-      filter_name,
-      MetricFilterDecision::Fail,
-      shutdown_trigger_handle.make_shutdown(),
-      singleton_manager,
-      admin,
-    )
-    .await
-    {
-      Ok(metric_filter) => {
-        let f: DynamicMetricFilter = metric_filter;
-        metric_filter_stats.push(build_filter_counter(&f, &filter_scope));
-        metric_filters.push(f);
+    let metric_filter = match blocklist_config.blocked_metrics_type.expect("pgv") {
+      Blocked_metrics_type::BlockedMetrics(blocked_metrics) => match PollFilter::try_from_config(
+        |file| async { FstFilterProvider::new(file).await },
+        &filter_scope,
+        blocked_metrics,
+        blocklist_config.prom,
+        filter_name,
+        MetricFilterDecision::Fail,
+        shutdown_trigger_handle.make_shutdown(),
+        singleton_manager,
+        admin,
+      )
+      .await
+      {
+        Ok(metric_filter) => metric_filter as DynamicMetricFilter,
+        Err(e) => {
+          error!("failed to load metric blocklist fst filter: {e}");
+          return Err(e);
+        },
       },
-      Err(e) => {
-        error!("failed to load metric blocklist fst filter: {e}");
-        return Err(e);
-      },
-    }
+      Blocked_metrics_type::BlockAll(_) => Arc::new(SimpleMetricFilter::new(
+        MetricFilterDecision::Fail,
+        filter_name,
+      )),
+    };
+
+    metric_filter_stats.push(build_filter_counter(&metric_filter, &filter_scope));
+    metric_filters.push(metric_filter);
   }
 
   Ok((metric_filters, metric_filter_stats))
