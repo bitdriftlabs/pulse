@@ -34,12 +34,26 @@ message KubernetesPrometheusConfig {
   }
 
   message InclusionFilter {
+    message AnnotationMatcher {
+      // Which annotation to use for deciding whether to scrape.
+      string inclusion_annotation_name = 1 [(validate.rules).string = {min_len: 1}];
+      // The regex to match the name against.
+      string inclusion_annotation_regex = 2 [(validate.rules).string = {min_len: 1}];
+      // The annotation to use for deciding which port to scrape. This can be the same as the
+      // inclusion annotation name if desired.
+      string port_annotation_name = 3 [(validate.rules).string = {min_len: 1}];
+    }
+
     oneof filter_type {
       option (validate.required) = true;
 
       // Apply the following regex to each container port name to determine if it should be
       // scraped. If the regex is a match, the container port will be scraped.
       string container_port_name_regex = 1;
+
+      // This allows extracting a scrape port from a generic annotation. Optionally it allows
+      // matching on a different annotation for inclusion versus extracting the port.
+      AnnotationMatcher annotation_matcher = 2;
     }
   }
 

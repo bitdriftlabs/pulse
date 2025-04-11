@@ -28,7 +28,7 @@ use futures::FutureExt;
 use http::StatusCode;
 use itertools::Itertools;
 use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
-use k8s_prom::kubernetes_prometheus_config::inclusion_filter::Filter_type;
+use k8s_prom::kubernetes_prometheus_config::inclusion_filter::{AnnotationMatcher, Filter_type};
 use k8s_prom::kubernetes_prometheus_config::use_k8s_https_service_auth_matcher::{
   Auth_matcher,
   KeyValue,
@@ -264,6 +264,40 @@ async fn multiple_ports_with_space() {
       "some-namespace//my-awesome-pod/123/12969999904310312118",
       "some-namespace//my-awesome-pod/124/5908028683721631658"
     ]
+  );
+}
+
+#[tokio::test]
+async fn annotation_inclusion_filter() {
+  let mut initial_state = PodsInfo::default();
+  initial_state.insert(make_pod_info(
+    "some-namespace",
+    "my-awesome-pod",
+    &btreemap!(),
+    btreemap!("match_annotation" => "true", "port_annotation" => "123"),
+    HashMap::new(),
+    "127.0.0.1",
+    vec![],
+  ));
+  let (_tx, rx) = tokio::sync::watch::channel(initial_state);
+  let pods_info = Arc::new(PodsInfoSingleton::new(rx, make_node_info().into())).make_owned();
+  let mut target = KubePodTarget {
+    inclusion_filters: vec![InclusionFilter {
+      filter_type: Some(Filter_type::AnnotationMatcher(AnnotationMatcher {
+        inclusion_annotation_name: "match_annotation".into(),
+        inclusion_annotation_regex: "true".into(),
+        port_annotation_name: "port_annotation".into(),
+        ..Default::default()
+      })),
+      ..Default::default()
+    }],
+    use_k8s_https_service_auth_matchers: vec![],
+    pods_info,
+  };
+  let endpoints = target.get();
+  assert_eq!(
+    endpoints.keys().sorted().collect_vec(),
+    &["some-namespace//my-awesome-pod/123/110421865553222315"]
   );
 }
 
