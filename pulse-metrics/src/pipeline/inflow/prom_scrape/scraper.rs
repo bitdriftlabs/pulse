@@ -96,6 +96,7 @@ impl PortWithName for EndpointPort {
 fn process_inclusion_filters<T: PortWithName>(
   inclusion_filters: &[InclusionFilter],
   ports: &[T],
+  annotations: &BTreeMap<String, String>,
 ) -> Vec<i32> {
   inclusion_filters
     .iter()
@@ -116,6 +117,26 @@ fn process_inclusion_filters<T: PortWithName>(
               .collect_vec()
           },
         ),
+        Filter_type::AnnotationMatcher(annotation_matcher) => {
+          if Some(true)
+            == annotations
+              .get(annotation_matcher.inclusion_annotation_name.as_str())
+              .and_then(|a| {
+                Some(
+                  Regex::new(&annotation_matcher.inclusion_annotation_regex)
+                    .ok()?
+                    .is_match(a),
+                )
+              })
+          {
+            annotations
+              .get(annotation_matcher.port_annotation_name.as_str())
+              .and_then(|a| Some(vec![a.parse().ok()?]))
+              .unwrap_or_default()
+          } else {
+            vec![]
+          }
+        },
       },
     )
     .collect()
@@ -182,7 +203,11 @@ fn create_endpoints<T: PortWithName>(
   maybe_service_port: Option<&IntOrString>,
   prom_annotations: &BTreeMap<String, String>,
 ) -> Vec<(String, PromEndpoint)> {
-  let included_ports = process_inclusion_filters(inclusion_filters, target_ports);
+  let included_ports = process_inclusion_filters(
+    inclusion_filters,
+    target_ports,
+    pod_info.map_or(prom_annotations, |p| &p.annotations),
+  );
   if prom_annotations
     .get("prometheus.io/scrape")
     .map(String::as_str)

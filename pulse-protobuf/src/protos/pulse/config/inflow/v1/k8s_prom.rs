@@ -1051,14 +1051,70 @@ pub mod kubernetes_prometheus_config {
             }
         }
 
+        // .pulse.config.inflow.v1.KubernetesPrometheusConfig.InclusionFilter.AnnotationMatcher annotation_matcher = 2;
+
+        pub fn annotation_matcher(&self) -> &inclusion_filter::AnnotationMatcher {
+            match self.filter_type {
+                ::std::option::Option::Some(inclusion_filter::Filter_type::AnnotationMatcher(ref v)) => v,
+                _ => <inclusion_filter::AnnotationMatcher as ::protobuf::Message>::default_instance(),
+            }
+        }
+
+        pub fn clear_annotation_matcher(&mut self) {
+            self.filter_type = ::std::option::Option::None;
+        }
+
+        pub fn has_annotation_matcher(&self) -> bool {
+            match self.filter_type {
+                ::std::option::Option::Some(inclusion_filter::Filter_type::AnnotationMatcher(..)) => true,
+                _ => false,
+            }
+        }
+
+        // Param is passed by value, moved
+        pub fn set_annotation_matcher(&mut self, v: inclusion_filter::AnnotationMatcher) {
+            self.filter_type = ::std::option::Option::Some(inclusion_filter::Filter_type::AnnotationMatcher(v))
+        }
+
+        // Mutable pointer to the field.
+        pub fn mut_annotation_matcher(&mut self) -> &mut inclusion_filter::AnnotationMatcher {
+            if let ::std::option::Option::Some(inclusion_filter::Filter_type::AnnotationMatcher(_)) = self.filter_type {
+            } else {
+                self.filter_type = ::std::option::Option::Some(inclusion_filter::Filter_type::AnnotationMatcher(inclusion_filter::AnnotationMatcher::new()));
+            }
+            match self.filter_type {
+                ::std::option::Option::Some(inclusion_filter::Filter_type::AnnotationMatcher(ref mut v)) => v,
+                _ => panic!(),
+            }
+        }
+
+        // Take field
+        pub fn take_annotation_matcher(&mut self) -> inclusion_filter::AnnotationMatcher {
+            if self.has_annotation_matcher() {
+                match self.filter_type.take() {
+                    ::std::option::Option::Some(inclusion_filter::Filter_type::AnnotationMatcher(v)) => v,
+                    _ => panic!(),
+                }
+            } else {
+                inclusion_filter::AnnotationMatcher::new()
+            }
+        }
+
         pub(in super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-            let mut fields = ::std::vec::Vec::with_capacity(1);
+            let mut fields = ::std::vec::Vec::with_capacity(2);
             let mut oneofs = ::std::vec::Vec::with_capacity(1);
             fields.push(::protobuf::reflect::rt::v2::make_oneof_deref_has_get_set_simpler_accessor::<_, _>(
                 "container_port_name_regex",
                 InclusionFilter::has_container_port_name_regex,
                 InclusionFilter::container_port_name_regex,
                 InclusionFilter::set_container_port_name_regex,
+            ));
+            fields.push(::protobuf::reflect::rt::v2::make_oneof_message_has_get_mut_set_accessor::<_, inclusion_filter::AnnotationMatcher>(
+                "annotation_matcher",
+                InclusionFilter::has_annotation_matcher,
+                InclusionFilter::annotation_matcher,
+                InclusionFilter::mut_annotation_matcher,
+                InclusionFilter::set_annotation_matcher,
             ));
             oneofs.push(inclusion_filter::Filter_type::generated_oneof_descriptor_data());
             ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<InclusionFilter>(
@@ -1082,6 +1138,9 @@ pub mod kubernetes_prometheus_config {
                     10 => {
                         self.filter_type = ::std::option::Option::Some(inclusion_filter::Filter_type::ContainerPortNameRegex(is.read_tokio_chars()?));
                     },
+                    18 => {
+                        self.filter_type = ::std::option::Option::Some(inclusion_filter::Filter_type::AnnotationMatcher(is.read_message()?));
+                    },
                     tag => {
                         ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                     },
@@ -1099,6 +1158,10 @@ pub mod kubernetes_prometheus_config {
                     &inclusion_filter::Filter_type::ContainerPortNameRegex(ref v) => {
                         my_size += ::protobuf::rt::string_size(1, &v);
                     },
+                    &inclusion_filter::Filter_type::AnnotationMatcher(ref v) => {
+                        let len = v.compute_size();
+                        my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+                    },
                 };
             }
             my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
@@ -1111,6 +1174,9 @@ pub mod kubernetes_prometheus_config {
                 match v {
                     &inclusion_filter::Filter_type::ContainerPortNameRegex(ref v) => {
                         os.write_string(1, v)?;
+                    },
+                    &inclusion_filter::Filter_type::AnnotationMatcher(ref v) => {
+                        ::protobuf::rt::write_message_field_with_cached_size(2, v, os)?;
                     },
                 };
             }
@@ -1131,6 +1197,7 @@ pub mod kubernetes_prometheus_config {
         }
 
         fn clear(&mut self) {
+            self.filter_type = ::std::option::Option::None;
             self.filter_type = ::std::option::Option::None;
             self.special_fields.clear();
         }
@@ -1169,6 +1236,8 @@ pub mod kubernetes_prometheus_config {
         pub enum Filter_type {
             // @@protoc_insertion_point(oneof_field:pulse.config.inflow.v1.KubernetesPrometheusConfig.InclusionFilter.container_port_name_regex)
             ContainerPortNameRegex(::protobuf::Chars),
+            // @@protoc_insertion_point(oneof_field:pulse.config.inflow.v1.KubernetesPrometheusConfig.InclusionFilter.annotation_matcher)
+            AnnotationMatcher(AnnotationMatcher),
         }
 
         impl ::protobuf::Oneof for Filter_type {
@@ -1185,6 +1254,163 @@ pub mod kubernetes_prometheus_config {
             pub(in super::super) fn generated_oneof_descriptor_data() -> ::protobuf::reflect::GeneratedOneofDescriptorData {
                 ::protobuf::reflect::GeneratedOneofDescriptorData::new::<Filter_type>("filter_type")
             }
+        }
+        // @@protoc_insertion_point(message:pulse.config.inflow.v1.KubernetesPrometheusConfig.InclusionFilter.AnnotationMatcher)
+        #[derive(PartialEq,Clone,Default,Debug)]
+        pub struct AnnotationMatcher {
+            // message fields
+            // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.InclusionFilter.AnnotationMatcher.inclusion_annotation_name)
+            pub inclusion_annotation_name: ::protobuf::Chars,
+            // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.InclusionFilter.AnnotationMatcher.inclusion_annotation_regex)
+            pub inclusion_annotation_regex: ::protobuf::Chars,
+            // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.InclusionFilter.AnnotationMatcher.port_annotation_name)
+            pub port_annotation_name: ::protobuf::Chars,
+            // special fields
+            // @@protoc_insertion_point(special_field:pulse.config.inflow.v1.KubernetesPrometheusConfig.InclusionFilter.AnnotationMatcher.special_fields)
+            pub special_fields: ::protobuf::SpecialFields,
+        }
+
+        impl<'a> ::std::default::Default for &'a AnnotationMatcher {
+            fn default() -> &'a AnnotationMatcher {
+                <AnnotationMatcher as ::protobuf::Message>::default_instance()
+            }
+        }
+
+        impl AnnotationMatcher {
+            pub fn new() -> AnnotationMatcher {
+                ::std::default::Default::default()
+            }
+
+            pub(in super::super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
+                let mut fields = ::std::vec::Vec::with_capacity(3);
+                let mut oneofs = ::std::vec::Vec::with_capacity(0);
+                fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+                    "inclusion_annotation_name",
+                    |m: &AnnotationMatcher| { &m.inclusion_annotation_name },
+                    |m: &mut AnnotationMatcher| { &mut m.inclusion_annotation_name },
+                ));
+                fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+                    "inclusion_annotation_regex",
+                    |m: &AnnotationMatcher| { &m.inclusion_annotation_regex },
+                    |m: &mut AnnotationMatcher| { &mut m.inclusion_annotation_regex },
+                ));
+                fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+                    "port_annotation_name",
+                    |m: &AnnotationMatcher| { &m.port_annotation_name },
+                    |m: &mut AnnotationMatcher| { &mut m.port_annotation_name },
+                ));
+                ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<AnnotationMatcher>(
+                    "KubernetesPrometheusConfig.InclusionFilter.AnnotationMatcher",
+                    fields,
+                    oneofs,
+                )
+            }
+        }
+
+        impl ::protobuf::Message for AnnotationMatcher {
+            const NAME: &'static str = "AnnotationMatcher";
+
+            fn is_initialized(&self) -> bool {
+                true
+            }
+
+            fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
+                while let Some(tag) = is.read_raw_tag_or_eof()? {
+                    match tag {
+                        10 => {
+                            self.inclusion_annotation_name = is.read_tokio_chars()?;
+                        },
+                        18 => {
+                            self.inclusion_annotation_regex = is.read_tokio_chars()?;
+                        },
+                        26 => {
+                            self.port_annotation_name = is.read_tokio_chars()?;
+                        },
+                        tag => {
+                            ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
+                        },
+                    };
+                }
+                ::std::result::Result::Ok(())
+            }
+
+            // Compute sizes of nested messages
+            #[allow(unused_variables)]
+            fn compute_size(&self) -> u64 {
+                let mut my_size = 0;
+                if !self.inclusion_annotation_name.is_empty() {
+                    my_size += ::protobuf::rt::string_size(1, &self.inclusion_annotation_name);
+                }
+                if !self.inclusion_annotation_regex.is_empty() {
+                    my_size += ::protobuf::rt::string_size(2, &self.inclusion_annotation_regex);
+                }
+                if !self.port_annotation_name.is_empty() {
+                    my_size += ::protobuf::rt::string_size(3, &self.port_annotation_name);
+                }
+                my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
+                self.special_fields.cached_size().set(my_size as u32);
+                my_size
+            }
+
+            fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
+                if !self.inclusion_annotation_name.is_empty() {
+                    os.write_string(1, &self.inclusion_annotation_name)?;
+                }
+                if !self.inclusion_annotation_regex.is_empty() {
+                    os.write_string(2, &self.inclusion_annotation_regex)?;
+                }
+                if !self.port_annotation_name.is_empty() {
+                    os.write_string(3, &self.port_annotation_name)?;
+                }
+                os.write_unknown_fields(self.special_fields.unknown_fields())?;
+                ::std::result::Result::Ok(())
+            }
+
+            fn special_fields(&self) -> &::protobuf::SpecialFields {
+                &self.special_fields
+            }
+
+            fn mut_special_fields(&mut self) -> &mut ::protobuf::SpecialFields {
+                &mut self.special_fields
+            }
+
+            fn new() -> AnnotationMatcher {
+                AnnotationMatcher::new()
+            }
+
+            fn clear(&mut self) {
+                self.inclusion_annotation_name.clear();
+                self.inclusion_annotation_regex.clear();
+                self.port_annotation_name.clear();
+                self.special_fields.clear();
+            }
+
+            fn default_instance() -> &'static AnnotationMatcher {
+                static instance: AnnotationMatcher = AnnotationMatcher {
+                    inclusion_annotation_name: ::protobuf::Chars::new(),
+                    inclusion_annotation_regex: ::protobuf::Chars::new(),
+                    port_annotation_name: ::protobuf::Chars::new(),
+                    special_fields: ::protobuf::SpecialFields::new(),
+                };
+                &instance
+            }
+        }
+
+        impl ::protobuf::MessageFull for AnnotationMatcher {
+            fn descriptor() -> ::protobuf::reflect::MessageDescriptor {
+                static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::Lazy::new();
+                descriptor.get(|| super::super::file_descriptor().message_by_package_relative_name("KubernetesPrometheusConfig.InclusionFilter.AnnotationMatcher").unwrap()).clone()
+            }
+        }
+
+        impl ::std::fmt::Display for AnnotationMatcher {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                ::protobuf::text_format::fmt(self, f)
+            }
+        }
+
+        impl ::protobuf::reflect::ProtobufValue for AnnotationMatcher {
+            type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
         }
     }
 
@@ -2057,7 +2283,7 @@ pub mod kubernetes_prometheus_config {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n%pulse/config/inflow/v1/k8s_prom.proto\x12\x16pulse.config.inflow.v1\
     \x1a#pulse/config/common/v1/common.proto\x1a\x1egoogle/protobuf/duration\
-    .proto\x1a\x17validate/validate.proto\"\xb7\x12\n\x1aKubernetesPrometheu\
+    .proto\x1a\x17validate/validate.proto\"\x9d\x15\n\x1aKubernetesPrometheu\
     sConfig\x12L\n\x0fscrape_interval\x18\x01\x20\x01(\x0b2\x19.google.proto\
     buf.DurationR\x0escrapeIntervalB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12Y\n\
     \x08endpoint\x18\x02\x20\x01(\x0b2;.pulse.config.inflow.v1.KubernetesPro\
@@ -2079,33 +2305,40 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     ways\x1aJ\n\x08KeyValue\x12\x19\n\x03key\x18\x01\x20\x01(\tR\x03keyB\x07\
     \xfaB\x04r\x02\x10\x01\x12\x19\n\x05value\x18\x02\x20\x01(\tH\0R\x05valu\
     e\x88\x01\x01B\x08\n\x06_valueB\x13\n\x0cauth_matcher\x12\x03\xf8B\x01\
-    \x1ab\n\x0fInclusionFilter\x12;\n\x19container_port_name_regex\x18\x01\
-    \x20\x01(\tH\0R\x16containerPortNameRegexB\x12\n\x0bfilter_type\x12\x03\
-    \xf8B\x01\x1a\xaa\x01\n\x08Endpoint\x12\x9d\x01\n#use_k8s_https_service_\
-    auth_matchers\x18\x02\x20\x03(\x0b2P.pulse.config.inflow.v1.KubernetesPr\
-    ometheusConfig.UseK8sHttpsServiceAuthMatcherR\x1euseK8sHttpsServiceAuthM\
-    atchers\x1a\xeb\x02\n\x0eRemoteEndpoint\x12%\n\tnamespace\x18\x01\x20\
-    \x01(\tR\tnamespaceB\x07\xfaB\x04r\x02\x10\x01\x12!\n\x07service\x18\x02\
-    \x20\x01(\tR\x07serviceB\x07\xfaB\x04r\x02\x10\x01\x12o\n\x11inclusion_f\
-    ilters\x18\x03\x20\x03(\x0b2B.pulse.config.inflow.v1.KubernetesPrometheu\
-    sConfig.InclusionFilterR\x10inclusionFilters\x12\x9d\x01\n#use_k8s_https\
-    _service_auth_matchers\x18\x04\x20\x03(\x0b2P.pulse.config.inflow.v1.Kub\
-    ernetesPrometheusConfig.UseK8sHttpsServiceAuthMatcherR\x1euseK8sHttpsSer\
-    viceAuthMatchers\x1a#\n\x04Node\x12\x1b\n\x04path\x18\x01\x20\x01(\tR\
-    \x04pathB\x07\xfaB\x04r\x02\x10\x01\x1a\x96\x02\n\x03Pod\x12o\n\x11inclu\
-    sion_filters\x18\x01\x20\x03(\x0b2B.pulse.config.inflow.v1.KubernetesPro\
-    metheusConfig.InclusionFilterR\x10inclusionFilters\x12\x9d\x01\n#use_k8s\
-    _https_service_auth_matchers\x18\x02\x20\x03(\x0b2P.pulse.config.inflow.\
-    v1.KubernetesPrometheusConfig.UseK8sHttpsServiceAuthMatcherR\x1euseK8sHt\
-    tpsServiceAuthMatchers\x1a\x99\x01\n\x14HttpServiceDiscovery\x12?\n\x03u\
-    rl\x18\x01\x20\x01(\x0b2#.pulse.config.common.v1.EnvOrInlineR\x03urlB\
-    \x08\xfaB\x05\x8a\x01\x02\x10\x01\x12@\n\x0efetch_interval\x18\x02\x20\
-    \x01(\x0b2\x19.google.protobuf.DurationR\rfetchInterval\x1a\x94\x01\n\
-    \x03TLS\x12\x20\n\tcert_file\x18\x01\x20\x01(\tH\0R\x08certFile\x88\x01\
-    \x01\x12\x1e\n\x08key_file\x18\x02\x20\x01(\tH\x01R\x07keyFile\x88\x01\
-    \x01\x120\n\x14insecure_skip_verify\x18\x03\x20\x01(\x08R\x12insecureSki\
-    pVerifyB\x0c\n\n_cert_fileB\x0b\n\t_key_fileB\r\n\x06target\x12\x03\xf8B\
-    \x01b\x06proto3\
+    \x1a\xc7\x03\n\x0fInclusionFilter\x12;\n\x19container_port_name_regex\
+    \x18\x01\x20\x01(\tH\0R\x16containerPortNameRegex\x12\x85\x01\n\x12annot\
+    ation_matcher\x18\x02\x20\x01(\x0b2T.pulse.config.inflow.v1.KubernetesPr\
+    ometheusConfig.InclusionFilter.AnnotationMatcherH\0R\x11annotationMatche\
+    r\x1a\xda\x01\n\x11AnnotationMatcher\x12C\n\x19inclusion_annotation_name\
+    \x18\x01\x20\x01(\tR\x17inclusionAnnotationNameB\x07\xfaB\x04r\x02\x10\
+    \x01\x12E\n\x1ainclusion_annotation_regex\x18\x02\x20\x01(\tR\x18inclusi\
+    onAnnotationRegexB\x07\xfaB\x04r\x02\x10\x01\x129\n\x14port_annotation_n\
+    ame\x18\x03\x20\x01(\tR\x12portAnnotationNameB\x07\xfaB\x04r\x02\x10\x01\
+    B\x12\n\x0bfilter_type\x12\x03\xf8B\x01\x1a\xaa\x01\n\x08Endpoint\x12\
+    \x9d\x01\n#use_k8s_https_service_auth_matchers\x18\x02\x20\x03(\x0b2P.pu\
+    lse.config.inflow.v1.KubernetesPrometheusConfig.UseK8sHttpsServiceAuthMa\
+    tcherR\x1euseK8sHttpsServiceAuthMatchers\x1a\xeb\x02\n\x0eRemoteEndpoint\
+    \x12%\n\tnamespace\x18\x01\x20\x01(\tR\tnamespaceB\x07\xfaB\x04r\x02\x10\
+    \x01\x12!\n\x07service\x18\x02\x20\x01(\tR\x07serviceB\x07\xfaB\x04r\x02\
+    \x10\x01\x12o\n\x11inclusion_filters\x18\x03\x20\x03(\x0b2B.pulse.config\
+    .inflow.v1.KubernetesPrometheusConfig.InclusionFilterR\x10inclusionFilte\
+    rs\x12\x9d\x01\n#use_k8s_https_service_auth_matchers\x18\x04\x20\x03(\
+    \x0b2P.pulse.config.inflow.v1.KubernetesPrometheusConfig.UseK8sHttpsServ\
+    iceAuthMatcherR\x1euseK8sHttpsServiceAuthMatchers\x1a#\n\x04Node\x12\x1b\
+    \n\x04path\x18\x01\x20\x01(\tR\x04pathB\x07\xfaB\x04r\x02\x10\x01\x1a\
+    \x96\x02\n\x03Pod\x12o\n\x11inclusion_filters\x18\x01\x20\x03(\x0b2B.pul\
+    se.config.inflow.v1.KubernetesPrometheusConfig.InclusionFilterR\x10inclu\
+    sionFilters\x12\x9d\x01\n#use_k8s_https_service_auth_matchers\x18\x02\
+    \x20\x03(\x0b2P.pulse.config.inflow.v1.KubernetesPrometheusConfig.UseK8s\
+    HttpsServiceAuthMatcherR\x1euseK8sHttpsServiceAuthMatchers\x1a\x99\x01\n\
+    \x14HttpServiceDiscovery\x12?\n\x03url\x18\x01\x20\x01(\x0b2#.pulse.conf\
+    ig.common.v1.EnvOrInlineR\x03urlB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12@\
+    \n\x0efetch_interval\x18\x02\x20\x01(\x0b2\x19.google.protobuf.DurationR\
+    \rfetchInterval\x1a\x94\x01\n\x03TLS\x12\x20\n\tcert_file\x18\x01\x20\
+    \x01(\tH\0R\x08certFile\x88\x01\x01\x12\x1e\n\x08key_file\x18\x02\x20\
+    \x01(\tH\x01R\x07keyFile\x88\x01\x01\x120\n\x14insecure_skip_verify\x18\
+    \x03\x20\x01(\x08R\x12insecureSkipVerifyB\x0c\n\n_cert_fileB\x0b\n\t_key\
+    _fileB\r\n\x06target\x12\x03\xf8B\x01b\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
@@ -2126,7 +2359,7 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
             deps.push(super::common::file_descriptor().clone());
             deps.push(::protobuf::well_known_types::duration::file_descriptor().clone());
             deps.push(super::validate::file_descriptor().clone());
-            let mut messages = ::std::vec::Vec::with_capacity(10);
+            let mut messages = ::std::vec::Vec::with_capacity(11);
             messages.push(KubernetesPrometheusConfig::generated_message_descriptor_data());
             messages.push(kubernetes_prometheus_config::UseK8sHttpsServiceAuthMatcher::generated_message_descriptor_data());
             messages.push(kubernetes_prometheus_config::InclusionFilter::generated_message_descriptor_data());
@@ -2137,6 +2370,7 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
             messages.push(kubernetes_prometheus_config::HttpServiceDiscovery::generated_message_descriptor_data());
             messages.push(kubernetes_prometheus_config::TLS::generated_message_descriptor_data());
             messages.push(kubernetes_prometheus_config::use_k8s_https_service_auth_matcher::KeyValue::generated_message_descriptor_data());
+            messages.push(kubernetes_prometheus_config::inclusion_filter::AnnotationMatcher::generated_message_descriptor_data());
             let mut enums = ::std::vec::Vec::with_capacity(0);
             ::protobuf::reflect::GeneratedFileDescriptor::new_generated(
                 file_descriptor_proto(),
