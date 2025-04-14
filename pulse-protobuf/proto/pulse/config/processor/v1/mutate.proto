@@ -38,6 +38,13 @@ import "validate/validate.proto";
 //
 // Early return is possible using the return statement. The expression passed to return will be
 // ignored so it can be anything, such as "return true".
+//
+// It is possible to "flatten" Prometheus histograms and summaries into multiple component metrics.
+// For histograms this emits multiple <metric>_bucket metrics, a <metric>_count metric, and a
+// <metric>_sum metric. For summaries this emits multiple <metric> metrics with different quantiles
+// and a <metric>_sum and <metric>_count metric. This is done by setting the following pseudo
+// field to true:
+// .flatten_prom_histogram_and_summary = true
 message MutateConfig {
   string vrl_program = 1 [(validate.rules).string = {min_len: 1}];
 }

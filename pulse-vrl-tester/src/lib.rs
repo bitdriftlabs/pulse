@@ -203,7 +203,7 @@ fn run_test_case(test_case: VrlTestCase, proxy_config: Option<&Config>) -> anyho
           OutputType::Metric(output)
         };
 
-        match (program.run_with_metric(&mut parsed_input), output) {
+        match (program.run_with_metric(&mut parsed_input).resolved, output) {
           (Ok(_) | Err(ExpressionError::Return { .. }), OutputType::Metric(output)) => {
             if &output != parsed_input.metric() {
               bail!(

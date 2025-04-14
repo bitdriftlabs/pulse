@@ -33,11 +33,15 @@ use vrl::value::{Kind, Value};
 #[derive(Debug)]
 struct EditableMetricVrlTarget<'a> {
   metric: EditableParsedMetric<'a>,
+  flatten_prom_histogram_and_summary: bool,
 }
 
 impl<'a> EditableMetricVrlTarget<'a> {
   const fn new(metric: EditableParsedMetric<'a>) -> Self {
-    Self { metric }
+    Self {
+      metric,
+      flatten_prom_histogram_and_summary: false,
+    }
   }
 }
 
@@ -99,6 +103,13 @@ impl Target for EditableMetricVrlTarget<'_> {
                 })
                 .try_collect()?,
             );
+          },
+          [flatten_prom_histogram_and_summary]
+            if flatten_prom_histogram_and_summary == "flatten_prom_histogram_and_summary" =>
+          {
+            self.flatten_prom_histogram_and_summary = value.as_boolean().ok_or_else(|| {
+              "assigning to flatten_prom_histogram_and_summary requires a boolean".to_string()
+            })?;
           },
           _ => return Ok(()),
         }
@@ -249,6 +260,15 @@ impl Target for MetadataTargetWrapper<'_> {
 }
 
 //
+// RunWithMetricResult
+//
+
+pub struct RunWithMetricResult {
+  pub resolved: Resolved,
+  pub flatten_prom_histogram_and_summary: bool,
+}
+
+//
 // ProgramWrapper
 //
 
@@ -287,12 +307,15 @@ impl ProgramWrapper {
     })
   }
 
-  pub fn run_with_metric(&self, sample: &mut ParsedMetric) -> Resolved {
+  pub fn run_with_metric(&self, sample: &mut ParsedMetric) -> RunWithMetricResult {
     let mut state = RuntimeState::default();
     let timezone = TimeZone::default();
     let mut target = EditableMetricVrlTarget::new(EditableParsedMetric::new(sample));
     let mut ctx = Context::new(&mut target, &mut state, &timezone);
-    self.program.resolve(&mut ctx)
+    RunWithMetricResult {
+      resolved: self.program.resolve(&mut ctx),
+      flatten_prom_histogram_and_summary: target.flatten_prom_histogram_and_summary,
+    }
   }
 
   pub fn run_with_metadata(&self, metadata: Option<&Metadata>) -> Resolved {
