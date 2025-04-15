@@ -8,11 +8,25 @@
 use crate::pipeline::metric_cache::{CachedMetric, MetricCache};
 use crate::pipeline::processor::PipelineProcessor;
 use crate::pipeline::processor::mutate::MutateProcessor;
-use crate::protos::metric::{EditableParsedMetric, ParsedMetric, TagValue};
+use crate::protos::metric::{
+  DownstreamId,
+  EditableParsedMetric,
+  HistogramBucket,
+  HistogramData,
+  MetricSource,
+  MetricType,
+  MetricValue,
+  ParsedMetric,
+  SummaryBucket,
+  SummaryData,
+  TagValue,
+};
 use crate::test::{
   ProcessorFactoryContextHelper,
   make_abs_counter,
   make_abs_counter_with_metadata,
+  make_gauge,
+  make_metric_ex,
   processor_factory_context_for_test,
 };
 use assert_matches::assert_matches;
@@ -47,15 +61,89 @@ impl Helper {
     Self { helper, processor }
   }
 
-  async fn expect_send_and_receive(&mut self, send: ParsedMetric, receive: ParsedMetric) {
+  async fn expect_send_and_receive(&mut self, send: ParsedMetric, receive: Vec<ParsedMetric>) {
     make_mut(&mut self.helper.dispatcher)
       .expect_send()
       .times(1)
-      .return_once(|samples| {
-        assert_eq!(vec![receive], samples);
+      .return_once(move |samples| {
+        assert_eq!(receive, samples);
       });
     self.processor.clone().recv_samples(vec![send]).await;
   }
+}
+
+#[tokio::test]
+async fn flatten_histogram() {
+  let mut helper = Helper::new(
+    r#"
+.flatten_prom_histogram_and_summary = true
+    "#,
+  );
+
+  helper
+    .expect_send_and_receive(
+      make_metric_ex(
+        "foo",
+        &[],
+        0,
+        Some(MetricType::Histogram),
+        None,
+        MetricValue::Histogram(HistogramData {
+          buckets: vec![HistogramBucket {
+            le: 3.0,
+            count: 1.0,
+          }],
+          sample_count: 1.0,
+          sample_sum: 2.0,
+        }),
+        MetricSource::PromRemoteWrite,
+        DownstreamId::LocalOrigin,
+        None,
+      ),
+      vec![
+        make_abs_counter("foo_bucket", &[("le", "3")], 0, 1.0),
+        make_abs_counter("foo_sum", &[], 0, 2.0),
+        make_abs_counter("foo_count", &[], 0, 1.0),
+      ],
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn flatten_summary() {
+  let mut helper = Helper::new(
+    r#"
+.flatten_prom_histogram_and_summary = true
+    "#,
+  );
+
+  helper
+    .expect_send_and_receive(
+      make_metric_ex(
+        "foo",
+        &[],
+        0,
+        Some(MetricType::Summary),
+        None,
+        MetricValue::Summary(SummaryData {
+          quantiles: vec![SummaryBucket {
+            quantile: 3.0,
+            value: 1.0,
+          }],
+          sample_count: 1.0,
+          sample_sum: 2.0,
+        }),
+        MetricSource::PromRemoteWrite,
+        DownstreamId::LocalOrigin,
+        None,
+      ),
+      vec![
+        make_gauge("foo", &[("quantile", "3")], 0, 1.0),
+        make_abs_counter("foo_sum", &[], 0, 2.0),
+        make_abs_counter("foo_count", &[], 0, 1.0),
+      ],
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -78,12 +166,12 @@ for_each(.tags) -> |key, value| {
         0,
         1.0,
       ),
-      make_abs_counter(
+      vec![make_abs_counter(
         "kube_job_status_failed",
         &[("bar", "ok"), ("baz", "a_b"), ("foo", "1_1_1")],
         0,
         1.0,
-      ),
+      )],
     )
     .await;
 }
@@ -118,7 +206,7 @@ async fn node_only() {
           None,
         ),
       ),
-      make_abs_counter_with_metadata(
+      vec![make_abs_counter_with_metadata(
         "test:name",
         &[
           ("a", "b"),
@@ -140,7 +228,7 @@ async fn node_only() {
           None,
           None,
         ),
-      ),
+      )],
     )
     .await;
 }
@@ -212,7 +300,7 @@ if string!(%k8s.service.name) == "kube_state_metrics" &&
           None,
         ),
       ),
-      make_abs_counter_with_metadata(
+      vec![make_abs_counter_with_metadata(
         "kube_state_metrics:kube_job_status_failed",
         &[("namespace", "default"), ("pod", "podA")],
         0,
@@ -229,7 +317,7 @@ if string!(%k8s.service.name) == "kube_state_metrics" &&
           }),
           None,
         ),
-      ),
+      )],
     )
     .await;
   helper
@@ -275,7 +363,7 @@ if is_null(.tags.namespace) {
           None,
         ),
       ),
-      make_abs_counter_with_metadata(
+      vec![make_abs_counter_with_metadata(
         "test:name",
         &[("namespace", "a"), ("pod", "b")],
         0,
@@ -292,7 +380,7 @@ if is_null(.tags.namespace) {
           }),
           None,
         ),
-      ),
+      )],
     )
     .await;
 }
@@ -333,7 +421,7 @@ async fn test_transformation_kubernetes_service_name() {
           None,
         ),
       ),
-      make_abs_counter_with_metadata(
+      vec![make_abs_counter_with_metadata(
         "prod:some_service:test:name",
         &[
           ("a", "b"),
@@ -356,7 +444,7 @@ async fn test_transformation_kubernetes_service_name() {
           }),
           None,
         ),
-      ),
+      )],
     )
     .await;
 }
@@ -400,7 +488,7 @@ async fn test_transformation_kubernetes_namespace() {
           Some("1.2.3.4:8000".to_string()),
         ),
       ),
-      make_abs_counter_with_metadata(
+      vec![make_abs_counter_with_metadata(
         "prod:default:test:pod_name",
         &[
           ("namespace", "default"),
@@ -425,7 +513,7 @@ async fn test_transformation_kubernetes_namespace() {
           }),
           Some("1.2.3.4:8000".to_string()),
         ),
-      ),
+      )],
     )
     .await;
 }
@@ -459,7 +547,7 @@ del(.tags.key1)
           None,
         ),
       ),
-      make_abs_counter_with_metadata(
+      vec![make_abs_counter_with_metadata(
         "test:foo",
         &[("key3", "value2")],
         0,
@@ -476,7 +564,7 @@ del(.tags.key1)
           }),
           None,
         ),
-      ),
+      )],
     )
     .await;
 }
@@ -512,7 +600,7 @@ if exists(.tags.key1) {
           None,
         ),
       ),
-      make_abs_counter_with_metadata(
+      vec![make_abs_counter_with_metadata(
         "test:foo",
         &[("key1", "value1")],
         0,
@@ -529,7 +617,7 @@ if exists(.tags.key1) {
           }),
           None,
         ),
-      ),
+      )],
     )
     .await;
 }

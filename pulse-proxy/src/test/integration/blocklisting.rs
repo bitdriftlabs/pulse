@@ -18,6 +18,7 @@ use pretty_assertions::assert_eq;
 use prometheus::labels;
 use pulse_metrics::test::parse_carbon_metrics;
 use reusable_fmt::{fmt, fmt_reuse};
+use time::macros::datetime;
 use tokio::net::TcpStream;
 
 fmt_reuse! {
@@ -427,6 +428,79 @@ async fn blocklisting_local_files() {
     parse_carbon_metrics(&expected.iter().map(|s| s.as_str()).collect_vec()),
     upstream.wait_for_metrics().await
   );
+
+  helper.shutdown().await;
+}
+
+fmt_reuse! {
+BLOCKLISTING_ALL = r#"
+  pipeline:
+    inflows:
+      tcp:
+        routes: ["processor:populate_cache"]
+        tcp:
+          bind: "inflow:tcp"
+          protocol:
+            carbon: {{}}
+
+    processors:
+      populate_cache:
+        routes: ["processor:elision"]
+        populate_cache: {{}}
+
+      elision:
+        routes: ["outflow:tcp"]
+        elision:
+          emit:
+            consistent_every_period:
+              periods: 240
+              period_seconds: 15
+          blocklist:
+            allowed_metric_patterns:
+              local:
+                runtime_config:
+                  dir: "src/test/integration/blocklisting"
+                  file: "src/test/integration/blocklisting/allowlist.csv"
+            block_all: true
+
+    outflows:
+      tcp:
+        tcp:
+          common:
+            send_to: "{fake_upstream}"
+            protocol:
+              carbon: {{}}
+  "#;
+}
+
+#[tokio::test]
+async fn blocklisting_block_all() {
+  let bind_resolver = HelperBindResolver::new(&["fake_upstream", "inflow:tcp"], &[]).await;
+  let mut upstream = FakeWireUpstream::new("fake_upstream", bind_resolver.clone()).await;
+  let helper = Helper::new(
+    &fmt!(
+      BLOCKLISTING_ALL,
+      fake_upstream = bind_resolver.local_tcp_addr("fake_upstream")
+    ),
+    bind_resolver.clone(),
+  )
+  .await;
+  let mut stream = TcpStream::connect(bind_resolver.local_tcp_addr("inflow:tcp"))
+    .await
+    .unwrap();
+
+  let current_time = datetime!(2023-10-01 00:00:00 UTC).unix_timestamp();
+  let lines = (0 .. 480)
+    .map(|i| format!("foo 1 {} source=server-0\n", current_time + i * 15))
+    .collect_vec();
+
+  write_all(
+    &mut stream,
+    &lines.iter().map(std::string::String::as_str).collect_vec(),
+  )
+  .await;
+
+  assert_eq!(2, upstream.wait_for_metrics().await.len());
 
   helper.shutdown().await;
 }
