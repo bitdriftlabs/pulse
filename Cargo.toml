@@ -40,12 +40,12 @@ bd-test-helpers        = { git = "https://github.com/bitdriftlabs/shared-core.gi
 bd-time                = { git = "https://github.com/bitdriftlabs/shared-core.git" }
 built                  = { version = "0.7", features = ["git2"] }
 bytes                  = "1"
-cc                     = "1.2.18"
-clap                   = { version = "4.5.35", features = ["derive", "env"] }
+cc                     = "1.2.19"
+clap                   = { version = "4.5.37", features = ["derive", "env"] }
 comfy-table            = "7.1.4"
 console-subscriber     = "0.4.1"
 criterion              = { version = "0.5", features = ["html_reports"] }
-ctor                   = "0.4.1"
+ctor                   = "0.4.2"
 cuckoofilter           = "0.5.0"
 dashmap                = { version = "6", features = ["raw-api"] }
 deadpool               = { version = "0.12", features = ["managed", "rt_tokio_1"] }

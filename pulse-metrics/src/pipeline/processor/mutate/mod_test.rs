@@ -102,6 +102,7 @@ async fn flatten_histogram() {
       ),
       vec![
         make_abs_counter("foo_bucket", &[("le", "3")], 0, 1.0),
+        make_abs_counter("foo_bucket", &[("le", "+Inf")], 0, 1.0),
         make_abs_counter("foo_sum", &[], 0, 2.0),
         make_abs_counter("foo_count", &[], 0, 1.0),
       ],

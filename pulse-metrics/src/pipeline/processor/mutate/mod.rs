@@ -24,7 +24,7 @@ use crate::vrl::ProgramWrapper;
 use async_trait::async_trait;
 use bd_log::warn_every;
 use bd_server_stats::stats::Scope;
-use bytes::{Bytes, BytesMut};
+use bytes::BytesMut;
 use itertools::Either;
 use prometheus::IntCounter;
 use pulse_protobuf::protos::pulse::config::processor::v1::mutate::MutateConfig;
@@ -76,13 +76,23 @@ impl MutateProcessor {
   ) -> impl Iterator<Item = ParsedMetric> {
     fn make_metric(
       sample: &ParsedMetric,
-      new_name: Bytes,
+      name_suffix: &str,
       new_tags: Vec<TagValue>,
       metric_type: MetricType,
       value: f64,
     ) -> Option<ParsedMetric> {
+      let name = if name_suffix.is_empty() {
+        sample.metric().get_id().name().clone()
+      } else {
+        let mut name =
+          BytesMut::with_capacity(sample.metric().get_id().name().len() + name_suffix.len());
+        name.extend_from_slice(sample.metric().get_id().name());
+        name.extend_from_slice(name_suffix.as_bytes());
+        name.freeze()
+      };
+
       let metric = Metric::new(
-        MetricId::new(new_name, Some(metric_type), new_tags, false).ok()?,
+        MetricId::new(name, Some(metric_type), new_tags, false).ok()?,
         sample.metric().sample_rate,
         sample.metric().timestamp,
         MetricValue::Simple(value),
@@ -100,27 +110,33 @@ impl MutateProcessor {
       Some(MetricType::Histogram) => {
         let histogram = sample.metric().value.to_histogram().clone();
         let sum_metric = {
-          let mut name =
-            BytesMut::with_capacity(sample.metric().get_id().name().len() + "_sum".len());
-          name.extend_from_slice(sample.metric().get_id().name());
-          name.extend_from_slice(b"_sum");
           make_metric(
             &sample,
-            name.freeze(),
+            "_sum",
             sample.metric().get_id().tags().to_vec(),
             MetricType::Counter(CounterType::Absolute),
             histogram.sample_sum,
           )
         };
         let count_metric = {
-          let mut name =
-            BytesMut::with_capacity(sample.metric().get_id().name().len() + "_count".len());
-          name.extend_from_slice(sample.metric().get_id().name());
-          name.extend_from_slice(b"_count");
           make_metric(
             &sample,
-            name.freeze(),
+            "_count",
             sample.metric().get_id().tags().to_vec(),
+            MetricType::Counter(CounterType::Absolute),
+            histogram.sample_count,
+          )
+        };
+        let inf_metric = {
+          let mut tags = sample.metric().get_id().tags().to_vec();
+          tags.push(TagValue {
+            tag: "le".into(),
+            value: "+Inf".into(),
+          });
+          make_metric(
+            &sample,
+            "_bucket",
+            tags,
             MetricType::Counter(CounterType::Absolute),
             histogram.sample_count,
           )
@@ -130,10 +146,6 @@ impl MutateProcessor {
             .buckets
             .into_iter()
             .filter_map(move |b| {
-              let mut name =
-                BytesMut::with_capacity(sample.metric().get_id().name().len() + "_bucket".len());
-              name.extend_from_slice(sample.metric().get_id().name());
-              name.extend_from_slice(b"_bucket");
               let mut tags = sample.metric().get_id().tags().to_vec();
               tags.push(TagValue {
                 tag: "le".into(),
@@ -141,12 +153,13 @@ impl MutateProcessor {
               });
               make_metric(
                 &sample,
-                name.freeze(),
+                "_bucket",
                 tags,
                 MetricType::Counter(CounterType::Absolute),
                 b.count,
               )
             })
+            .chain(inf_metric)
             .chain(sum_metric)
             .chain(count_metric),
         )
@@ -154,26 +167,18 @@ impl MutateProcessor {
       Some(MetricType::Summary) => {
         let summary = sample.metric().value.to_summary().clone();
         let sum_metric = {
-          let mut name =
-            BytesMut::with_capacity(sample.metric().get_id().name().len() + "_sum".len());
-          name.extend_from_slice(sample.metric().get_id().name());
-          name.extend_from_slice(b"_sum");
           make_metric(
             &sample,
-            name.freeze(),
+            "_sum",
             sample.metric().get_id().tags().to_vec(),
             MetricType::Counter(CounterType::Absolute),
             summary.sample_sum,
           )
         };
         let count_metric = {
-          let mut name =
-            BytesMut::with_capacity(sample.metric().get_id().name().len() + "_count".len());
-          name.extend_from_slice(sample.metric().get_id().name());
-          name.extend_from_slice(b"_count");
           make_metric(
             &sample,
-            name.freeze(),
+            "_count",
             sample.metric().get_id().tags().to_vec(),
             MetricType::Counter(CounterType::Absolute),
             summary.sample_count,
@@ -189,13 +194,7 @@ impl MutateProcessor {
                 tag: "quantile".into(),
                 value: q.quantile.to_string().into(),
               });
-              make_metric(
-                &sample,
-                sample.metric().get_id().name().clone(),
-                tags,
-                MetricType::Gauge,
-                q.value,
-              )
+              make_metric(&sample, "", tags, MetricType::Gauge, q.value)
             })
             .chain(sum_metric)
             .chain(count_metric),
