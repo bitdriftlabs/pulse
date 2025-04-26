@@ -1,4 +1,5 @@
 pub mod inflow;
+pub mod inflow_common;
 pub mod k8s_prom;
 pub mod metric_generator;
 pub mod prom_remote_write;

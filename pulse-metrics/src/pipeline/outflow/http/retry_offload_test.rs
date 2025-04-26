@@ -6,8 +6,8 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
 use super::maybe_queue_for_retry;
-use crate::clients::prom::PromRemoteWriteError;
-use crate::pipeline::outflow::prom::retry_offload::{
+use crate::clients::http::HttpRemoteWriteError;
+use crate::pipeline::outflow::http::retry_offload::{
   MockOffloadQueue,
   OffloadQueue,
   SerializedOffloadRequest,
@@ -51,7 +51,7 @@ async fn maybe_queue_for_retry_max_window() {
     maybe_queue_for_retry(
       Some(&dyn_offload_queue),
       &config,
-      &PromRemoteWriteError::Timeout,
+      &HttpRemoteWriteError::Timeout,
       serialized,
       &time_provider
     )
@@ -65,7 +65,7 @@ async fn maybe_queue_for_retry_max_window() {
     !maybe_queue_for_retry(
       Some(&dyn_offload_queue),
       &config,
-      &PromRemoteWriteError::Timeout,
+      &HttpRemoteWriteError::Timeout,
       serialized,
       &time_provider
     )
@@ -92,7 +92,7 @@ async fn maybe_queue_for_retry_max_attempts() {
     !maybe_queue_for_retry(
       None,
       &config,
-      &PromRemoteWriteError::Timeout,
+      &HttpRemoteWriteError::Timeout,
       serialized,
       &time_provider
     )
@@ -114,7 +114,7 @@ async fn maybe_queue_for_retry_max_attempts() {
     maybe_queue_for_retry(
       Some(&dyn_offload_queue),
       &config,
-      &PromRemoteWriteError::Timeout,
+      &HttpRemoteWriteError::Timeout,
       serialized,
       &time_provider
     )
@@ -135,7 +135,7 @@ async fn maybe_queue_for_retry_max_attempts() {
     maybe_queue_for_retry(
       Some(&dyn_offload_queue),
       &config,
-      &PromRemoteWriteError::Timeout,
+      &HttpRemoteWriteError::Timeout,
       serialized,
       &time_provider
     )
@@ -148,7 +148,7 @@ async fn maybe_queue_for_retry_max_attempts() {
     !maybe_queue_for_retry(
       Some(&dyn_offload_queue),
       &config,
-      &PromRemoteWriteError::Timeout,
+      &HttpRemoteWriteError::Timeout,
       serialized,
       &time_provider
     )

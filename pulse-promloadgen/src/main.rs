@@ -11,7 +11,7 @@ use bd_time::{TimeDurationExt, ToProtoDuration};
 use prom_remote_write::PromRemoteWriteClientConfig;
 use pulse_common::{LossyIntoToFloat, global_initialize};
 use pulse_metrics::metric_generator::MetricGenerator;
-use pulse_metrics::pipeline::outflow::prom::remote_write::PromRemoteWriteOutflow;
+use pulse_metrics::pipeline::outflow::prom::make_prom_outflow;
 use pulse_metrics::pipeline::outflow::{OutflowFactoryContext, OutflowStats, PipelineOutflow};
 use pulse_metrics::protos::metric::{DownstreamId, MetricValue, ParsedMetric};
 use pulse_metrics::test::make_carbon_wire_protocol;
@@ -60,7 +60,7 @@ pub async fn main() {
 
   let outflow_stats = OutflowStats::new(&scope, "generator");
   let shutdown_trigger = ComponentShutdownTrigger::default();
-  let outflow = PromRemoteWriteOutflow::new(
+  let outflow = make_prom_outflow(
     config,
     OutflowFactoryContext {
       name: "generator".to_owned(),

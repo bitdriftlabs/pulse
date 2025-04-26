@@ -8,11 +8,12 @@
 use anyhow::bail;
 use clap::Parser;
 use itertools::Itertools;
-use pulse_metrics::clients::prom::{
-  HyperPromRemoteWriteClient,
-  PromRemoteWriteClient,
-  compress_write_request,
+use pulse_metrics::clients::http::{
+  HttpRemoteWriteClient,
+  HyperHttpRemoteWriteClient,
+  PROM_REMOTE_WRITE_HEADERS,
 };
+use pulse_metrics::pipeline::outflow::prom::compress_write_request;
 use pulse_metrics::protos::metric::{
   DownstreamId,
   Metric,
@@ -100,8 +101,14 @@ async fn main() -> anyhow::Result<()> {
     },
     &ChangedTypeTracker::new_for_test(),
   );
-  let client =
-    HyperPromRemoteWriteClient::new(options.endpoint, 10.seconds(), None, vec![]).await?;
+  let client = HyperHttpRemoteWriteClient::new(
+    options.endpoint,
+    10.seconds(),
+    None,
+    PROM_REMOTE_WRITE_HEADERS,
+    vec![],
+  )
+  .await?;
   client
     .send_write_request(compress_write_request(&write_request).into(), None)
     .await?;

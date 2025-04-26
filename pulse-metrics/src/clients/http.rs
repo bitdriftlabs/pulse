@@ -33,30 +33,32 @@ use aws_smithy_runtime_api::client::runtime_components::{
 use aws_smithy_types::config_bag::ConfigBag;
 use axum::body::Body;
 use axum::http::{HeaderMap, Request, StatusCode};
-use bd_proto::protos::prometheus::prompb::remote::WriteRequest;
 use bd_time::TimeDurationExt;
 use bytes::Bytes;
 use http::Method;
-use http::header::{CONTENT_ENCODING, CONTENT_TYPE};
 use http_body_util::BodyExt;
 use hyper_rustls::HttpsConnector;
 use hyper_util::client::legacy::Client;
 use hyper_util::client::legacy::connect::HttpConnector;
 use hyper_util::rt::TokioExecutor;
-use prom_remote_write::PromRemoteWriteAuthConfig;
-use prom_remote_write::prom_remote_write_auth_config::{Auth_type, aws_auth_config};
-use prom_remote_write::prom_remote_write_client_config::RequestHeader;
-use prom_remote_write::prom_remote_write_client_config::request_header::Value_type;
-use protobuf::Message;
+use outflow_common::http_remote_write_auth_config::{Auth_type, aws_auth_config};
+use outflow_common::request_header::Value_type;
+use outflow_common::{HttpRemoteWriteAuthConfig, RequestHeader};
 use pulse_common::proto::{CONTENT_TYPE_PROTOBUF, env_or_inline_to_string};
 use pulse_protobuf::protos::pulse::config::common::v1::common::bearer_token_config::Token_type;
-use pulse_protobuf::protos::pulse::config::outflow::v1::prom_remote_write;
+use pulse_protobuf::protos::pulse::config::outflow::v1::outflow_common;
 use std::time::{SystemTime, UNIX_EPOCH};
 use time::Duration;
 use time::ext::NumericalDuration;
 
+pub const PROM_REMOTE_WRITE_HEADERS: &[(&str, &str)] = &[
+  ("content-type", CONTENT_TYPE_PROTOBUF),
+  ("content-encoding", "snappy"),
+  ("X-Prometheus-Remote-Write-Version", "0.1.0"),
+];
+
 #[derive(thiserror::Error, Debug)]
-pub enum PromRemoteWriteError {
+pub enum HttpRemoteWriteError {
   #[error("AWS error: {0}")]
   Aws(String),
   #[error("hyper client error: {0}")]
@@ -69,7 +71,7 @@ pub enum PromRemoteWriteError {
   Timeout,
 }
 
-pub type Result<T> = std::result::Result<T, PromRemoteWriteError>;
+pub type Result<T> = std::result::Result<T, HttpRemoteWriteError>;
 
 struct AwsAuthInner {
   sdk_config: SdkConfig,
@@ -88,7 +90,7 @@ enum Auth {
 #[allow(clippy::ref_option_ref)] // Spurious
 #[mockall::automock]
 #[async_trait]
-pub trait PromRemoteWriteClient: Send + Sync {
+pub trait HttpRemoteWriteClient: Send + Sync {
   async fn send_write_request<'a>(
     &self,
     compressed_write_request: Bytes,
@@ -96,16 +98,17 @@ pub trait PromRemoteWriteClient: Send + Sync {
   ) -> Result<()>;
 }
 
-pub struct HyperPromRemoteWriteClient {
+pub struct HyperHttpRemoteWriteClient {
   inner: Client<HttpsConnector<HttpConnector>, Body>,
   endpoint: String,
   timeout: Duration,
   auth: Option<Auth>,
-  request_headers: Vec<RequestHeader>,
+  core_request_headers: Vec<(String, String)>,
+  config_request_headers: Vec<RequestHeader>,
 }
 
-impl HyperPromRemoteWriteClient {
-  async fn create_auth(auth_config: Option<PromRemoteWriteAuthConfig>) -> Result<Option<Auth>> {
+impl HyperHttpRemoteWriteClient {
+  async fn create_auth(auth_config: Option<HttpRemoteWriteAuthConfig>) -> Result<Option<Auth>> {
     let Some(auth_config) = auth_config else {
       return Ok(None);
     };
@@ -123,7 +126,7 @@ impl HyperPromRemoteWriteClient {
           let credentials_provider =
             sdk_config
               .credentials_provider()
-              .ok_or(PromRemoteWriteError::Aws(
+              .ok_or(HttpRemoteWriteError::Aws(
                 "no credentials provider configured".to_string(),
               ))?;
           let credentials_provider = if let Some(assume_role) = config.assume_role {
@@ -162,8 +165,9 @@ impl HyperPromRemoteWriteClient {
   pub async fn new(
     endpoint: String,
     timeout: Duration,
-    auth_config: Option<PromRemoteWriteAuthConfig>,
-    request_headers: Vec<RequestHeader>,
+    auth_config: Option<HttpRemoteWriteAuthConfig>,
+    core_request_headers: &[(&str, &str)],
+    config_request_headers: Vec<RequestHeader>,
   ) -> Result<Self> {
     Ok(Self {
       // TODO(mattklein123): Make connect timeout configurable.
@@ -171,7 +175,11 @@ impl HyperPromRemoteWriteClient {
       endpoint,
       timeout,
       auth: Self::create_auth(auth_config).await?,
-      request_headers,
+      core_request_headers: core_request_headers
+        .iter()
+        .map(|(k, v)| ((*k).to_string(), (*v).to_string()))
+        .collect(),
+      config_request_headers,
     })
   }
 
@@ -194,22 +202,17 @@ impl HyperPromRemoteWriteClient {
 }
 
 #[async_trait]
-impl PromRemoteWriteClient for HyperPromRemoteWriteClient {
+impl HttpRemoteWriteClient for HyperHttpRemoteWriteClient {
   async fn send_write_request<'a>(
     &self,
     compressed_write_request: Bytes,
     extra_headers: Option<&'a HeaderMap>,
   ) -> Result<()> {
-    let mut request = Request::builder()
-      .method(Method::POST)
-      .uri(&self.endpoint)
-      .header(CONTENT_TYPE, CONTENT_TYPE_PROTOBUF)
-      .header(CONTENT_ENCODING, "snappy")
-      .header("X-Prometheus-Remote-Write-Version", "0.1.0");
+    let mut request = Request::builder().method(Method::POST).uri(&self.endpoint);
     if let Some(Auth::Bearer(bearer_token)) = &self.auth {
       request = request.header("x-bitdrift-api-key", bearer_token);
     }
-    for request_header in &self.request_headers {
+    for request_header in &self.config_request_headers {
       // TODO(mattklein123): Verify valid header names/values before we get here.
       request = match request_header.value_type.as_ref().expect("pgv") {
         Value_type::Value(value) => request.header(
@@ -226,6 +229,9 @@ impl PromRemoteWriteClient for HyperPromRemoteWriteClient {
         ),
       };
     }
+    for (header_name, header_value) in &self.core_request_headers {
+      request = request.header(header_name, header_value);
+    }
     if let Some(extra_headers) = extra_headers {
       request.headers_mut().unwrap().extend(extra_headers.clone());
     }
@@ -241,14 +247,14 @@ impl PromRemoteWriteClient for HyperPromRemoteWriteClient {
           &aws_auth.config_bag,
         )
         .await
-        .map_err(|e| PromRemoteWriteError::Aws(format!("cannot fetch credentials: {e}")))?;
+        .map_err(|e| HttpRemoteWriteError::Aws(format!("cannot fetch credentials: {e}")))?;
       let signing_params = SigningParams::builder()
         .identity(&credentials)
         .region(
           aws_auth
             .sdk_config
             .region()
-            .ok_or(PromRemoteWriteError::Aws(
+            .ok_or(HttpRemoteWriteError::Aws(
               "no configured region".to_string(),
             ))?
             .as_ref(),
@@ -266,7 +272,7 @@ impl PromRemoteWriteClient for HyperPromRemoteWriteClient {
       )
       .unwrap();
       let (signing_instructions, _signature) = sign(signable_request, &signing_params.into())
-        .map_err(|e| PromRemoteWriteError::Aws(format!("cannot sign request: {e}")))?
+        .map_err(|e| HttpRemoteWriteError::Aws(format!("cannot sign request: {e}")))?
         .into_parts();
       Self::apply_signature_to_request(signing_instructions, &mut request);
     }
@@ -277,7 +283,7 @@ impl PromRemoteWriteClient for HyperPromRemoteWriteClient {
       .timeout(self.inner.request(Request::from_parts(parts, body.into())))
       .await
     {
-      Err(_) => return Err(PromRemoteWriteError::Timeout),
+      Err(_) => return Err(HttpRemoteWriteError::Timeout),
       Ok(result) => result,
     };
     match result {
@@ -293,30 +299,17 @@ impl PromRemoteWriteClient for HyperPromRemoteWriteClient {
           .ok()
           .and_then(|body| String::from_utf8(body.to_bytes().to_vec()).ok())
           .unwrap_or_else(|| "unreadable body".to_string());
-        Err(PromRemoteWriteError::Response(parts.status, body))
+        Err(HttpRemoteWriteError::Response(parts.status, body))
       },
-      Err(e) => Err(PromRemoteWriteError::HyperClient(e)),
+      Err(e) => Err(HttpRemoteWriteError::HyperClient(e)),
     }
   }
 }
 
-pub fn compress_write_request(write_request: &WriteRequest) -> Vec<u8> {
-  let proto_encoded = write_request.write_to_bytes().unwrap();
-  let proto_compressed = snap::raw::Encoder::new()
-    .compress_vec(&proto_encoded)
-    .unwrap();
-  log::debug!(
-    "compressed WriteRequest {} bytes to {} bytes",
-    proto_encoded.len(),
-    proto_compressed.len()
-  );
-  proto_compressed
-}
-
 #[must_use]
-pub fn should_retry(e: &PromRemoteWriteError) -> bool {
+pub fn should_retry(e: &HttpRemoteWriteError) -> bool {
   match e {
-    PromRemoteWriteError::Response(status, _) => {
+    HttpRemoteWriteError::Response(status, _) => {
       status.is_server_error() || *status == StatusCode::TOO_MANY_REQUESTS
     },
     // This is imperfect and will catch some Hyper errors that likely cannot ever succeed. Still,

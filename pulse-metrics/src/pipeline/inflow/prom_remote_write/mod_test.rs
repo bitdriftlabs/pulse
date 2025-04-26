@@ -5,14 +5,14 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
-use crate::pipeline::inflow::prom_remote_write::DownstreamIdProviderImpl;
+use crate::pipeline::inflow::http_inflow::DownstreamIdProviderImpl;
 use crate::protos::metric::{DownstreamId, DownstreamIdProvider, MetricId};
 use crate::test::make_metric_id;
 use axum::extract::Request;
-use prom_remote_write::prom_remote_write_server_config;
-use prom_remote_write_server_config::DownstreamIdSource;
-use prom_remote_write_server_config::downstream_id_source::Source_type;
-use pulse_protobuf::protos::pulse::config::inflow::v1::prom_remote_write;
+use inflow_common::DownstreamIdSource;
+use inflow_common::downstream_id_source::Source_type;
+use protobuf::Message;
+use pulse_protobuf::protos::pulse::config::inflow::v1::inflow_common;
 
 #[test]
 fn downstream_id_source() {
@@ -20,8 +20,7 @@ fn downstream_id_source() {
     assert_eq!(
       DownstreamId::InflowProvided("127.0.0.1".into()),
       DownstreamIdProviderImpl::new(
-        false,
-        None,
+        DownstreamIdSource::default_instance(),
         "127.0.0.1".parse().unwrap(),
         &Request::new(().into())
       )
@@ -33,11 +32,10 @@ fn downstream_id_source() {
     assert_eq!(
       DownstreamId::InflowProvided("127.0.0.1".into()),
       DownstreamIdProviderImpl::new(
-        false,
-        Some(&DownstreamIdSource {
+        &DownstreamIdSource {
           source_type: Some(Source_type::RequestHeader("foo".into())),
           ..Default::default()
-        }),
+        },
         "127.0.0.1".parse().unwrap(),
         &Request::new(().into())
       )
@@ -49,11 +47,10 @@ fn downstream_id_source() {
     assert_eq!(
       DownstreamId::InflowProvided("bar".into()),
       DownstreamIdProviderImpl::new(
-        false,
-        Some(&DownstreamIdSource {
+        &DownstreamIdSource {
           source_type: Some(Source_type::RequestHeader("foo".into())),
           ..Default::default()
-        }),
+        },
         "127.0.0.1".parse().unwrap(),
         &Request::builder()
           .header("foo", "bar")
@@ -68,11 +65,11 @@ fn downstream_id_source() {
     assert_eq!(
       DownstreamId::InflowProvided("bar:foo=bar".into()),
       DownstreamIdProviderImpl::new(
-        true,
-        Some(&DownstreamIdSource {
+        &DownstreamIdSource {
           source_type: Some(Source_type::RequestHeader("foo".into())),
+          append_tags_to_downstream_id: true,
           ..Default::default()
-        }),
+        },
         "127.0.0.1".parse().unwrap(),
         &Request::builder()
           .header("foo", "bar")

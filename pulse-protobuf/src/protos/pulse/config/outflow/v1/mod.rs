@@ -1,4 +1,5 @@
 pub mod outflow;
+pub mod outflow_common;
 pub mod prom_remote_write;
 pub mod queue_policy;
 pub mod wire;

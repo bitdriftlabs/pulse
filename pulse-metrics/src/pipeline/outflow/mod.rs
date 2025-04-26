@@ -5,7 +5,6 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
-use self::prom::remote_write::PromRemoteWriteOutflow;
 use self::wire::{WireOutflow, WireOutflowClient};
 use crate::clients::client::ConnectTo;
 use crate::clients::client_pool;
@@ -30,6 +29,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::net::UdpSocket;
 
+mod http;
 pub mod prom;
 mod wire;
 
@@ -117,7 +117,9 @@ pub async fn to_outflow(
     Config_type::Tcp(config) => tcp_outflow(config, context),
     Config_type::Udp(config) => udp_outflow(config, context).await,
     Config_type::NullOutflow(config) => Ok(null_outflow(config, context)),
-    Config_type::PromRemoteWrite(config) => Ok(PromRemoteWriteOutflow::new(config, context).await?),
+    Config_type::PromRemoteWrite(config) => {
+      Ok(prom::make_prom_outflow(config, context).await? as DynamicPipelineOutflow)
+    },
   }
 }
 
