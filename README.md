@@ -24,6 +24,8 @@ in production in clusters processing hundreds of millions of metrics per second.
 * Protocols
   * Prometheus Remote Write (inflow and outflow). Outflow supports AWS IAM authentication in order
     to interoperate with Amazon Managed Prometheus.
+  * OTLP (inflow and outflow). Currently only OTLP over HTTP+protobuf is supported. No compression
+    or snappy is supported.
   * Prometheus K8s scraping (inflow)
   * StatsD and DogStatsD (inflow and outflow)
   * Carbon (inflow and outflow)

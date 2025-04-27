@@ -5,7 +5,7 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
-use crate::test::integration::{FakePromUpstream, Helper, HelperBindResolver};
+use crate::test::integration::{FakeHttpUpstream, Helper, HelperBindResolver};
 use pretty_assertions::assert_eq;
 use prom_remote_write::prom_remote_write_server_config::ParseConfig;
 use prometheus::labels;
@@ -380,7 +380,7 @@ pipeline:
 async fn all() {
   let bind_resolver =
     HelperBindResolver::new(&["fake_wfp", "fake_central", "inflow:tcp"], &["inflow:udp"]).await;
-  let mut fake_wfp = FakePromUpstream::new(
+  let mut fake_wfp = FakeHttpUpstream::new_prom(
     "fake_wfp",
     bind_resolver.clone(),
     ParseConfig {
@@ -390,7 +390,7 @@ async fn all() {
     },
   )
   .await;
-  let mut fake_central = FakePromUpstream::new(
+  let mut fake_central = FakeHttpUpstream::new_prom(
     "fake_central",
     bind_resolver.clone(),
     ParseConfig {

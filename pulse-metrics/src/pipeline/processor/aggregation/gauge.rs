@@ -9,7 +9,7 @@ use super::{make_metric, make_name};
 use crate::protos::metric::{DownstreamId, MetricId, MetricType, MetricValue, ParsedMetric};
 use crate::protos::prom::prom_stale_marker;
 use ahash::AHashMap;
-use pulse_common::LossyIntoToFloat;
+use pulse_common::LossyIntToFloat;
 use pulse_protobuf::protos::pulse::config::processor::v1::aggregation::AggregationConfig;
 use tokio::time::Instant;
 

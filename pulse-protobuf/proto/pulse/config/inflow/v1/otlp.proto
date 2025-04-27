@@ -1,0 +1,30 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.inflow.v1;
+
+import "pulse/config/inflow/v1/inflow_common.proto";
+import "validate/validate.proto";
+
+// Supports OTLP over HTTP+protobuf. Will expose /v1/metrics on the server.
+message OtlpServerConfig {
+  // Which address to bind to.
+  string bind = 1 [(validate.rules).string = {min_len: 1}];
+
+  // How to determine the downstream ID of incoming metrics. If not specified, defaults to
+  // `remote_ip`.
+  DownstreamIdSource downstream_id_source = 2;
+
+  // If true (the default), resource attributes will be included as metric tags. Scope or data
+  // point attributes with the same name will override resource attributes.
+  optional bool include_resource_attributes = 3;
+
+  // If true (the default), scope attributes will be included as metric tags. Data point
+  // attributes with the same name will override scope attributes.
+  optional bool include_scope_attributes = 4;
+}

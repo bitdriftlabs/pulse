@@ -19,7 +19,7 @@ use crate::protos::metric::{
 use crate::reservoir_timer::ReservoirTimer;
 use bd_log::warn_every;
 use hashbrown::hash_map::RawEntryMut;
-use pulse_common::LossyIntoToFloat;
+use pulse_common::LossyIntToFloat;
 use std::time::Instant;
 use time::ext::NumericalDuration;
 

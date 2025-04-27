@@ -13,7 +13,7 @@ use anyhow::bail;
 use backoff::backoff::Backoff;
 use futures::Future;
 use parking_lot::Mutex;
-use pulse_common::LossyIntoToFloat;
+use pulse_common::LossyIntToFloat;
 use pulse_protobuf::protos::pulse::config::common::v1::retry::RetryPolicy;
 use std::sync::Arc;
 use tokio::time::sleep;

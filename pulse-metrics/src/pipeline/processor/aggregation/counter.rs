@@ -29,7 +29,7 @@ use bd_log::warn_every;
 use hashbrown::HashMap;
 use log::Level;
 use pulse_common::proto::ProtoDurationToStdDuration;
-use pulse_common::{LossyFloatToInt, LossyIntoToFloat};
+use pulse_common::{LossyFloatToInt, LossyIntToFloat};
 use pulse_protobuf::protos::pulse::config::processor::v1::aggregation::AggregationConfig;
 use time::ext::NumericalDuration;
 use tokio::time::Instant;

@@ -16,7 +16,7 @@ use http_body_util::BodyExt;
 use mod_test::test::TimerType;
 use pretty_assertions::assert_eq;
 use prometheus::labels;
-use pulse_common::LossyIntoToFloat;
+use pulse_common::LossyIntToFloat;
 use std::sync::atomic::AtomicI64;
 use std::time::Duration;
 use time::ext::NumericalDuration;
@@ -55,7 +55,7 @@ async fn stress() {
               MetricType::BulkTimer,
               MetricValue::BulkTimer(
                 (0 .. 200u64)
-                  .map(pulse_common::LossyIntoToFloat::lossy_to_f64)
+                  .map(pulse_common::LossyIntToFloat::lossy_to_f64)
                   .collect(),
               ),
             ),
@@ -328,7 +328,7 @@ async fn bulk_timers() {
         MetricType::BulkTimer,
         MetricValue::BulkTimer(
           (0 .. 200u64)
-            .map(pulse_common::LossyIntoToFloat::lossy_to_f64)
+            .map(pulse_common::LossyIntToFloat::lossy_to_f64)
             .collect(),
         ),
       ),
@@ -404,7 +404,7 @@ async fn timers_bulk() {
         MetricType::BulkTimer,
         MetricValue::BulkTimer(
           (0 .. 100u64)
-            .map(pulse_common::LossyIntoToFloat::lossy_to_f64)
+            .map(pulse_common::LossyIntToFloat::lossy_to_f64)
             .collect(),
         ),
       ),

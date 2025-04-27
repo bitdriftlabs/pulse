@@ -5,7 +5,7 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
-use crate::test::integration::{FakePromUpstream, FakeWireUpstream, Helper, HelperBindResolver};
+use crate::test::integration::{FakeHttpUpstream, FakeWireUpstream, Helper, HelperBindResolver};
 use pretty_assertions::assert_eq;
 use prom_remote_write::prom_remote_write_server_config::ParseConfig;
 use pulse_metrics::test::{clean_timestamps, make_abs_counter, make_tag};
@@ -157,7 +157,7 @@ PROM = r#"
 #[tokio::test]
 async fn prom() {
   let bind_resolver = HelperBindResolver::new(&["fake_upstream", "inflow:tcp"], &[]).await;
-  let mut upstream = FakePromUpstream::new(
+  let mut upstream = FakeHttpUpstream::new_prom(
     "fake_upstream",
     bind_resolver.clone(),
     ParseConfig::default(),

@@ -113,6 +113,7 @@ impl TryFrom<ProtoMetricSource> for MetricSource {
         |o| Ok(Self::Statsd(o)),
       ),
       WireProtocol::WIRE_PROTOCOL_PROM => Ok(Self::PromRemoteWrite),
+      WireProtocol::WIRE_PROTOCOL_OTLP => Ok(Self::Otlp),
     }
   }
 }
@@ -132,6 +133,11 @@ impl From<&MetricSource> for ProtoMetricSource {
       },
       MetricSource::PromRemoteWrite => Self {
         wire_protocol: WireProtocol::WIRE_PROTOCOL_PROM.into(),
+        original: None,
+        ..Default::default()
+      },
+      MetricSource::Otlp => Self {
+        wire_protocol: WireProtocol::WIRE_PROTOCOL_OTLP.into(),
         original: None,
         ..Default::default()
       },

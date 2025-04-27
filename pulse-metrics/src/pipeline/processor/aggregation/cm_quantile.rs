@@ -19,7 +19,7 @@ mod cm_quantile_test;
 use adapter::SampleAdapter;
 use intrusive_collections::linked_list::Cursor;
 use intrusive_collections::{LinkedList, LinkedListLink};
-use pulse_common::{LossyFloatToInt, LossyIntoToFloat};
+use pulse_common::{LossyFloatToInt, LossyIntToFloat};
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::collections::binary_heap::PeekMut;

@@ -520,6 +520,7 @@ pub enum MetricSource {
   Carbon(bytes::Bytes),
   Statsd(bytes::Bytes),
   PromRemoteWrite,
+  Otlp,
   Aggregation { prom_source: bool },
 }
 

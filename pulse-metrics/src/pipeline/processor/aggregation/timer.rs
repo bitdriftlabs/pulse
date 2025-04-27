@@ -15,7 +15,7 @@ use super::{
 };
 use crate::protos::metric::{CounterType, MetricId, MetricType, MetricValue, ParsedMetric};
 use crate::protos::prom::prom_stale_marker;
-use pulse_common::LossyIntoToFloat;
+use pulse_common::LossyIntToFloat;
 use pulse_common::proto::ProtoDurationToStdDuration;
 use pulse_protobuf::protos::pulse::config::processor::v1::aggregation::AggregationConfig;
 use tokio::time::Instant;

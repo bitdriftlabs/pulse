@@ -2135,6 +2135,8 @@ pub enum WireProtocol {
     WIRE_PROTOCOL_STATSD = 2,
     // @@protoc_insertion_point(enum_value:pulse.internode.v1.WireProtocol.WIRE_PROTOCOL_PROM)
     WIRE_PROTOCOL_PROM = 3,
+    // @@protoc_insertion_point(enum_value:pulse.internode.v1.WireProtocol.WIRE_PROTOCOL_OTLP)
+    WIRE_PROTOCOL_OTLP = 4,
 }
 
 impl ::protobuf::Enum for WireProtocol {
@@ -2150,6 +2152,7 @@ impl ::protobuf::Enum for WireProtocol {
             1 => ::std::option::Option::Some(WireProtocol::WIRE_PROTOCOL_CARBON),
             2 => ::std::option::Option::Some(WireProtocol::WIRE_PROTOCOL_STATSD),
             3 => ::std::option::Option::Some(WireProtocol::WIRE_PROTOCOL_PROM),
+            4 => ::std::option::Option::Some(WireProtocol::WIRE_PROTOCOL_OTLP),
             _ => ::std::option::Option::None
         }
     }
@@ -2160,6 +2163,7 @@ impl ::protobuf::Enum for WireProtocol {
             "WIRE_PROTOCOL_CARBON" => ::std::option::Option::Some(WireProtocol::WIRE_PROTOCOL_CARBON),
             "WIRE_PROTOCOL_STATSD" => ::std::option::Option::Some(WireProtocol::WIRE_PROTOCOL_STATSD),
             "WIRE_PROTOCOL_PROM" => ::std::option::Option::Some(WireProtocol::WIRE_PROTOCOL_PROM),
+            "WIRE_PROTOCOL_OTLP" => ::std::option::Option::Some(WireProtocol::WIRE_PROTOCOL_OTLP),
             _ => ::std::option::Option::None
         }
     }
@@ -2169,6 +2173,7 @@ impl ::protobuf::Enum for WireProtocol {
         WireProtocol::WIRE_PROTOCOL_CARBON,
         WireProtocol::WIRE_PROTOCOL_STATSD,
         WireProtocol::WIRE_PROTOCOL_PROM,
+        WireProtocol::WIRE_PROTOCOL_OTLP,
     ];
 }
 
@@ -2347,16 +2352,17 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     R\x04name\x12D\n\x0bmetric_type\x18\x02\x20\x01(\x0e2\x1e.pulse.internod\
     e.v1.MetricTypeH\0R\nmetricType\x88\x01\x01\x12;\n\ntag_values\x18\x03\
     \x20\x03(\x0b2\x1c.pulse.internode.v1.TagValueR\ttagValuesB\x0e\n\x0c_me\
-    tric_type*y\n\x0cWireProtocol\x12\x1d\n\x19WIRE_PROTOCOL_UNSPECIFIED\x10\
-    \0\x12\x18\n\x14WIRE_PROTOCOL_CARBON\x10\x01\x12\x18\n\x14WIRE_PROTOCOL_\
-    STATSD\x10\x02\x12\x16\n\x12WIRE_PROTOCOL_PROM\x10\x03*\xa9\x02\n\nMetri\
-    cType\x12\x1b\n\x17METRIC_TYPE_UNSPECIFIED\x10\0\x12\x1d\n\x19METRIC_TYP\
-    E_DELTA_COUNTER\x10\x01\x12\x20\n\x1cMETRIC_TYPE_ABSOLUTE_COUNTER\x10\
-    \x02\x12\x1b\n\x17METRIC_TYPE_DELTA_GAUGE\x10\x03\x12\x1c\n\x18METRIC_TY\
-    PE_DIRECT_GAUGE\x10\x04\x12\x15\n\x11METRIC_TYPE_GAUGE\x10\x05\x12\x15\n\
-    \x11METRIC_TYPE_TIMER\x10\x07\x12\x19\n\x15METRIC_TYPE_HISTOGRAM\x10\x08\
-    \x12\x17\n\x13METRIC_TYPE_SUMMARY\x10\t\x12\x1a\n\x16METRIC_TYPE_BULK_TI\
-    MER\x10\n\"\x04\x08\x06\x10\x06b\x06proto3\
+    tric_type*\x91\x01\n\x0cWireProtocol\x12\x1d\n\x19WIRE_PROTOCOL_UNSPECIF\
+    IED\x10\0\x12\x18\n\x14WIRE_PROTOCOL_CARBON\x10\x01\x12\x18\n\x14WIRE_PR\
+    OTOCOL_STATSD\x10\x02\x12\x16\n\x12WIRE_PROTOCOL_PROM\x10\x03\x12\x16\n\
+    \x12WIRE_PROTOCOL_OTLP\x10\x04*\xa9\x02\n\nMetricType\x12\x1b\n\x17METRI\
+    C_TYPE_UNSPECIFIED\x10\0\x12\x1d\n\x19METRIC_TYPE_DELTA_COUNTER\x10\x01\
+    \x12\x20\n\x1cMETRIC_TYPE_ABSOLUTE_COUNTER\x10\x02\x12\x1b\n\x17METRIC_T\
+    YPE_DELTA_GAUGE\x10\x03\x12\x1c\n\x18METRIC_TYPE_DIRECT_GAUGE\x10\x04\
+    \x12\x15\n\x11METRIC_TYPE_GAUGE\x10\x05\x12\x15\n\x11METRIC_TYPE_TIMER\
+    \x10\x07\x12\x19\n\x15METRIC_TYPE_HISTOGRAM\x10\x08\x12\x17\n\x13METRIC_\
+    TYPE_SUMMARY\x10\t\x12\x1a\n\x16METRIC_TYPE_BULK_TIMER\x10\n\"\x04\x08\
+    \x06\x10\x06b\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file

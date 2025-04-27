@@ -9,6 +9,7 @@ syntax = "proto3";
 package pulse.config.outflow.v1;
 
 import "pulse/config/outflow/v1/prom_remote_write.proto";
+import "pulse/config/outflow/v1/otlp.proto";
 import "pulse/config/outflow/v1/wire.proto";
 import "validate/validate.proto";
 
@@ -22,5 +23,6 @@ message OutflowConfig {
     TcpClientConfig tcp = 3;
     UdpClientConfig udp = 4;
     PromRemoteWriteClientConfig prom_remote_write = 5;
+    OtlpClientConfig otlp = 6;
   }
 }

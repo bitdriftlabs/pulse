@@ -13,6 +13,7 @@ use super::http::remote_write::{
 };
 use super::{OutflowFactoryContext, OutflowStats};
 use crate::batch::BatchBuilder;
+use crate::clients::http::PROM_REMOTE_WRITE_HEADERS;
 use crate::protos::metric::ParsedMetric;
 use crate::protos::prom::{ChangedTypeTracker, MetadataType, ToWriteRequestOptions};
 use async_trait::async_trait;
@@ -70,6 +71,7 @@ pub fn make_prom_batch_router(
       &config.queue_policy,
       &stats.stats,
       shutdown,
+      None,
       finisher,
     )) as Arc<dyn BatchRouter>
   }
@@ -91,6 +93,7 @@ pub async fn make_prom_outflow(
     batch_router,
     config.send_to.to_string(),
     config.auth.into_option(),
+    PROM_REMOTE_WRITE_HEADERS,
     config.request_headers,
     context,
   )

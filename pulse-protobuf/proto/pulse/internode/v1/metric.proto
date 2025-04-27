@@ -64,6 +64,7 @@ enum WireProtocol {
   WIRE_PROTOCOL_CARBON = 1;
   WIRE_PROTOCOL_STATSD = 2;
   WIRE_PROTOCOL_PROM = 3;
+  WIRE_PROTOCOL_OTLP = 4;
 }
 
 message MetricSource {
