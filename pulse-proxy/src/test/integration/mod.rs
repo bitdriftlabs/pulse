@@ -35,14 +35,15 @@ use pulse_common::k8s::pods_info::container::PodsInfo;
 use pulse_common::k8s::test::make_node_info;
 use pulse_common::proto::yaml_to_proto;
 use pulse_common::singleton::SingletonManager;
-use pulse_metrics::clients::prom::{
-  HyperPromRemoteWriteClient,
-  PromRemoteWriteClient,
-  compress_write_request,
+use pulse_metrics::clients::http::{
+  HttpRemoteWriteClient,
+  HyperHttpRemoteWriteClient,
+  PROM_REMOTE_WRITE_HEADERS,
 };
 use pulse_metrics::pipeline::MockPipelineDispatch;
 use pulse_metrics::pipeline::inflow::wire::tcp::TcpInflow;
 use pulse_metrics::pipeline::inflow::{InflowFactoryContext, PipelineInflow};
+use pulse_metrics::pipeline::outflow::prom::compress_write_request;
 use pulse_metrics::protos::metric::ParsedMetric;
 use pulse_metrics::protos::prom::{
   ChangedTypeTracker,
@@ -529,16 +530,17 @@ impl FakeWireUpstream {
 
 // Helper for making prom remote write requests.
 struct PromClient {
-  client: HyperPromRemoteWriteClient,
+  client: HyperHttpRemoteWriteClient,
 }
 
 impl PromClient {
   async fn new(addr: SocketAddr) -> Self {
     Self {
-      client: HyperPromRemoteWriteClient::new(
+      client: HyperHttpRemoteWriteClient::new(
         format!("http://{addr}/api/v1/prom/write"),
         1.seconds(),
         None,
+        PROM_REMOTE_WRITE_HEADERS,
         vec![],
       )
       .await

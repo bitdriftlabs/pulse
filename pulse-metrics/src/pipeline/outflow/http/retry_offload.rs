@@ -9,7 +9,7 @@
 #[path = "./retry_offload_test.rs"]
 mod retry_offload_test;
 
-use crate::clients::prom::{PromRemoteWriteError, should_retry};
+use crate::clients::http::{HttpRemoteWriteError, should_retry};
 use crate::pipeline::time::TimeProvider;
 use async_trait::async_trait;
 use aws_config::BehaviorVersion;
@@ -134,7 +134,7 @@ pub async fn create_offload_queue(
 pub async fn maybe_queue_for_retry(
   offload_queue: Option<&Arc<dyn OffloadQueue>>,
   offload_queue_config: &RetryOffloadQueue,
-  e: &PromRemoteWriteError,
+  e: &HttpRemoteWriteError,
   mut serialized: SerializedOffloadRequest,
   time_provider: &dyn TimeProvider,
 ) -> bool {

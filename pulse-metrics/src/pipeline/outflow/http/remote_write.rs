@@ -11,21 +11,19 @@ mod remote_write_test;
 
 use super::retry_offload::{OffloadQueue, SerializedOffloadRequest, create_offload_queue};
 use crate::batch::{Batch, BatchBuilder};
-use crate::clients::prom::{
-  HyperPromRemoteWriteClient,
-  PromRemoteWriteClient,
-  compress_write_request,
+use crate::clients::http::{
+  HttpRemoteWriteClient,
+  HyperHttpRemoteWriteClient,
+  PROM_REMOTE_WRITE_HEADERS,
   should_retry,
 };
 use crate::clients::retry::Retry;
 use crate::pipeline::config::{DEFAULT_REQUEST_TIMEOUT, default_max_in_flight};
-use crate::pipeline::outflow::prom::retry_offload::maybe_queue_for_retry;
+use crate::pipeline::outflow::http::retry_offload::maybe_queue_for_retry;
 use crate::pipeline::outflow::{OutflowFactoryContext, OutflowStats, PipelineOutflow};
 use crate::pipeline::time::RealTimeProvider;
 use crate::protos::metric::ParsedMetric;
-use crate::protos::prom::{ChangedTypeTracker, MetadataType, ToWriteRequestOptions};
 use async_trait::async_trait;
-use axum::http::HeaderValue;
 use backoff::ExponentialBackoffBuilder;
 use backoff::backoff::Backoff;
 use bd_log::warn_every;
@@ -34,10 +32,16 @@ use bd_shutdown::{ComponentShutdown, ComponentStatus};
 use bd_time::TimeDurationExt;
 use bytes::Bytes;
 use http::HeaderMap;
-use prom_remote_write::PromRemoteWriteClientConfig;
 use prometheus::{Histogram, IntCounter, IntGauge};
+use protobuf::MessageField;
+use protobuf::well_known_types::duration::Duration;
 use pulse_common::proto::ProtoDurationToStdDuration;
-use pulse_protobuf::protos::pulse::config::outflow::v1::prom_remote_write;
+use pulse_protobuf::protos::pulse::config::common::v1::retry::RetryPolicy;
+use pulse_protobuf::protos::pulse::config::outflow::v1::outflow_common::{
+  HttpRemoteWriteAuthConfig,
+  RequestHeader,
+};
+use pulse_protobuf::protos::pulse::config::outflow::v1::queue_policy::QueuePolicy;
 use std::sync::Arc;
 use std::time::Instant;
 use time::ext::NumericalDuration;
@@ -46,12 +50,11 @@ use tokio::sync::Semaphore;
 const DEFAULT_BATCH_MAX_SAMPLES: u64 = 1000;
 
 //
-// PromRemoteWriteOutflowStats
+// HttpRemoteWriteOutflowStats
 //
 
-// Stats for the Prom remote write outflow.
 #[derive(Clone)]
-struct PromRemoteWriteOutflowStats {
+struct HttpRemoteWriteOutflowStats {
   outflow_stats: OutflowStats,
   requests_fail: IntCounter,
   requests_in_flight: IntGauge,
@@ -62,7 +65,7 @@ struct PromRemoteWriteOutflowStats {
   offload_queue_rx: IntCounter,
 }
 
-impl PromRemoteWriteOutflowStats {
+impl HttpRemoteWriteOutflowStats {
   fn new(outflow_stats: OutflowStats) -> Self {
     let stats = outflow_stats.stats.clone();
     Self {
@@ -96,44 +99,51 @@ enum SendRequest {
 }
 
 //
-// PromRemoteWriteOutflow
+// HttpRemoteWriteOutflow
 //
 
-// An outflow that writes to a Prom remote write capable endpoint.
-pub struct PromRemoteWriteOutflow {
+// An outflow that writes to an HTTP remote write capable endpoint.
+pub struct HttpRemoteWriteOutflow {
   name: String,
-  stats: PromRemoteWriteOutflowStats,
+  stats: HttpRemoteWriteOutflowStats,
   retry: Arc<Retry>,
   backoff: Arc<dyn Fn() -> Box<dyn Backoff + Send> + Send + Sync>,
   batch_router: Arc<dyn BatchRouter>,
   offload_queue: Option<Arc<dyn OffloadQueue>>,
   semaphore: Arc<Semaphore>,
-  client: Arc<dyn PromRemoteWriteClient>,
+  client: Arc<dyn HttpRemoteWriteClient>,
   max_in_flight: usize,
-  config: PromRemoteWriteClientConfig,
+  retry_policy: RetryPolicy,
 }
 
-impl PromRemoteWriteOutflow {
-  pub async fn new(
-    config: PromRemoteWriteClientConfig,
+impl HttpRemoteWriteOutflow {
+  pub(crate) async fn new(
+    request_timeout: MessageField<Duration>,
+    retry_policy: RetryPolicy,
+    max_in_flight: Option<u64>,
+    batch_router: Arc<dyn BatchRouter>,
+    send_to: String,
+    auth_config: Option<HttpRemoteWriteAuthConfig>,
+    request_headers: Vec<RequestHeader>,
     context: OutflowFactoryContext,
   ) -> anyhow::Result<Arc<Self>> {
-    let request_timeout = config
-      .request_timeout
-      .unwrap_duration_or(DEFAULT_REQUEST_TIMEOUT);
+    let request_timeout = request_timeout.unwrap_duration_or(DEFAULT_REQUEST_TIMEOUT);
     let client = Arc::new(
-      HyperPromRemoteWriteClient::new(
-        config.send_to.clone().into(),
+      HyperHttpRemoteWriteClient::new(
+        send_to,
         request_timeout,
-        config.auth.clone().into_option(),
-        config.request_headers.clone(),
+        auth_config,
+        PROM_REMOTE_WRITE_HEADERS,
+        request_headers,
       )
       .await?,
     );
     Self::new_with_client_and_backoff(
+      retry_policy,
+      max_in_flight,
+      batch_router,
       context.name,
       context.stats,
-      config,
       client,
       Arc::new(move || {
         Box::new(
@@ -148,36 +158,20 @@ impl PromRemoteWriteOutflow {
   }
 
   async fn new_with_client_and_backoff(
+    retry_policy: RetryPolicy,
+    max_in_flight: Option<u64>,
+    batch_router: Arc<dyn BatchRouter>,
     name: String,
     stats: OutflowStats,
-    config: PromRemoteWriteClientConfig,
-    client: Arc<dyn PromRemoteWriteClient>,
+    client: Arc<dyn HttpRemoteWriteClient>,
     backoff: Arc<dyn Fn() -> Box<dyn Backoff + Send> + Send + Sync>,
     shutdown: ComponentShutdown,
   ) -> anyhow::Result<Arc<Self>> {
-    let changed_type_tracker = Arc::new(ChangedTypeTracker::new(&stats.stats));
-    let batch_router = if config.lyft_specific_config.is_some() {
-      Arc::new(LyftBatchRouter::new(
-        &config,
-        &stats.stats,
-        shutdown.clone(),
-        changed_type_tracker,
-      )) as Arc<dyn BatchRouter>
-    } else {
-      Arc::new(DefaultBatchRouter::new(
-        config.clone(),
-        &stats.stats,
-        shutdown.clone(),
-        changed_type_tracker,
-      )) as Arc<dyn BatchRouter>
-    };
-
-    let stats = PromRemoteWriteOutflowStats::new(stats);
-    let retry = Retry::new(&config.retry_policy)?;
-    let offload_queue = if let Some(queue_type) = config
-      .retry_policy
+    let stats = HttpRemoteWriteOutflowStats::new(stats);
+    let retry = Retry::new(&retry_policy)?;
+    let offload_queue = if let Some(queue_type) = retry_policy
+      .offload_queue
       .as_ref()
-      .and_then(|retry_policy| retry_policy.offload_queue.as_ref())
       .and_then(|offload_queue| offload_queue.queue_type.as_ref())
     {
       Some(create_offload_queue(queue_type).await?)
@@ -185,8 +179,7 @@ impl PromRemoteWriteOutflow {
       None
     };
 
-    let max_in_flight = config
-      .max_in_flight
+    let max_in_flight = max_in_flight
       .unwrap_or(default_max_in_flight())
       .try_into()
       .unwrap();
@@ -202,7 +195,7 @@ impl PromRemoteWriteOutflow {
       semaphore,
       client,
       max_in_flight,
-      config,
+      retry_policy,
     });
 
     let cloned_outflow = outflow.clone();
@@ -304,7 +297,7 @@ impl PromRemoteWriteOutflow {
 
           if maybe_queue_for_retry(
             self.offload_queue.as_ref(),
-            &self.config.retry_policy.offload_queue,
+            &self.retry_policy.offload_queue,
             &e,
             serialized.unwrap_or_else(|| {
               SerializedOffloadRequest::new(
@@ -404,7 +397,7 @@ impl PromRemoteWriteOutflow {
       };
 
       for batch in batch_set {
-        let PromBatch::Complete {
+        let HttpBatch::Complete {
           compressed_write_request,
           received_at,
           extra_headers,
@@ -431,7 +424,7 @@ impl PromRemoteWriteOutflow {
 }
 
 #[async_trait]
-impl PipelineOutflow for PromRemoteWriteOutflow {
+impl PipelineOutflow for HttpRemoteWriteOutflow {
   async fn recv_samples(&self, samples: Vec<ParsedMetric>) {
     self.batch_router.send(samples);
   }
@@ -443,9 +436,9 @@ impl PipelineOutflow for PromRemoteWriteOutflow {
 
 // Wraps potentially routing batches differently.
 #[async_trait]
-trait BatchRouter: Send + Sync {
+pub trait BatchRouter: Send + Sync {
   fn send(&self, samples: Vec<ParsedMetric>);
-  async fn next_batch_set(&self, max_items: Option<usize>) -> Option<Vec<PromBatch>>;
+  async fn next_batch_set(&self, max_items: Option<usize>) -> Option<Vec<HttpBatch>>;
 }
 
 //
@@ -453,48 +446,48 @@ trait BatchRouter: Send + Sync {
 //
 
 // Default router which just forwards on.
-struct DefaultBatchRouter {
-  builder: Arc<BatchBuilder<ParsedMetric, PromBatch>>,
+pub struct DefaultBatchRouter {
+  builder: Arc<BatchBuilder<ParsedMetric, HttpBatch>>,
 }
 
 impl DefaultBatchRouter {
-  fn new(
-    config: PromRemoteWriteClientConfig,
+  pub(crate) fn new(
+    batch_max_samples: Option<u64>,
+    queue_policy: &QueuePolicy,
     scope: &Scope,
     shutdown: ComponentShutdown,
-    changed_type_tracker: Arc<ChangedTypeTracker>,
+    finisher: Arc<dyn Fn(Vec<ParsedMetric>) -> Bytes + Send + Sync>,
   ) -> Self {
     Self {
-      builder: Self::make_batch_builder(config, scope, shutdown, None, changed_type_tracker),
+      builder: Self::make_batch_builder(
+        batch_max_samples,
+        queue_policy,
+        scope,
+        shutdown,
+        None,
+        finisher,
+      ),
     }
   }
 
   #[allow(clippy::needless_pass_by_value)] // Spurious
-  fn make_batch_builder(
-    config: PromRemoteWriteClientConfig,
+  pub(crate) fn make_batch_builder(
+    batch_max_samples: Option<u64>,
+    queue_policy: &QueuePolicy,
     scope: &Scope,
     shutdown: ComponentShutdown,
     extra_headers: Option<Arc<HeaderMap>>,
-    changed_type_tracker: Arc<ChangedTypeTracker>,
-  ) -> Arc<BatchBuilder<ParsedMetric, PromBatch>> {
-    let batch_max_samples: usize = config
-      .batch_max_samples
+    finisher: Arc<dyn Fn(Vec<ParsedMetric>) -> Bytes + Send + Sync>,
+  ) -> Arc<BatchBuilder<ParsedMetric, HttpBatch>> {
+    let batch_max_samples: usize = batch_max_samples
       .unwrap_or(DEFAULT_BATCH_MAX_SAMPLES)
       .try_into()
       .unwrap();
 
     BatchBuilder::new(
       scope,
-      &config.queue_policy,
-      move || {
-        PromBatch::new(
-          batch_max_samples,
-          config.metadata_only,
-          config.convert_metric_name.unwrap_or(true),
-          extra_headers.clone(),
-          changed_type_tracker.clone(),
-        )
-      },
+      queue_policy,
+      move || HttpBatch::new(batch_max_samples, extra_headers.clone(), finisher.clone()),
       shutdown,
     )
   }
@@ -506,166 +499,22 @@ impl BatchRouter for DefaultBatchRouter {
     self.builder.send(samples.into_iter());
   }
 
-  async fn next_batch_set(&self, max_items: Option<usize>) -> Option<Vec<PromBatch>> {
+  async fn next_batch_set(&self, max_items: Option<usize>) -> Option<Vec<HttpBatch>> {
     self.builder.next_batch_set(max_items).await
   }
 }
 
 //
-// LyftBatchRouter
-//
-
-// This is a router specific to Lyft's migration away from WFP. In the future we can potentially
-// replace this with generic routing code if this is useful to other customers.
-struct LyftBatchRouter {
-  generic: Arc<BatchBuilder<ParsedMetric, PromBatch>>,
-  instance: Option<Arc<BatchBuilder<ParsedMetric, PromBatch>>>,
-  cloudwatch: Option<Arc<BatchBuilder<ParsedMetric, PromBatch>>>,
-}
-
-impl LyftBatchRouter {
-  fn new(
-    config: &PromRemoteWriteClientConfig,
-    scope: &Scope,
-    shutdown: ComponentShutdown,
-    changed_type_tracker: Arc<ChangedTypeTracker>,
-  ) -> Self {
-    let lyft_config = config.lyft_specific_config.as_ref().unwrap();
-    let generic = DefaultBatchRouter::make_batch_builder(
-      config.clone(),
-      &scope.scope("general"),
-      shutdown.clone(),
-      Some(Self::make_storage_headers(
-        &lyft_config.general_storage_policy,
-      )),
-      changed_type_tracker.clone(),
-    );
-    let instance = lyft_config
-      .instance_metrics_storage_policy
-      .as_ref()
-      .map(|p| {
-        DefaultBatchRouter::make_batch_builder(
-          config.clone(),
-          &scope.scope("instance"),
-          shutdown.clone(),
-          Some(Self::make_storage_headers(p)),
-          changed_type_tracker.clone(),
-        )
-      });
-    let cloudwatch = lyft_config
-      .cloudwatch_metrics_storage_policy
-      .as_ref()
-      .map(|p| {
-        DefaultBatchRouter::make_batch_builder(
-          config.clone(),
-          &scope.scope("cloudwatch"),
-          shutdown,
-          Some(Self::make_storage_headers(p)),
-          changed_type_tracker,
-        )
-      });
-
-    Self {
-      generic,
-      instance,
-      cloudwatch,
-    }
-  }
-
-  fn make_storage_headers(storage_policy: &str) -> Arc<HeaderMap> {
-    let mut header_map = HeaderMap::new();
-    header_map.insert("M3-Metrics-Type", HeaderValue::from_static("aggregated"));
-    header_map.insert(
-      "M3-Storage-Policy",
-      HeaderValue::from_str(storage_policy).unwrap(),
-    );
-    Arc::new(header_map)
-  }
-
-  fn is_cloudwatch(name: &[u8]) -> bool {
-    // Cloudwatch metrics start with <namespace>:infra:aws
-    let mut name_tokens = name.split(|c| *c == b':');
-    if name_tokens.next().is_none() {
-      return false;
-    }
-    if name_tokens.next().is_none_or(|t| t != b"infra") {
-      return false;
-    }
-    if name_tokens.next().is_none_or(|t| t != b"aws") {
-      return false;
-    }
-
-    true
-  }
-}
-
-#[async_trait]
-impl BatchRouter for LyftBatchRouter {
-  fn send(&self, samples: Vec<ParsedMetric>) {
-    let mut cloudwatch = Vec::new();
-    let mut instance = Vec::new();
-    let mut generic = Vec::new();
-
-    for sample in samples {
-      if self.cloudwatch.is_some()
-        && sample
-          .metric()
-          .get_id()
-          .tag("source")
-          .is_some_and(|v| !v.value.starts_with(b"statsd"))
-        && Self::is_cloudwatch(sample.metric().get_id().name())
-      {
-        cloudwatch.push(sample);
-      } else if self.instance.is_some() && sample.metric().get_id().tag("host").is_some() {
-        instance.push(sample);
-      } else {
-        generic.push(sample);
-      }
-    }
-
-    if !cloudwatch.is_empty() {
-      self
-        .cloudwatch
-        .as_ref()
-        .unwrap()
-        .send(cloudwatch.into_iter());
-    }
-    if !instance.is_empty() {
-      self.instance.as_ref().unwrap().send(instance.into_iter());
-    }
-    self.generic.send(generic.into_iter());
-  }
-
-  async fn next_batch_set(&self, max_items: Option<usize>) -> Option<Vec<PromBatch>> {
-    // The following does a select over all possible batches, handling the case where either of
-    // cloudwatch/instance are not configured. Each batcher will return None when it is shutdown.
-    // Thus, if all branches end up disabled we should return None to indicate we are done.
-    tokio::select! {
-      Some(batch_set) = self.generic.next_batch_set(max_items) => Some(batch_set),
-      Some(batch_set) = async {
-        self.instance.as_ref().unwrap().next_batch_set(max_items).await
-      }, if self.instance.is_some() => Some(batch_set),
-      Some(batch_set) = async {
-        self.cloudwatch.as_ref().unwrap().next_batch_set(max_items).await
-      }, if self.cloudwatch.is_some() => Some(batch_set),
-      else => None,
-    }
-  }
-}
-
-//
-// PromBatch
+// HttpBatch
 //
 
 // Metric batches that will be written to Prometheus remote write endpoints.
-enum PromBatch {
+pub enum HttpBatch {
   Building {
     samples: Vec<ParsedMetric>,
     max_samples: usize,
-    metadata_only: bool,
-    convert_name: bool,
     extra_headers: Option<Arc<HeaderMap>>,
-    changed_type_tracker: Arc<ChangedTypeTracker>,
+    finisher: Arc<dyn Fn(Vec<ParsedMetric>) -> Bytes + Send + Sync>,
   },
   Complete {
     compressed_write_request: Bytes,
@@ -674,26 +523,22 @@ enum PromBatch {
   },
 }
 
-impl PromBatch {
+impl HttpBatch {
   fn new(
     max_samples: usize,
-    metadata_only: bool,
-    convert_name: bool,
     extra_headers: Option<Arc<HeaderMap>>,
-    changed_type_tracker: Arc<ChangedTypeTracker>,
+    finisher: Arc<dyn Fn(Vec<ParsedMetric>) -> Bytes + Send + Sync>,
   ) -> Self {
     Self::Building {
       samples: Vec::with_capacity(max_samples),
       max_samples,
-      metadata_only,
-      convert_name,
       extra_headers,
-      changed_type_tracker,
+      finisher,
     }
   }
 }
 
-impl Batch<ParsedMetric> for PromBatch {
+impl Batch<ParsedMetric> for HttpBatch {
   fn push(&mut self, items: impl Iterator<Item = ParsedMetric>) -> Option<usize> {
     let (samples, max_samples) = match self {
       Self::Building {
@@ -712,42 +557,25 @@ impl Batch<ParsedMetric> for PromBatch {
   }
 
   fn finish(&mut self) -> usize {
-    let (samples, metadata_only, convert_name, extra_headers, changed_type_tracker) = match self {
+    let (samples, extra_headers, finisher) = match self {
       Self::Building {
         samples,
-        metadata_only,
-        convert_name,
         extra_headers,
-        changed_type_tracker,
+        finisher,
         ..
       } => (
         std::mem::take(samples),
-        *metadata_only,
-        *convert_name,
         std::mem::take(extra_headers),
-        changed_type_tracker,
+        finisher,
       ),
       Self::Complete { .. } => unreachable!(),
     };
 
     let received_at = samples.iter().map(ParsedMetric::received_at).collect();
-    let write_request = ParsedMetric::to_write_request(
-      samples,
-      &ToWriteRequestOptions {
-        metadata: if metadata_only {
-          MetadataType::Only
-        } else {
-          MetadataType::Normal
-        },
-        convert_name,
-      },
-      changed_type_tracker,
-    );
-    log::trace!("WriteRequest batched and ready to send: {write_request}");
-    let compressed_write_request = compress_write_request(&write_request);
+    let compressed_write_request = (finisher)(samples);
     let size = compressed_write_request.len();
     *self = Self::Complete {
-      compressed_write_request: compressed_write_request.into(),
+      compressed_write_request,
       received_at,
       extra_headers,
     };

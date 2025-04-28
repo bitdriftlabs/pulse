@@ -6,7 +6,8 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
 use super::*;
-use crate::clients::prom::{MockPromRemoteWriteClient, PromRemoteWriteError};
+use crate::clients::http::{HttpRemoteWriteError, MockHttpRemoteWriteClient};
+use crate::pipeline::outflow::prom::make_prom_batch_router;
 use crate::protos::metric::DownstreamId;
 use crate::test::{TestDownstreamIdProvider, make_carbon_wire_protocol};
 use bd_proto::protos::prometheus::prompb::remote::WriteRequest;
@@ -14,18 +15,20 @@ use bd_server_stats::stats::Collector;
 use bd_shutdown::ComponentShutdownTrigger;
 use bd_time::ToProtoDuration;
 use http::StatusCode;
+use outflow::v1::prom_remote_write::PromRemoteWriteClientConfig;
+use outflow::v1::queue_policy::QueuePolicy;
 use prom_remote_write::prom_remote_write_server_config::ParseConfig;
 use protobuf::Message;
 use pulse_protobuf::protos::pulse::config::inflow::v1::prom_remote_write;
-use pulse_protobuf::protos::pulse::config::outflow::v1::queue_policy::QueuePolicy;
+use pulse_protobuf::protos::pulse::config::outflow;
 use std::time::Duration;
 use time::ext::{NumericalDuration, NumericalStdDuration};
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 
 async fn setup_test(
-  client: MockPromRemoteWriteClient,
-) -> (Arc<PromRemoteWriteOutflow>, ComponentShutdownTrigger) {
+  client: MockHttpRemoteWriteClient,
+) -> (Arc<HttpRemoteWriteOutflow>, ComponentShutdownTrigger) {
   let config = PromRemoteWriteClientConfig {
     max_in_flight: Some(1),
     send_to: "http://localhost/api/v1/prom/write".into(),
@@ -44,13 +47,16 @@ async fn setup_test(
 
   let scope = Collector::default().scope("stats");
   let outflow_stats = OutflowStats::new(&scope, "test");
-
   let shutdown_trigger = ComponentShutdownTrigger::default();
+  let batch_router =
+    make_prom_batch_router(&config, &outflow_stats, shutdown_trigger.make_shutdown());
 
-  let outflow = PromRemoteWriteOutflow::new_with_client_and_backoff(
+  let outflow = HttpRemoteWriteOutflow::new_with_client_and_backoff(
+    RetryPolicy::default(),
+    Some(1),
+    batch_router,
     "test".to_string(),
     outflow_stats,
-    config,
     Arc::new(client),
     Arc::new(|| Box::new(backoff::backoff::Zero {})),
     shutdown_trigger.make_shutdown(),
@@ -90,11 +96,11 @@ fn decode_body(compressed_write_request: &[u8]) -> anyhow::Result<WriteRequest> 
 }
 
 fn expect_send_write_request(
-  mock_client: &mut MockPromRemoteWriteClient,
+  mock_client: &mut MockHttpRemoteWriteClient,
   call_count_tx: mpsc::Sender<()>,
   n_expected_samples: usize,
   times: usize,
-  result: impl Fn() -> Result<(), PromRemoteWriteError> + Send + 'static,
+  result: impl Fn() -> Result<(), HttpRemoteWriteError> + Send + 'static,
 ) {
   mock_client
     .expect_send_write_request()
@@ -133,7 +139,7 @@ async fn wait_for(call_count_rx: &mut mpsc::Receiver<()>, n_expected_calls: usiz
 #[tokio::test]
 async fn prom_remote_write_outflow_success() {
   let (call_count_tx, _call_count_rx) = mpsc::channel::<()>(100);
-  let mut mock_client = MockPromRemoteWriteClient::new();
+  let mut mock_client = MockHttpRemoteWriteClient::new();
   let samples = generate_samples(13);
 
   // First batch will have 3 metrics (LIFO)
@@ -155,12 +161,12 @@ async fn prom_remote_write_outflow_success() {
 #[tokio::test]
 async fn prom_remote_write_outflow_retries() {
   let (call_count_tx, mut call_count_rx) = mpsc::channel::<()>(100);
-  let mut mock_client = MockPromRemoteWriteClient::new();
+  let mut mock_client = MockHttpRemoteWriteClient::new();
   let samples = generate_samples(10);
 
   // Return a permanent error for the first batch.
   expect_send_write_request(&mut mock_client, call_count_tx.clone(), 5, 1, || {
-    Err(PromRemoteWriteError::Response(
+    Err(HttpRemoteWriteError::Response(
       StatusCode::BAD_REQUEST,
       String::new(),
     ))
@@ -168,7 +174,7 @@ async fn prom_remote_write_outflow_retries() {
 
   // Return a transient error for the second batch twice...
   expect_send_write_request(&mut mock_client, call_count_tx.clone(), 5, 2, || {
-    Err(PromRemoteWriteError::Response(
+    Err(HttpRemoteWriteError::Response(
       StatusCode::INTERNAL_SERVER_ERROR,
       String::new(),
     ))
@@ -190,14 +196,14 @@ async fn prom_remote_write_outflow_retries() {
 
 #[tokio::test]
 async fn prom_remote_write_outflow_abort_retries() {
-  let mut mock_client = MockPromRemoteWriteClient::new();
+  let mut mock_client = MockHttpRemoteWriteClient::new();
   let samples = generate_samples(5);
 
   // Always fail...
   mock_client
     .expect_send_write_request()
     .returning(move |_, _| {
-      Err(PromRemoteWriteError::Response(
+      Err(HttpRemoteWriteError::Response(
         StatusCode::INTERNAL_SERVER_ERROR,
         String::new(),
       ))

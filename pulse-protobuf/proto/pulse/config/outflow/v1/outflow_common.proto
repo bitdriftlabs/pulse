@@ -1,0 +1,57 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.outflow.v1;
+
+import "pulse/config/common/v1/common.proto";
+import "validate/validate.proto";
+
+// Authentication configuration for Prometheus remote write.
+message HttpRemoteWriteAuthConfig {
+  // Use AWS authentication.
+  message AwsAuthConfig {
+    // Use the default credential chain, region provider, and SDK configuration specified by the
+    // environment.
+    message Default {
+      optional string assume_role = 1 [(validate.rules).string = {min_len: 1}];
+    }
+
+    oneof auth_type {
+      option (validate.required) = true;
+
+      // Default configuration.
+      Default default = 1;
+    }
+  }
+
+  oneof auth_type {
+    option (validate.required) = true;
+
+    // Bearer token configuration.
+    common.v1.BearerTokenConfig bearer_token = 2;
+
+    // AWS auth configuration.
+    AwsAuthConfig aws = 3;
+  }
+}
+
+// An individual request header sent with the remote write request.
+message RequestHeader {
+  // The name of the header.
+  string name = 1 [(validate.rules).string = {min_len: 1}];
+
+  oneof value_type {
+    option (validate.required) = true;
+
+    // The fixed value of the header.
+    common.v1.EnvOrInline value = 2;
+
+    // Replaced with the timestamp, defined as the number of seconds since the unix epoch.
+    bool timestamp = 3 [(validate.rules).bool.const = true];
+  }
+}

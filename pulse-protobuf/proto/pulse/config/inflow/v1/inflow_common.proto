@@ -1,0 +1,34 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.inflow.v1;
+
+import "validate/validate.proto";
+
+// Configuration for determining the downstream ID of incoming metrics.
+message DownstreamIdSource {
+  oneof source_type {
+    option (validate.required) = true;
+
+    // Uses the remote IP address of the incoming connection.
+    bool remote_ip = 1 [(validate.rules).bool.const = true];
+
+    // Uses the value found in the specified request header. If the request header is not found,
+    // falls back to remote IP address.
+    string request_header = 2 [(validate.rules).string = {min_len: 1}];
+  }
+
+  // Whether to append the incoming metric tags to the downstream ID. When doing aggregation using
+  // Prometheus absolute counters, the aggregation processor must know all unique sources of a
+  // metric so that absolute counter deltas can be correctly calculated. If tags are removed
+  // using a mutate processor, the aggregation processor will no longer be able to determine
+  // unique sources. By appending the original tags to the incoming ID, tags can be removed and
+  // then forwarded via internode and aggregated correctly. Depending on the aggregation topology
+  // this is likely required if absolute counters are being used.
+  bool append_tags_to_downstream_id = 3;
+}

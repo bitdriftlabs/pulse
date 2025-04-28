@@ -1,6 +1,7 @@
 version: v2
 modules:
-  - path: pulse-protobuf/thirdparty/
+  - path: pulse-protobuf/thirdparty/opentelemetry-proto/
+  - path: pulse-protobuf/thirdparty/validate/
   - path: pulse-protobuf/proto/
 lint:
   use:
@@ -16,7 +17,8 @@ lint:
     - RPC_RESPONSE_STANDARD_NAME
     - SERVICE_SUFFIX
   ignore:
-    - pulse-protobuf/thirdparty/
+    - pulse-protobuf/thirdparty/opentelemetry-proto/
+    - pulse-protobuf/thirdparty/validate/
   service_suffix: Service
   disallow_comment_ignores: true
 breaking:

@@ -22,6 +22,7 @@ use pulse_protobuf::protos::pulse::config::inflow::v1::inflow::InflowConfig;
 use pulse_protobuf::protos::pulse::config::inflow::v1::inflow::inflow_config::Config_type;
 use std::sync::Arc;
 
+mod http_inflow;
 mod metric_generator;
 mod prom_remote_write;
 mod prom_scrape;

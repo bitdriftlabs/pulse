@@ -1,0 +1,3 @@
+[submodule "pulse-protobuf/thirdparty/opentelemetry-proto"]
+	path = pulse-protobuf/thirdparty/opentelemetry-proto
+	url = https://github.com/open-telemetry/opentelemetry-proto

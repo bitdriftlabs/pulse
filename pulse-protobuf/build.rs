@@ -33,7 +33,7 @@ fn generate_directory(root_path: &Path, partial_path: &Path) {
             .oneofs_non_exhaustive(false)
             .file_header(GENERATED_HEADER.to_string()),
         )
-        .includes(["proto/", "thirdparty/"])
+        .includes(["proto/", "thirdparty/validate/"])
         .inputs([file.path()])
         .out_dir(Path::new("src/protos").join(partial_path))
         .capture_stderr()
@@ -50,4 +50,27 @@ fn main() {
   println!("cargo:rerun-if-changed=proto/");
 
   generate_directory(Path::new("proto"), Path::new(""));
+
+  std::fs::create_dir_all(Path::new("src/protos/opentelemetry")).unwrap();
+  protobuf_codegen::Codegen::new()
+    .protoc()
+    .customize(
+      Customize::default()
+        .gen_mod_rs(false)
+        .tokio_bytes(true)
+        .tokio_bytes_for_string(true)
+        .oneofs_non_exhaustive(false)
+        .file_header(GENERATED_HEADER.to_string()),
+    )
+    .includes(["thirdparty/opentelemetry-proto"])
+    .inputs([
+      "thirdparty/opentelemetry-proto/opentelemetry/proto/collector/metrics/v1/metrics_service.\
+       proto",
+      "thirdparty/opentelemetry-proto/opentelemetry/proto/common/v1/common.proto",
+      "thirdparty/opentelemetry-proto/opentelemetry/proto/metrics/v1/metrics.proto",
+      "thirdparty/opentelemetry-proto/opentelemetry/proto/resource/v1/resource.proto",
+    ])
+    .out_dir(Path::new("src/protos/opentelemetry"))
+    .capture_stderr()
+    .run_from_script();
 }

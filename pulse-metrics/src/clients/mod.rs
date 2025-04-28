@@ -7,7 +7,7 @@
 
 pub mod client;
 pub mod client_pool;
-pub mod prom;
+pub mod http;
 pub mod retry;
 
 use hyper_rustls::{HttpsConnector, HttpsConnectorBuilder};

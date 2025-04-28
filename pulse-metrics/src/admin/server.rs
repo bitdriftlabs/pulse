@@ -9,13 +9,14 @@ use super::stats::StatsProvider;
 use crate::clients::client::ConnectTo;
 use crate::clients::client_pool;
 use crate::clients::client_pool::Pool;
-use crate::clients::prom::{
-  HyperPromRemoteWriteClient,
-  PromRemoteWriteClient,
-  compress_write_request,
+use crate::clients::http::{
+  HttpRemoteWriteClient,
+  HyperHttpRemoteWriteClient,
+  PROM_REMOTE_WRITE_HEADERS,
   should_retry,
 };
 use crate::pipeline::config::DEFAULT_REQUEST_TIMEOUT;
+use crate::pipeline::outflow::prom::compress_write_request;
 use crate::pipeline::time::{RealTimeProvider, next_flush_interval};
 use anyhow::bail;
 use async_trait::async_trait;
@@ -268,7 +269,7 @@ impl MetaStatsSender for WireMetaStatsSender {
 }
 
 struct PromRemoteWriteMetaStatsSender {
-  client: HyperPromRemoteWriteClient,
+  client: HyperHttpRemoteWriteClient,
 }
 
 #[async_trait]
@@ -338,12 +339,13 @@ impl MetaStatsEmitter {
           ),
         }) as Box<dyn MetaStatsSender>,
         Protocol::PromRemoteWrite(prom_remote_write) => Box::new(PromRemoteWriteMetaStatsSender {
-          client: HyperPromRemoteWriteClient::new(
+          client: HyperHttpRemoteWriteClient::new(
             prom_remote_write.send_to.into(),
             prom_remote_write
               .request_timeout
               .unwrap_duration_or(DEFAULT_REQUEST_TIMEOUT),
             prom_remote_write.auth.into_option(),
+            PROM_REMOTE_WRITE_HEADERS,
             prom_remote_write.request_headers,
           )
           .await?,
