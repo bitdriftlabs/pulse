@@ -9,7 +9,7 @@ use bd_server_stats::stats::Collector;
 use bd_shutdown::ComponentShutdownTrigger;
 use bd_time::{TimeDurationExt, ToProtoDuration};
 use prom_remote_write::PromRemoteWriteClientConfig;
-use pulse_common::{LossyIntoToFloat, global_initialize};
+use pulse_common::{LossyIntToFloat, global_initialize};
 use pulse_metrics::metric_generator::MetricGenerator;
 use pulse_metrics::pipeline::outflow::prom::make_prom_outflow;
 use pulse_metrics::pipeline::outflow::{OutflowFactoryContext, OutflowStats, PipelineOutflow};

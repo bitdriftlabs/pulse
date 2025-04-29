@@ -45,18 +45,25 @@ pub fn global_initialize() {
   }
 }
 
-pub trait LossyIntoToFloat {
+pub trait LossyIntToFloat {
   fn lossy_to_f64(self) -> f64;
 }
 
-impl LossyIntoToFloat for u64 {
+impl LossyIntToFloat for u64 {
   #[allow(clippy::cast_precision_loss)]
   fn lossy_to_f64(self) -> f64 {
     self as f64
   }
 }
 
-impl LossyIntoToFloat for usize {
+impl LossyIntToFloat for i64 {
+  #[allow(clippy::cast_precision_loss)]
+  fn lossy_to_f64(self) -> f64 {
+    self as f64
+  }
+}
+
+impl LossyIntToFloat for usize {
   #[allow(clippy::cast_precision_loss)]
   fn lossy_to_f64(self) -> f64 {
     self as f64

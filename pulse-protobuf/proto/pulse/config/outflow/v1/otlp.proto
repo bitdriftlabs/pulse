@@ -1,0 +1,50 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.outflow.v1;
+
+import "pulse/config/common/v1/common.proto";
+import "pulse/config/common/v1/retry.proto";
+import "pulse/config/outflow/v1/queue_policy.proto";
+import "pulse/config/outflow/v1/outflow_common.proto";
+import "google/protobuf/duration.proto";
+import "validate/validate.proto";
+
+message OtlpClientConfig {
+  enum OtlpCompression {
+    SNAPPY = 0;
+    NONE = 1;
+  }
+
+  // The URI to send to.
+  string send_to = 1 [(validate.rules).string = {min_len: 1}];
+
+  // The request timeout. Defaults to 10s.
+  google.protobuf.Duration request_timeout = 2 [(validate.rules).duration.gt = {}];
+
+  // The maximum number of inflight requests. Defaults to 16.
+  optional uint64 max_in_flight = 3;
+
+  // Queue policy for the client.
+  QueuePolicy queue_policy = 4;
+
+  // The maximum numer of samples per batch. Defaults to 1000.
+  optional uint64 batch_max_samples = 5;
+
+  // What auth to use. If not specified, no auth is used.
+  HttpRemoteWriteAuthConfig auth = 6;
+
+  // Optional additional request headers that are sent with the remote write request.
+  repeated RequestHeader request_headers = 7;
+
+  // Retry policy. If not specified default values are used.
+  common.v1.RetryPolicy retry_policy = 8;
+
+  // Compression to use. Defaults to SNAPPY.
+  OtlpCompression compression = 9;
+}

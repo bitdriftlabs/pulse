@@ -14,6 +14,7 @@ use super::PipelineDispatch;
 use async_trait::async_trait;
 use bd_server_stats::stats::Scope;
 use bd_shutdown::ComponentShutdownTriggerHandle;
+use otlp::OtlpInflow;
 use pulse_common::bind_resolver::BindResolver;
 use pulse_common::k8s::pods_info::K8sWatchFactory;
 use pulse_common::singleton::SingletonManager;
@@ -24,6 +25,7 @@ use std::sync::Arc;
 
 mod http_inflow;
 mod metric_generator;
+pub mod otlp;
 mod prom_remote_write;
 mod prom_scrape;
 pub mod wire;
@@ -75,5 +77,6 @@ pub(super) async fn to_inflow(
       Ok(Arc::new(MetricGeneratorInflow::new(config, context)))
     },
     Config_type::K8sProm(config) => prom_scrape::scraper::make(config, context).await,
+    Config_type::Otlp(config) => Ok(Arc::new(OtlpInflow::new(config, context).await?)),
   }
 }

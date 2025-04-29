@@ -5,7 +5,7 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
-use crate::test::integration::{FakePromUpstream, Helper, HelperBindResolver, PromClient};
+use crate::test::integration::{FakeHttpUpstream, Helper, HelperBindResolver, PromClient};
 use pretty_assertions::assert_eq;
 use prom_remote_write::prom_remote_write_server_config::ParseConfig;
 use prometheus::labels;
@@ -87,7 +87,7 @@ outflows:
 #[tokio::test]
 async fn reload_config() {
   let bind_resolver = HelperBindResolver::new(&["fake_upstream", "inflow:prom"], &[]).await;
-  let mut upstream = FakePromUpstream::new(
+  let mut upstream = FakeHttpUpstream::new_prom(
     "fake_upstream",
     bind_resolver.clone(),
     ParseConfig::default(),
@@ -140,7 +140,7 @@ async fn reload_config() {
 #[tokio::test]
 async fn bad_config() {
   let bind_resolver = HelperBindResolver::new(&["fake_upstream", "inflow:prom"], &[]).await;
-  let mut upstream = FakePromUpstream::new(
+  let mut upstream = FakeHttpUpstream::new_prom(
     "fake_upstream",
     bind_resolver.clone(),
     ParseConfig::default(),

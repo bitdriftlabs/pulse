@@ -6,7 +6,7 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
 use crate::test::integration::{
-  FakePromUpstream,
+  FakeHttpUpstream,
   FakeWireUpstream,
   Helper,
   HelperBindResolver,
@@ -155,7 +155,7 @@ LYFT_SPECIFIC_CONFIG = r#"
 }
 
 async fn expect_metric(
-  fake_upstream: &mut FakePromUpstream,
+  fake_upstream: &mut FakeHttpUpstream,
   storage_policy: &str,
   metric: ParsedMetric,
 ) -> HeaderMap {
@@ -170,13 +170,13 @@ async fn expect_metric(
 async fn lyft_remote_write() {
   let bind_resolver =
     HelperBindResolver::new(&["fake_upstream1", "fake_upstream2", "inflow:prom"], &[]).await;
-  let mut upstream1 = FakePromUpstream::new(
+  let mut upstream1 = FakeHttpUpstream::new_prom(
     "fake_upstream1",
     bind_resolver.clone(),
     ParseConfig::default(),
   )
   .await;
-  let mut upstream2 = FakePromUpstream::new(
+  let mut upstream2 = FakeHttpUpstream::new_prom(
     "fake_upstream2",
     bind_resolver.clone(),
     ParseConfig::default(),

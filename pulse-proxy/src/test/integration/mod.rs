@@ -22,7 +22,7 @@ use http_body_util::{BodyExt, Empty};
 use hyper_util::client::legacy::Client;
 use hyper_util::rt::TokioExecutor;
 use parking_lot::Mutex;
-use prom_remote_write::prom_remote_write_server_config::ParseConfig;
+use prom_remote_write::prom_remote_write_server_config::ParseConfig as PromParseConfig;
 use protobuf::Message;
 use pulse_common::bind_resolver::{
   BindResolver,
@@ -41,8 +41,14 @@ use pulse_metrics::clients::http::{
   PROM_REMOTE_WRITE_HEADERS,
 };
 use pulse_metrics::pipeline::MockPipelineDispatch;
+use pulse_metrics::pipeline::inflow::otlp::{
+  ParseConfig as OtlpParseConfig,
+  decode_otlp_request,
+  metrics_request_to_samples,
+};
 use pulse_metrics::pipeline::inflow::wire::tcp::TcpInflow;
 use pulse_metrics::pipeline::inflow::{InflowFactoryContext, PipelineInflow};
+use pulse_metrics::pipeline::outflow::otlp::finish_otlp_batch;
 use pulse_metrics::pipeline::outflow::prom::compress_write_request;
 use pulse_metrics::protos::metric::ParsedMetric;
 use pulse_metrics::protos::prom::{
@@ -55,6 +61,7 @@ use pulse_metrics::test::{TestDownstreamIdProvider, make_carbon_wire_protocol};
 use pulse_protobuf::protos::pulse::config::bootstrap::v1::bootstrap::KubernetesBootstrapConfig;
 use pulse_protobuf::protos::pulse::config::inflow::v1::prom_remote_write;
 use pulse_protobuf::protos::pulse::config::inflow::v1::wire::TcpServerConfig;
+use pulse_protobuf::protos::pulse::config::outflow::v1::otlp::otlp_client_config::OtlpCompression;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -71,6 +78,7 @@ mod complex_config;
 mod dynamic_fs_config;
 mod meta_stats;
 mod multi_node;
+mod otlp;
 mod prom;
 mod single_node;
 mod socket_close;
@@ -367,23 +375,24 @@ impl FakeRemoteFileSource {
 }
 
 //
-// FakePromUpstream
+// FakeHttpUpstream
 //
 
-type FakePromData = (HeaderMap, Vec<ParsedMetric>);
-struct FakePromUpstreamState {
-  tx: mpsc::Sender<FakePromData>,
+type FakeHttpData = (HeaderMap, Vec<ParsedMetric>);
+type Decode = dyn Fn(&HeaderMap, Bytes) -> Vec<ParsedMetric> + Send + Sync;
+struct FakeHttpUpstreamState {
+  tx: mpsc::Sender<FakeHttpData>,
   failure_response_codes: Mutex<Vec<StatusCode>>,
-  parse_config: ParseConfig,
+  decode: Box<Decode>,
 }
-struct FakePromUpstream {
-  rx: mpsc::Receiver<FakePromData>,
-  state: Arc<FakePromUpstreamState>,
+struct FakeHttpUpstream {
+  rx: mpsc::Receiver<FakeHttpData>,
+  state: Arc<FakeHttpUpstreamState>,
 }
 
-impl FakePromUpstream {
+impl FakeHttpUpstream {
   async fn handler(
-    State(state): State<Arc<FakePromUpstreamState>>,
+    State(state): State<Arc<FakeHttpUpstreamState>>,
     request: Request,
   ) -> Result<Response, StatusCode> {
     if let Some(status_code) = state.failure_response_codes.lock().pop() {
@@ -392,14 +401,7 @@ impl FakePromUpstream {
 
     let (parts, body) = request.into_parts();
     let body = body.collect().await.unwrap().to_bytes();
-    let decompressed = snap::raw::Decoder::new().decompress_vec(&body).unwrap();
-    let write_request = WriteRequest::parse_from_tokio_bytes(&Bytes::from(decompressed)).unwrap();
-    let (mut metrics, errors) = ParsedMetric::from_write_request(
-      write_request,
-      Instant::now(),
-      &state.parse_config,
-      &TestDownstreamIdProvider {},
-    );
+    let mut metrics = (state.decode)(&parts.headers, body);
 
     // Sort metrics by name so that we can have consistent matching.
     metrics.sort_by(|lhs, rhs| {
@@ -410,7 +412,6 @@ impl FakePromUpstream {
         .cmp(rhs.metric().get_id().name())
     });
 
-    assert!(errors.is_empty(), "{errors:?}");
     state.tx.send((parts.headers, metrics)).await.unwrap();
 
     Ok(
@@ -425,16 +426,52 @@ impl FakePromUpstream {
     self.state.failure_response_codes.lock().push(status_code);
   }
 
-  pub async fn new(
+  pub async fn new_otlp(name: &str, bind_resolver: Arc<dyn BindResolver>) -> Self {
+    Self::new(name, bind_resolver, move |headers, body| {
+      let metrics_request = decode_otlp_request(headers, body).unwrap();
+      metrics_request_to_samples(
+        metrics_request,
+        Instant::now(),
+        &TestDownstreamIdProvider {},
+        &OtlpParseConfig {
+          include_resource_attributes: true,
+          include_scope_attributes: true,
+        },
+      )
+    })
+    .await
+  }
+
+  pub async fn new_prom(
     name: &str,
     bind_resolver: Arc<dyn BindResolver>,
-    parse_config: ParseConfig,
+    parse_config: PromParseConfig,
+  ) -> Self {
+    Self::new(name, bind_resolver, move |_headers, body| {
+      let decompressed = snap::raw::Decoder::new().decompress_vec(&body).unwrap();
+      let write_request = WriteRequest::parse_from_tokio_bytes(&Bytes::from(decompressed)).unwrap();
+      let (metrics, errors) = ParsedMetric::from_write_request(
+        write_request,
+        Instant::now(),
+        &parse_config,
+        &TestDownstreamIdProvider {},
+      );
+      assert!(errors.is_empty(), "{errors:?}");
+      metrics
+    })
+    .await
+  }
+
+  async fn new(
+    name: &str,
+    bind_resolver: Arc<dyn BindResolver>,
+    decode: impl Fn(&HeaderMap, Bytes) -> Vec<ParsedMetric> + Send + Sync + 'static,
   ) -> Self {
     let (tx, rx) = mpsc::channel(128);
-    let state = Arc::new(FakePromUpstreamState {
+    let state = Arc::new(FakeHttpUpstreamState {
       tx,
       failure_response_codes: Mutex::default(),
-      parse_config,
+      decode: Box::new(decode),
     });
     let handler = Self::handler.with_state(state.clone());
     let server = axum::serve(
@@ -560,6 +597,40 @@ impl PromClient {
     self
       .client
       .send_write_request(compress_write_request(&write_request).into(), None)
+      .await
+      .unwrap();
+  }
+}
+
+//
+// OtlpClient
+//
+
+// Helper for making prom remote write requests.
+struct OtlpClient {
+  client: HyperHttpRemoteWriteClient,
+}
+
+impl OtlpClient {
+  async fn new(addr: SocketAddr) -> Self {
+    Self {
+      client: HyperHttpRemoteWriteClient::new(
+        format!("http://{addr}/v1/metrics"),
+        1.seconds(),
+        None,
+        &[],
+        vec![],
+      )
+      .await
+      .unwrap(),
+    }
+  }
+
+  async fn send(&self, metrics: Vec<ParsedMetric>) {
+    let write_request = finish_otlp_batch(metrics, OtlpCompression::NONE);
+    self
+      .client
+      .send_write_request(write_request, None)
       .await
       .unwrap();
   }

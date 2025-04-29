@@ -25,7 +25,7 @@ use crate::protos::metric::{
   TagValue,
 };
 use prometheus_parser::{MetricGroup, ParserError};
-use pulse_common::LossyIntoToFloat;
+use pulse_common::LossyIntToFloat;
 use pulse_common::metadata::Metadata;
 use std::sync::Arc;
 use std::time::Instant;

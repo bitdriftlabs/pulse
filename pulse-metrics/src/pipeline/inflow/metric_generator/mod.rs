@@ -13,7 +13,7 @@ use async_trait::async_trait;
 use bd_shutdown::{ComponentShutdown, ComponentShutdownTriggerHandle};
 use bd_time::TimeDurationExt;
 use pulse_common::proto::ProtoDurationToStdDuration;
-use pulse_common::{LossyFloatToInt, LossyIntoToFloat};
+use pulse_common::{LossyFloatToInt, LossyIntToFloat};
 use pulse_protobuf::protos::pulse::config::inflow::v1::metric_generator::MetricGeneratorConfig;
 use std::sync::Arc;
 use time::Duration;

@@ -11,12 +11,7 @@ mod remote_write_test;
 
 use super::retry_offload::{OffloadQueue, SerializedOffloadRequest, create_offload_queue};
 use crate::batch::{Batch, BatchBuilder};
-use crate::clients::http::{
-  HttpRemoteWriteClient,
-  HyperHttpRemoteWriteClient,
-  PROM_REMOTE_WRITE_HEADERS,
-  should_retry,
-};
+use crate::clients::http::{HttpRemoteWriteClient, HyperHttpRemoteWriteClient, should_retry};
 use crate::clients::retry::Retry;
 use crate::pipeline::config::{DEFAULT_REQUEST_TIMEOUT, default_max_in_flight};
 use crate::pipeline::outflow::http::retry_offload::maybe_queue_for_retry;
@@ -124,7 +119,8 @@ impl HttpRemoteWriteOutflow {
     batch_router: Arc<dyn BatchRouter>,
     send_to: String,
     auth_config: Option<HttpRemoteWriteAuthConfig>,
-    request_headers: Vec<RequestHeader>,
+    core_request_headers: &[(&str, &str)],
+    config_request_headers: Vec<RequestHeader>,
     context: OutflowFactoryContext,
   ) -> anyhow::Result<Arc<Self>> {
     let request_timeout = request_timeout.unwrap_duration_or(DEFAULT_REQUEST_TIMEOUT);
@@ -133,8 +129,8 @@ impl HttpRemoteWriteOutflow {
         send_to,
         request_timeout,
         auth_config,
-        PROM_REMOTE_WRITE_HEADERS,
-        request_headers,
+        core_request_headers,
+        config_request_headers,
       )
       .await?,
     );
@@ -456,6 +452,7 @@ impl DefaultBatchRouter {
     queue_policy: &QueuePolicy,
     scope: &Scope,
     shutdown: ComponentShutdown,
+    extra_headers: Option<Arc<HeaderMap>>,
     finisher: Arc<dyn Fn(Vec<ParsedMetric>) -> Bytes + Send + Sync>,
   ) -> Self {
     Self {
@@ -464,7 +461,7 @@ impl DefaultBatchRouter {
         queue_policy,
         scope,
         shutdown,
-        None,
+        extra_headers,
         finisher,
       ),
     }

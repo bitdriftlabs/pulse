@@ -349,8 +349,57 @@ impl InflowConfig {
         }
     }
 
+    // .pulse.config.inflow.v1.OtlpServerConfig otlp = 8;
+
+    pub fn otlp(&self) -> &super::otlp::OtlpServerConfig {
+        match self.config_type {
+            ::std::option::Option::Some(inflow_config::Config_type::Otlp(ref v)) => v,
+            _ => <super::otlp::OtlpServerConfig as ::protobuf::Message>::default_instance(),
+        }
+    }
+
+    pub fn clear_otlp(&mut self) {
+        self.config_type = ::std::option::Option::None;
+    }
+
+    pub fn has_otlp(&self) -> bool {
+        match self.config_type {
+            ::std::option::Option::Some(inflow_config::Config_type::Otlp(..)) => true,
+            _ => false,
+        }
+    }
+
+    // Param is passed by value, moved
+    pub fn set_otlp(&mut self, v: super::otlp::OtlpServerConfig) {
+        self.config_type = ::std::option::Option::Some(inflow_config::Config_type::Otlp(v))
+    }
+
+    // Mutable pointer to the field.
+    pub fn mut_otlp(&mut self) -> &mut super::otlp::OtlpServerConfig {
+        if let ::std::option::Option::Some(inflow_config::Config_type::Otlp(_)) = self.config_type {
+        } else {
+            self.config_type = ::std::option::Option::Some(inflow_config::Config_type::Otlp(super::otlp::OtlpServerConfig::new()));
+        }
+        match self.config_type {
+            ::std::option::Option::Some(inflow_config::Config_type::Otlp(ref mut v)) => v,
+            _ => panic!(),
+        }
+    }
+
+    // Take field
+    pub fn take_otlp(&mut self) -> super::otlp::OtlpServerConfig {
+        if self.has_otlp() {
+            match self.config_type.take() {
+                ::std::option::Option::Some(inflow_config::Config_type::Otlp(v)) => v,
+                _ => panic!(),
+            }
+        } else {
+            super::otlp::OtlpServerConfig::new()
+        }
+    }
+
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(7);
+        let mut fields = ::std::vec::Vec::with_capacity(8);
         let mut oneofs = ::std::vec::Vec::with_capacity(1);
         fields.push(::protobuf::reflect::rt::v2::make_vec_simpler_accessor::<_, _>(
             "routes",
@@ -399,6 +448,13 @@ impl InflowConfig {
             InflowConfig::mut_k8s_prom,
             InflowConfig::set_k8s_prom,
         ));
+        fields.push(::protobuf::reflect::rt::v2::make_oneof_message_has_get_mut_set_accessor::<_, super::otlp::OtlpServerConfig>(
+            "otlp",
+            InflowConfig::has_otlp,
+            InflowConfig::otlp,
+            InflowConfig::mut_otlp,
+            InflowConfig::set_otlp,
+        ));
         oneofs.push(inflow_config::Config_type::generated_oneof_descriptor_data());
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<InflowConfig>(
             "InflowConfig",
@@ -438,6 +494,9 @@ impl ::protobuf::Message for InflowConfig {
                 },
                 58 => {
                     self.config_type = ::std::option::Option::Some(inflow_config::Config_type::K8sProm(is.read_message()?));
+                },
+                66 => {
+                    self.config_type = ::std::option::Option::Some(inflow_config::Config_type::Otlp(is.read_message()?));
                 },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
@@ -480,6 +539,10 @@ impl ::protobuf::Message for InflowConfig {
                     let len = v.compute_size();
                     my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
                 },
+                &inflow_config::Config_type::Otlp(ref v) => {
+                    let len = v.compute_size();
+                    my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+                },
             };
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
@@ -511,6 +574,9 @@ impl ::protobuf::Message for InflowConfig {
                 &inflow_config::Config_type::K8sProm(ref v) => {
                     ::protobuf::rt::write_message_field_with_cached_size(7, v, os)?;
                 },
+                &inflow_config::Config_type::Otlp(ref v) => {
+                    ::protobuf::rt::write_message_field_with_cached_size(8, v, os)?;
+                },
             };
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
@@ -531,6 +597,7 @@ impl ::protobuf::Message for InflowConfig {
 
     fn clear(&mut self) {
         self.routes.clear();
+        self.config_type = ::std::option::Option::None;
         self.config_type = ::std::option::Option::None;
         self.config_type = ::std::option::Option::None;
         self.config_type = ::std::option::Option::None;
@@ -585,6 +652,8 @@ pub mod inflow_config {
         Unix(super::super::wire::UnixServerConfig),
         // @@protoc_insertion_point(oneof_field:pulse.config.inflow.v1.InflowConfig.k8s_prom)
         K8sProm(super::super::k8s_prom::KubernetesPrometheusConfig),
+        // @@protoc_insertion_point(oneof_field:pulse.config.inflow.v1.InflowConfig.otlp)
+        Otlp(super::super::otlp::OtlpServerConfig),
     }
 
     impl ::protobuf::Oneof for Config_type {
@@ -607,19 +676,21 @@ pub mod inflow_config {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n#pulse/config/inflow/v1/inflow.proto\x12\x16pulse.config.inflow.v1\x1a\
     %pulse/config/inflow/v1/k8s_prom.proto\x1a-pulse/config/inflow/v1/metric\
-    _generator.proto\x1a.pulse/config/inflow/v1/prom_remote_write.proto\x1a!\
-    pulse/config/inflow/v1/wire.proto\x1a\x17validate/validate.proto\"\x84\
-    \x04\n\x0cInflowConfig\x12\x16\n\x06routes\x18\x01\x20\x03(\tR\x06routes\
-    \x12Z\n\x10metric_generator\x18\x02\x20\x01(\x0b2-.pulse.config.inflow.v\
-    1.MetricGeneratorConfigH\0R\x0fmetricGenerator\x12a\n\x11prom_remote_wri\
-    te\x18\x03\x20\x01(\x0b23.pulse.config.inflow.v1.PromRemoteWriteServerCo\
-    nfigH\0R\x0fpromRemoteWrite\x12;\n\x03tcp\x18\x04\x20\x01(\x0b2'.pulse.c\
-    onfig.inflow.v1.TcpServerConfigH\0R\x03tcp\x12;\n\x03udp\x18\x05\x20\x01\
-    (\x0b2'.pulse.config.inflow.v1.UdpServerConfigH\0R\x03udp\x12>\n\x04unix\
-    \x18\x06\x20\x01(\x0b2(.pulse.config.inflow.v1.UnixServerConfigH\0R\x04u\
-    nix\x12O\n\x08k8s_prom\x18\x07\x20\x01(\x0b22.pulse.config.inflow.v1.Kub\
-    ernetesPrometheusConfigH\0R\x07k8sPromB\x12\n\x0bconfig_type\x12\x03\xf8\
-    B\x01b\x06proto3\
+    _generator.proto\x1a!pulse/config/inflow/v1/otlp.proto\x1a.pulse/config/\
+    inflow/v1/prom_remote_write.proto\x1a!pulse/config/inflow/v1/wire.proto\
+    \x1a\x17validate/validate.proto\"\xc4\x04\n\x0cInflowConfig\x12\x16\n\
+    \x06routes\x18\x01\x20\x03(\tR\x06routes\x12Z\n\x10metric_generator\x18\
+    \x02\x20\x01(\x0b2-.pulse.config.inflow.v1.MetricGeneratorConfigH\0R\x0f\
+    metricGenerator\x12a\n\x11prom_remote_write\x18\x03\x20\x01(\x0b23.pulse\
+    .config.inflow.v1.PromRemoteWriteServerConfigH\0R\x0fpromRemoteWrite\x12\
+    ;\n\x03tcp\x18\x04\x20\x01(\x0b2'.pulse.config.inflow.v1.TcpServerConfig\
+    H\0R\x03tcp\x12;\n\x03udp\x18\x05\x20\x01(\x0b2'.pulse.config.inflow.v1.\
+    UdpServerConfigH\0R\x03udp\x12>\n\x04unix\x18\x06\x20\x01(\x0b2(.pulse.c\
+    onfig.inflow.v1.UnixServerConfigH\0R\x04unix\x12O\n\x08k8s_prom\x18\x07\
+    \x20\x01(\x0b22.pulse.config.inflow.v1.KubernetesPrometheusConfigH\0R\
+    \x07k8sProm\x12>\n\x04otlp\x18\x08\x20\x01(\x0b2(.pulse.config.inflow.v1\
+    .OtlpServerConfigH\0R\x04otlpB\x12\n\x0bconfig_type\x12\x03\xf8B\x01b\
+    \x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
@@ -636,9 +707,10 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
     static file_descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::FileDescriptor> = ::protobuf::rt::Lazy::new();
     file_descriptor.get(|| {
         let generated_file_descriptor = generated_file_descriptor_lazy.get(|| {
-            let mut deps = ::std::vec::Vec::with_capacity(5);
+            let mut deps = ::std::vec::Vec::with_capacity(6);
             deps.push(super::k8s_prom::file_descriptor().clone());
             deps.push(super::metric_generator::file_descriptor().clone());
+            deps.push(super::otlp::file_descriptor().clone());
             deps.push(super::prom_remote_write::file_descriptor().clone());
             deps.push(super::wire::file_descriptor().clone());
             deps.push(super::validate::file_descriptor().clone());

@@ -1,3 +1,4 @@
+pub mod otlp;
 pub mod outflow;
 pub mod outflow_common;
 pub mod prom_remote_write;

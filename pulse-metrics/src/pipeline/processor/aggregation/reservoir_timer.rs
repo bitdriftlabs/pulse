@@ -8,7 +8,7 @@
 use super::make_metric;
 use crate::protos::metric::{MetricId, MetricType, MetricValue, ParsedMetric};
 use crate::reservoir_timer::ReservoirTimer;
-use pulse_common::LossyIntoToFloat;
+use pulse_common::LossyIntToFloat;
 use tokio::time::Instant;
 
 //

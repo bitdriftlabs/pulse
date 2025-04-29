@@ -16,7 +16,7 @@ use prometheus::proto::{Metric, MetricFamily, MetricType};
 use prompb::remote::WriteRequest;
 use prompb::types::MetricMetadata;
 use protobuf::Chars;
-use pulse_common::LossyIntoToFloat;
+use pulse_common::LossyIntToFloat;
 use std::fmt::Write;
 use std::time::{SystemTime, UNIX_EPOCH};
 

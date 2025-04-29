@@ -827,7 +827,8 @@ fn make_family_name(metric: &ParsedMetric, options: &ToWriteRequestOptions) -> C
     match metric.source() {
       MetricSource::Carbon(_)
       | MetricSource::Statsd(_)
-      | MetricSource::Aggregation { prom_source: false } => metric.metric().get_id().prom_name(),
+      | MetricSource::Aggregation { prom_source: false }
+      | MetricSource::Otlp => metric.metric().get_id().prom_name(),
       MetricSource::PromRemoteWrite | MetricSource::Aggregation { prom_source: true } => {
         metric.metric().get_id().name().clone()
       },
