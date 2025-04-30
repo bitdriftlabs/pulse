@@ -547,8 +547,57 @@ impl ProcessorConfig {
         }
     }
 
+    // .pulse.config.processor.v1.DropProcessorConfig drop = 13;
+
+    pub fn drop(&self) -> &super::drop::DropProcessorConfig {
+        match self.processor_type {
+            ::std::option::Option::Some(processor_config::Processor_type::Drop(ref v)) => v,
+            _ => <super::drop::DropProcessorConfig as ::protobuf::Message>::default_instance(),
+        }
+    }
+
+    pub fn clear_drop(&mut self) {
+        self.processor_type = ::std::option::Option::None;
+    }
+
+    pub fn has_drop(&self) -> bool {
+        match self.processor_type {
+            ::std::option::Option::Some(processor_config::Processor_type::Drop(..)) => true,
+            _ => false,
+        }
+    }
+
+    // Param is passed by value, moved
+    pub fn set_drop(&mut self, v: super::drop::DropProcessorConfig) {
+        self.processor_type = ::std::option::Option::Some(processor_config::Processor_type::Drop(v))
+    }
+
+    // Mutable pointer to the field.
+    pub fn mut_drop(&mut self) -> &mut super::drop::DropProcessorConfig {
+        if let ::std::option::Option::Some(processor_config::Processor_type::Drop(_)) = self.processor_type {
+        } else {
+            self.processor_type = ::std::option::Option::Some(processor_config::Processor_type::Drop(super::drop::DropProcessorConfig::new()));
+        }
+        match self.processor_type {
+            ::std::option::Option::Some(processor_config::Processor_type::Drop(ref mut v)) => v,
+            _ => panic!(),
+        }
+    }
+
+    // Take field
+    pub fn take_drop(&mut self) -> super::drop::DropProcessorConfig {
+        if self.has_drop() {
+            match self.processor_type.take() {
+                ::std::option::Option::Some(processor_config::Processor_type::Drop(v)) => v,
+                _ => panic!(),
+            }
+        } else {
+            super::drop::DropProcessorConfig::new()
+        }
+    }
+
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(12);
+        let mut fields = ::std::vec::Vec::with_capacity(13);
         let mut oneofs = ::std::vec::Vec::with_capacity(1);
         fields.push(::protobuf::reflect::rt::v2::make_vec_simpler_accessor::<_, _>(
             "routes",
@@ -630,6 +679,13 @@ impl ProcessorConfig {
             ProcessorConfig::mut_cardinality_tracker,
             ProcessorConfig::set_cardinality_tracker,
         ));
+        fields.push(::protobuf::reflect::rt::v2::make_oneof_message_has_get_mut_set_accessor::<_, super::drop::DropProcessorConfig>(
+            "drop",
+            ProcessorConfig::has_drop,
+            ProcessorConfig::drop,
+            ProcessorConfig::mut_drop,
+            ProcessorConfig::set_drop,
+        ));
         oneofs.push(processor_config::Processor_type::generated_oneof_descriptor_data());
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<ProcessorConfig>(
             "ProcessorConfig",
@@ -684,6 +740,9 @@ impl ::protobuf::Message for ProcessorConfig {
                 },
                 98 => {
                     self.processor_type = ::std::option::Option::Some(processor_config::Processor_type::CardinalityTracker(is.read_message()?));
+                },
+                106 => {
+                    self.processor_type = ::std::option::Option::Some(processor_config::Processor_type::Drop(is.read_message()?));
                 },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
@@ -745,6 +804,10 @@ impl ::protobuf::Message for ProcessorConfig {
                     let len = v.compute_size();
                     my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
                 },
+                &processor_config::Processor_type::Drop(ref v) => {
+                    let len = v.compute_size();
+                    my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+                },
             };
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
@@ -791,6 +854,9 @@ impl ::protobuf::Message for ProcessorConfig {
                 &processor_config::Processor_type::CardinalityTracker(ref v) => {
                     ::protobuf::rt::write_message_field_with_cached_size(12, v, os)?;
                 },
+                &processor_config::Processor_type::Drop(ref v) => {
+                    ::protobuf::rt::write_message_field_with_cached_size(13, v, os)?;
+                },
             };
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
@@ -812,6 +878,7 @@ impl ::protobuf::Message for ProcessorConfig {
     fn clear(&mut self) {
         self.routes.clear();
         self.alt_routes.clear();
+        self.processor_type = ::std::option::Option::None;
         self.processor_type = ::std::option::Option::None;
         self.processor_type = ::std::option::Option::None;
         self.processor_type = ::std::option::Option::None;
@@ -879,6 +946,8 @@ pub mod processor_config {
         Regex(super::super::regex::RegexConfig),
         // @@protoc_insertion_point(oneof_field:pulse.config.processor.v1.ProcessorConfig.cardinality_tracker)
         CardinalityTracker(super::super::cardinality_tracker::CardinalityTrackerConfig),
+        // @@protoc_insertion_point(oneof_field:pulse.config.processor.v1.ProcessorConfig.drop)
+        Drop(super::super::drop::DropProcessorConfig),
     }
 
     impl ::protobuf::Oneof for Processor_type {
@@ -902,29 +971,31 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \n)pulse/config/processor/v1/processor.proto\x12\x19pulse.config.process\
     or.v1\x1a+pulse/config/processor/v1/aggregation.proto\x1a&pulse/config/p\
     rocessor/v1/buffer.proto\x1a3pulse/config/processor/v1/cardinality_limit\
-    er.proto\x1a3pulse/config/processor/v1/cardinality_tracker.proto\x1a'pul\
-    se/config/processor/v1/elision.proto\x1a)pulse/config/processor/v1/inter\
-    node.proto\x1a&pulse/config/processor/v1/mutate.proto\x1a.pulse/config/p\
-    rocessor/v1/populate_cache.proto\x1a%pulse/config/processor/v1/regex.pro\
-    to\x1a'pulse/config/processor/v1/sampler.proto\x1a\x17validate/validate.\
-    proto\"\xf8\x06\n\x0fProcessorConfig\x12\x16\n\x06routes\x18\x01\x20\x03\
-    (\tR\x06routes\x12\x1d\n\nalt_routes\x18\x02\x20\x03(\tR\taltRoutes\x12P\
-    \n\x0baggregation\x18\x03\x20\x01(\x0b2,.pulse.config.processor.v1.Aggre\
-    gationConfigH\0R\x0baggregation\x12D\n\x07elision\x18\x04\x20\x01(\x0b2(\
-    .pulse.config.processor.v1.ElisionConfigH\0R\x07elision\x12J\n\tinternod\
-    e\x18\x05\x20\x01(\x0b2*.pulse.config.processor.v1.InternodeConfigH\0R\t\
-    internode\x12W\n\x0epopulate_cache\x18\x06\x20\x01(\x0b2..pulse.config.p\
-    rocessor.v1.PopulateCacheConfigH\0R\rpopulateCache\x12D\n\x07sampler\x18\
-    \x07\x20\x01(\x0b2(.pulse.config.processor.v1.SamplerConfigH\0R\x07sampl\
-    er\x12A\n\x06buffer\x18\x08\x20\x01(\x0b2'.pulse.config.processor.v1.Buf\
-    ferConfigH\0R\x06buffer\x12A\n\x06mutate\x18\t\x20\x01(\x0b2'.pulse.conf\
-    ig.processor.v1.MutateConfigH\0R\x06mutate\x12f\n\x13cardinality_limiter\
-    \x18\n\x20\x01(\x0b23.pulse.config.processor.v1.CardinalityLimiterConfig\
-    H\0R\x12cardinalityLimiter\x12>\n\x05regex\x18\x0b\x20\x01(\x0b2&.pulse.\
-    config.processor.v1.RegexConfigH\0R\x05regex\x12f\n\x13cardinality_track\
-    er\x18\x0c\x20\x01(\x0b23.pulse.config.processor.v1.CardinalityTrackerCo\
-    nfigH\0R\x12cardinalityTrackerB\x15\n\x0eprocessor_type\x12\x03\xf8B\x01\
-    b\x06proto3\
+    er.proto\x1a3pulse/config/processor/v1/cardinality_tracker.proto\x1a$pul\
+    se/config/processor/v1/drop.proto\x1a'pulse/config/processor/v1/elision.\
+    proto\x1a)pulse/config/processor/v1/internode.proto\x1a&pulse/config/pro\
+    cessor/v1/mutate.proto\x1a.pulse/config/processor/v1/populate_cache.prot\
+    o\x1a%pulse/config/processor/v1/regex.proto\x1a'pulse/config/processor/v\
+    1/sampler.proto\x1a\x17validate/validate.proto\"\xbe\x07\n\x0fProcessorC\
+    onfig\x12\x16\n\x06routes\x18\x01\x20\x03(\tR\x06routes\x12\x1d\n\nalt_r\
+    outes\x18\x02\x20\x03(\tR\taltRoutes\x12P\n\x0baggregation\x18\x03\x20\
+    \x01(\x0b2,.pulse.config.processor.v1.AggregationConfigH\0R\x0baggregati\
+    on\x12D\n\x07elision\x18\x04\x20\x01(\x0b2(.pulse.config.processor.v1.El\
+    isionConfigH\0R\x07elision\x12J\n\tinternode\x18\x05\x20\x01(\x0b2*.puls\
+    e.config.processor.v1.InternodeConfigH\0R\tinternode\x12W\n\x0epopulate_\
+    cache\x18\x06\x20\x01(\x0b2..pulse.config.processor.v1.PopulateCacheConf\
+    igH\0R\rpopulateCache\x12D\n\x07sampler\x18\x07\x20\x01(\x0b2(.pulse.con\
+    fig.processor.v1.SamplerConfigH\0R\x07sampler\x12A\n\x06buffer\x18\x08\
+    \x20\x01(\x0b2'.pulse.config.processor.v1.BufferConfigH\0R\x06buffer\x12\
+    A\n\x06mutate\x18\t\x20\x01(\x0b2'.pulse.config.processor.v1.MutateConfi\
+    gH\0R\x06mutate\x12f\n\x13cardinality_limiter\x18\n\x20\x01(\x0b23.pulse\
+    .config.processor.v1.CardinalityLimiterConfigH\0R\x12cardinalityLimiter\
+    \x12>\n\x05regex\x18\x0b\x20\x01(\x0b2&.pulse.config.processor.v1.RegexC\
+    onfigH\0R\x05regex\x12f\n\x13cardinality_tracker\x18\x0c\x20\x01(\x0b23.\
+    pulse.config.processor.v1.CardinalityTrackerConfigH\0R\x12cardinalityTra\
+    cker\x12D\n\x04drop\x18\r\x20\x01(\x0b2..pulse.config.processor.v1.DropP\
+    rocessorConfigH\0R\x04dropB\x15\n\x0eprocessor_type\x12\x03\xf8B\x01b\
+    \x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
@@ -941,11 +1012,12 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
     static file_descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::FileDescriptor> = ::protobuf::rt::Lazy::new();
     file_descriptor.get(|| {
         let generated_file_descriptor = generated_file_descriptor_lazy.get(|| {
-            let mut deps = ::std::vec::Vec::with_capacity(11);
+            let mut deps = ::std::vec::Vec::with_capacity(12);
             deps.push(super::aggregation::file_descriptor().clone());
             deps.push(super::buffer::file_descriptor().clone());
             deps.push(super::cardinality_limiter::file_descriptor().clone());
             deps.push(super::cardinality_tracker::file_descriptor().clone());
+            deps.push(super::drop::file_descriptor().clone());
             deps.push(super::elision::file_descriptor().clone());
             deps.push(super::internode::file_descriptor().clone());
             deps.push(super::mutate::file_descriptor().clone());
