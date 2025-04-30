@@ -24,6 +24,7 @@ use async_trait::async_trait;
 use bd_server_stats::stats::Scope;
 use bd_shutdown::ComponentShutdownTriggerHandle;
 use cardinality_tracker::CardinalityTrackerProcessor;
+use drop::DropProcessor;
 use processor::ProcessorConfig;
 use processor::processor_config::Processor_type;
 use pulse_common::bind_resolver::BindResolver;
@@ -36,6 +37,7 @@ mod aggregation;
 mod buffer;
 mod cardinality_limiter;
 mod cardinality_tracker;
+mod drop;
 pub mod elision;
 mod internode;
 mod mutate;
@@ -102,5 +104,6 @@ pub(super) async fn to_processor(
       Ok(CardinalityTrackerProcessor::new(config, context)?)
     },
     Processor_type::Regex(config) => Ok(Arc::new(RegexProcessor::new(&config, context)?)),
+    Processor_type::Drop(config) => Ok(Arc::new(DropProcessor::new(config, context).await?)),
   }
 }

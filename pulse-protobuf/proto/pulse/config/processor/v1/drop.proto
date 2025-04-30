@@ -1,0 +1,133 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.config.processor.v1;
+
+import "pulse/config/common/v1/file_watcher.proto";
+import "validate/validate.proto";
+
+message DropRule {
+  message AndMatch {
+    repeated DropCondition conditions = 1;
+  }
+
+  message StringMatch {
+    oneof string_match_type {
+      option (validate.required) = true;
+
+      // The string must match exactly.
+      string exact = 1 [(validate.rules).string = {min_len: 1}];
+
+      // The string must match the regex.
+      string regex = 2 [(validate.rules).string = {min_len: 1}];
+    }
+  }
+
+  message TagMatch {
+    // The tag name to match.
+    string tag_name = 1 [(validate.rules).string = {min_len: 1}];
+
+    // The tag value to match. If not set, match will occur if the tag is present.
+    StringMatch tag_value = 2;
+  }
+
+  enum ValueMatchOperator {
+    // The value must be equal to the target.
+    EQUAL = 0;
+
+    // The value must be not equal to the target.
+    NOT_EQUAL = 1;
+
+    // The value must be greater than the target.
+    GREATER = 2;
+
+    // The value must be less than the target.
+    LESS = 3;
+
+    // The value must be greater than or equal to the target.
+    GREATER_OR_EQUAL = 4;
+
+    // The value must be less than or equal to the target.
+    LESS_OR_EQUAL = 5;
+  }
+
+  message SimpleValueMatch {
+    // The value to match against.
+    double target = 1;
+
+    // The operator to use for the match. The default is EQUAL.
+    ValueMatchOperator operator = 2;
+  }
+
+  message ValueMatch {
+    oneof value_match_type {
+      option (validate.required) = true;
+
+      // Matches against "simple" metrics that have a single value. I.e., not histograms or
+      // summaries.
+      SimpleValueMatch simple_value = 1;
+    }
+  }
+
+  message DropCondition {
+    oneof condition_type {
+      option (validate.required) = true;
+
+      // Will match on the metric name. If possible, favor non-regex name matches as these will
+      // be loaded into an FST for faster matching.
+      StringMatch metric_name = 1;
+
+      // Will match a metric tag.
+      TagMatch tag_match = 2;
+
+      // Will match a metric value.
+      ValueMatch value_match = 3;
+
+      // Will perform a logical AND on the set of conditions and match if all of them match.
+      AndMatch and_match = 4;
+    }
+  }
+
+  enum DropMode {
+    ENABLED = 0;
+    TESTING = 1;
+  }
+
+  // The name of the rule, used for logging and meta metrics.
+  string name = 1 [(validate.rules).string = {min_len: 1}];
+
+  // The mode of the rule. If set to TESTING, the rule will not drop any metrics, but will emit meta
+  // metrics for metrics that would have been dropped. This is useful for testing the rule before
+  // enabling it. The default is ENABLED.
+  DropMode mode = 2;
+
+  // The set of conditions. If any condition matches, the metric will be dropped. This is an OR
+  // set, grouped together so that rules can be tested and monitored as a block.
+  repeated DropCondition conditions = 3;
+}
+
+message DropConfig {
+  // The set of rules to apply to determine whether a metric should be dropped or not. If any
+  // rule matches, the metric will be dropped. Order does *not* matter as Pulse may reorder the
+  // rules for performance reasons.
+  repeated DropRule rules = 1;
+}
+
+message DropProcessorConfig {
+  oneof config_source {
+    option (validate.required) = true;
+
+    // The configuration will be loaded from a local/HTTP file source and reloaded as needed.
+    // The configuration is expected to be a YAML/JSON formatted representation of a DropConfig.
+    // The configuration will be internally converted to protobuf and verified using PGV.
+    common.v1.FileSourceConfig file_source = 1;
+
+    // The configuration is provided inline.
+    DropConfig inline = 2;
+  }
+}

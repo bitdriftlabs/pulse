@@ -94,6 +94,9 @@ in production in clusters processing hundreds of millions of metrics per second.
     simple regex based allow/deny filter. While anything that this processor does could be
     implemented using the mutate/VRL processor, this processor is provided for simplicity and
     performance.
+  * [Drop](pulse-protobuf/proto/pulse/config/processor/v1/drop.proto): This processor provides a
+    a more sophisticated drop implementation that can both utilize an inline config as well as a
+    config watched from a remote file source such as AWS S3.
   * [Sampler](pulse-protobuf/proto/pulse/config/processor/v1/sampler.proto): The sampler sends
     metrics samples to a control plane in Prometheus Remote Write format. Why this is useful is
     described more below.
