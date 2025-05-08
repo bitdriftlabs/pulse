@@ -37,6 +37,7 @@ use pulse_protobuf::protos::opentelemetry::metrics::{
 use pulse_protobuf::protos::opentelemetry::metrics_service::ExportMetricsServiceRequest;
 use pulse_protobuf::protos::pulse::config::outflow::v1::otlp::OtlpClientConfig;
 use pulse_protobuf::protos::pulse::config::outflow::v1::otlp::otlp_client_config::OtlpCompression;
+use std::io::Write;
 use std::sync::Arc;
 use time::ext::NumericalDuration;
 
@@ -280,9 +281,11 @@ pub fn finish_otlp_batch(samples: Vec<ParsedMetric>, compression: OtlpCompressio
     OtlpCompression::NONE => uncompressed_write_request,
     OtlpCompression::SNAPPY => {
       log::trace!("compressing ExportMetricsServiceRequest with snappy");
-      snap::raw::Encoder::new()
-        .compress_vec(&uncompressed_write_request)
-        .unwrap()
+      let mut compressed = Vec::new();
+      snap::write::FrameEncoder::new(&mut compressed)
+        .write_all(&uncompressed_write_request)
+        .unwrap();
+      compressed
     },
   };
 

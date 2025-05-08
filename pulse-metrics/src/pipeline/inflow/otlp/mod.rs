@@ -47,6 +47,7 @@ use pulse_protobuf::protos::opentelemetry::metrics_service::{
   ExportMetricsServiceResponse,
 };
 use pulse_protobuf::protos::pulse::config::inflow::v1::otlp::OtlpServerConfig;
+use std::io::Read;
 use std::sync::Arc;
 use std::time::Instant;
 use time::ext::NumericalDuration;
@@ -432,7 +433,9 @@ pub fn decode_otlp_request(
     },
     "snappy" => {
       log::trace!("snappy decompression");
-      snap::raw::Decoder::new().decompress_vec(&body)?.into()
+      let mut decompressed = Vec::new();
+      snap::read::FrameDecoder::new(body.as_ref()).read_to_end(&mut decompressed)?;
+      decompressed.into()
     },
     _ => bail!("unsupported Content-Encoding: {content_encoding}"),
   };
