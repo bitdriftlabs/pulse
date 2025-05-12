@@ -74,7 +74,9 @@ impl OtlpInflow {
       http_inflow: Arc::new(
         HttpInflow::new(
           config.bind.to_string(),
-          "/v1/metrics".to_string(),
+          config
+            .path
+            .map_or("/v1/metrics".to_string(), |p| p.to_string()),
           config.downstream_id_source.unwrap_or_default(),
           context,
           Box::new(move |_inflow, headers, body, downstream_id_provider| {
