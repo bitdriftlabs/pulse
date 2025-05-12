@@ -11,7 +11,7 @@ package pulse.config.inflow.v1;
 import "pulse/config/inflow/v1/inflow_common.proto";
 import "validate/validate.proto";
 
-// Supports OTLP over HTTP+protobuf. Will expose /v1/metrics on the server.
+// Supports OTLP over HTTP+protobuf.
 message OtlpServerConfig {
   // Which address to bind to.
   string bind = 1 [(validate.rules).string = {min_len: 1}];
@@ -27,4 +27,7 @@ message OtlpServerConfig {
   // If true (the default), scope attributes will be included as metric tags. Data point
   // attributes with the same name will override scope attributes.
   optional bool include_scope_attributes = 4;
+
+  // The HTTP path to listen on. If not specified, defaults to `/v1/metrics`.
+  optional string path = 5;
 }

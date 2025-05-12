@@ -43,6 +43,8 @@ pub struct OtlpServerConfig {
     pub include_resource_attributes: ::std::option::Option<bool>,
     // @@protoc_insertion_point(field:pulse.config.inflow.v1.OtlpServerConfig.include_scope_attributes)
     pub include_scope_attributes: ::std::option::Option<bool>,
+    // @@protoc_insertion_point(field:pulse.config.inflow.v1.OtlpServerConfig.path)
+    pub path: ::std::option::Option<::protobuf::Chars>,
     // special fields
     // @@protoc_insertion_point(special_field:pulse.config.inflow.v1.OtlpServerConfig.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -60,7 +62,7 @@ impl OtlpServerConfig {
     }
 
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(4);
+        let mut fields = ::std::vec::Vec::with_capacity(5);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "bind",
@@ -81,6 +83,11 @@ impl OtlpServerConfig {
             "include_scope_attributes",
             |m: &OtlpServerConfig| { &m.include_scope_attributes },
             |m: &mut OtlpServerConfig| { &mut m.include_scope_attributes },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+            "path",
+            |m: &OtlpServerConfig| { &m.path },
+            |m: &mut OtlpServerConfig| { &mut m.path },
         ));
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<OtlpServerConfig>(
             "OtlpServerConfig",
@@ -112,6 +119,9 @@ impl ::protobuf::Message for OtlpServerConfig {
                 32 => {
                     self.include_scope_attributes = ::std::option::Option::Some(is.read_bool()?);
                 },
+                42 => {
+                    self.path = ::std::option::Option::Some(is.read_tokio_chars()?);
+                },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                 },
@@ -137,6 +147,9 @@ impl ::protobuf::Message for OtlpServerConfig {
         if let Some(v) = self.include_scope_attributes {
             my_size += 1 + 1;
         }
+        if let Some(v) = self.path.as_ref() {
+            my_size += ::protobuf::rt::string_size(5, &v);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
         my_size
@@ -154,6 +167,9 @@ impl ::protobuf::Message for OtlpServerConfig {
         }
         if let Some(v) = self.include_scope_attributes {
             os.write_bool(4, v)?;
+        }
+        if let Some(v) = self.path.as_ref() {
+            os.write_string(5, v)?;
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -176,6 +192,7 @@ impl ::protobuf::Message for OtlpServerConfig {
         self.downstream_id_source.clear();
         self.include_resource_attributes = ::std::option::Option::None;
         self.include_scope_attributes = ::std::option::Option::None;
+        self.path = ::std::option::Option::None;
         self.special_fields.clear();
     }
 
@@ -185,6 +202,7 @@ impl ::protobuf::Message for OtlpServerConfig {
             downstream_id_source: ::protobuf::MessageField::none(),
             include_resource_attributes: ::std::option::Option::None,
             include_scope_attributes: ::std::option::Option::None,
+            path: ::std::option::Option::None,
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -211,14 +229,15 @@ impl ::protobuf::reflect::ProtobufValue for OtlpServerConfig {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n!pulse/config/inflow/v1/otlp.proto\x12\x16pulse.config.inflow.v1\x1a*p\
     ulse/config/inflow/v1/inflow_common.proto\x1a\x17validate/validate.proto\
-    \"\xce\x02\n\x10OtlpServerConfig\x12\x1b\n\x04bind\x18\x01\x20\x01(\tR\
+    \"\xf0\x02\n\x10OtlpServerConfig\x12\x1b\n\x04bind\x18\x01\x20\x01(\tR\
     \x04bindB\x07\xfaB\x04r\x02\x10\x01\x12\\\n\x14downstream_id_source\x18\
     \x02\x20\x01(\x0b2*.pulse.config.inflow.v1.DownstreamIdSourceR\x12downst\
     reamIdSource\x12C\n\x1binclude_resource_attributes\x18\x03\x20\x01(\x08H\
     \0R\x19includeResourceAttributes\x88\x01\x01\x12=\n\x18include_scope_att\
     ributes\x18\x04\x20\x01(\x08H\x01R\x16includeScopeAttributes\x88\x01\x01\
-    B\x1e\n\x1c_include_resource_attributesB\x1b\n\x19_include_scope_attribu\
-    tesb\x06proto3\
+    \x12\x17\n\x04path\x18\x05\x20\x01(\tH\x02R\x04path\x88\x01\x01B\x1e\n\
+    \x1c_include_resource_attributesB\x1b\n\x19_include_scope_attributesB\
+    \x07\n\x05_pathb\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
