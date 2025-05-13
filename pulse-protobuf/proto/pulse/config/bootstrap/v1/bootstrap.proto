@@ -94,6 +94,26 @@ message AdminConfig {
 
 // Bootstrap configuration for Kubernetes integration.
 message KubernetesBootstrapConfig {
+  message MetadataMatcher {
+    // The metadata name to match against.
+    string name = 1 [(validate.rules).string = {min_len: 1}];
+
+    // The regex to match the metadata value against.
+    string value_regex = 2 [(validate.rules).string = {min_len: 1}];
+  }
+
+  message HostNetworkPodByIpFilter {
+    oneof filter_type {
+      option (validate.required) = true;
+
+      // Matches against the pod labels.
+      MetadataMatcher label_matcher = 1;
+
+      // Matches against the pod annotations.
+      MetadataMatcher annotation_matcher = 2;
+    }
+  }
+
   // Supplies the node name used for K8s API lookups against the node.
   common.v1.EnvOrInline node_name = 1;
 
@@ -112,6 +132,14 @@ message KubernetesBootstrapConfig {
   // as possible and it can also begin scraping to provide an "up" metric if desired. This can be
   // used to monitor pods stuck in pending if desired.
   repeated string pod_phases = 3;
+
+  // If associating pods by source IP address (for example when receiving statsd from a pod),
+  // behavior is undefined if multiple pods are on the same host network. This filter allows
+  // specifying a label or annotation that must be present on the pod in order for it to be
+  // associated with the source IP address. This is useful for ensuring that only one pod on a
+  // host network is associated with a given source IP address. A warning and metric will be emitted
+  // if this is not set and multiple pods are found on the same host network.
+  HostNetworkPodByIpFilter host_network_pod_by_ip_filter = 5;
 }
 
 // Configuration composed of layers.
