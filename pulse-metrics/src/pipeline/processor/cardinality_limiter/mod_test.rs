@@ -46,15 +46,18 @@ async fn all_per_pod() {
   let (mut helper, context) = processor_factory_context_for_test();
 
   let mut pods_info = PodsInfo::default();
-  pods_info.insert(make_pod_info(
-    "default",
-    "pod1",
-    &BTreeMap::default(),
-    BTreeMap::default(),
-    HashMap::default(),
-    "127.0.0.1",
-    vec![],
-  ));
+  pods_info.insert(
+    make_pod_info(
+      "default",
+      "pod1",
+      &BTreeMap::default(),
+      BTreeMap::default(),
+      HashMap::default(),
+      "127.0.0.1",
+      vec![],
+    ),
+    true,
+  );
   helper.k8s_sender.send(pods_info.clone()).unwrap();
 
   // Because the cuckoo filter is a probabilistic data structure in order for the test to work we
@@ -115,15 +118,18 @@ async fn all_per_pod() {
     .assert_counter_eq(2, "processor:drop", &labels! {});
 
   // Add a new pod with an override limit and make sure it gets an independent limit,
-  pods_info.insert(make_pod_info(
-    "default",
-    "pod2",
-    &BTreeMap::default(),
-    btreemap!("cardinality_limit" => "3"),
-    HashMap::default(),
-    "127.0.0.2",
-    vec![],
-  ));
+  pods_info.insert(
+    make_pod_info(
+      "default",
+      "pod2",
+      &BTreeMap::default(),
+      btreemap!("cardinality_limit" => "3"),
+      HashMap::default(),
+      "127.0.0.2",
+      vec![],
+    ),
+    true,
+  );
   helper.k8s_sender.send(pods_info.clone()).unwrap();
   yield_now().await;
   make_mut(&mut helper.dispatcher)

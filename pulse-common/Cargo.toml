@@ -9,12 +9,14 @@ version      = "1.0.0"
 doctest = false
 
 [dependencies]
+ahash.workspace                 = true
 anyhow.workspace                = true
 async-trait.workspace           = true
 backoff.workspace               = true
 bd-log.workspace                = true
 bd-panic.workspace              = true
 bd-pgv.workspace                = true
+bd-server-stats.workspace       = true
 bd-shutdown.workspace           = true
 bd-time.workspace               = true
 console-subscriber.workspace    = true
@@ -24,9 +26,11 @@ kube.workspace                  = true
 log.workspace                   = true
 mockall.workspace               = true
 parking_lot.workspace           = true
+prometheus.workspace            = true
 protobuf.workspace              = true
 protobuf-json-mapping.workspace = true
 pulse-protobuf.path             = "../pulse-protobuf"
+regex.workspace                 = true
 reqwest.workspace               = true
 rustls.workspace                = true
 serde.workspace                 = true

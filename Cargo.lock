@@ -4715,6 +4715,7 @@ dependencies = [
 name = "pulse-common"
 version = "1.0.0"
 dependencies = [
+ "ahash 0.8.12",
  "anyhow",
  "assert_matches",
  "async-trait",
@@ -4722,6 +4723,7 @@ dependencies = [
  "bd-log",
  "bd-panic",
  "bd-pgv",
+ "bd-server-stats",
  "bd-shutdown",
  "bd-time",
  "console-subscriber",
@@ -4733,9 +4735,11 @@ dependencies = [
  "mockall",
  "parking_lot",
  "pretty_assertions",
+ "prometheus",
  "protobuf 4.0.0-alpha.0",
  "protobuf-json-mapping",
  "pulse-protobuf",
+ "regex",
  "reqwest",
  "rustls 0.23.27",
  "serde",

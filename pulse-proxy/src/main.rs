@@ -103,11 +103,12 @@ fn main() -> anyhow::Result<()> {
       NullHooks {},
       Arc::new(RealBindResolver {}),
       singleton_manager,
-      move |shutdown| {
+      move |shutdown, collector| {
         PodsInfoSingleton::get(
           cloned_singleton_manager.clone(),
           k8s_config.clone(),
           shutdown,
+          collector,
         )
       },
     )

@@ -262,7 +262,7 @@ impl Helper {
         HelperHooks { tx },
         bind_resolver,
         Arc::default(),
-        move |_| {
+        move |_, _| {
           let cloned_k8s_rx = k8s_rx.clone().expect("k8s watch not configured");
           async move {
             Ok(Arc::new(PodsInfoSingleton::new(
