@@ -9,9 +9,16 @@ use super::PodsInfoCache;
 use crate::k8s::pods_info::{ContainerPort, PodsInfo, ServiceInfo};
 use crate::k8s::services::{MockServiceFetcher, ServiceCache};
 use crate::k8s::test::{make_node_info, make_object_meta, make_pod_info};
+use bd_server_stats::stats::Collector;
+use bd_server_stats::test::util::stats::Helper;
+use bootstrap::v1::bootstrap::{KubernetesBootstrapConfig, kubernetes_bootstrap_config};
 use k8s_openapi::api::core::v1::{self, Container, Pod, PodSpec, PodStatus, Service, ServiceSpec};
 use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
+use kubernetes_bootstrap_config::host_network_pod_by_ip_filter::Filter_type;
+use kubernetes_bootstrap_config::{HostNetworkPodByIpFilter, MetadataMatcher};
 use pretty_assertions::assert_eq;
+use prometheus::labels;
+use pulse_protobuf::protos::pulse::config::bootstrap;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use time::ext::NumericalDuration;
@@ -25,6 +32,142 @@ fn make_pod_status(ip: &str, phase: &str) -> Option<PodStatus> {
     phase: Some(phase.to_string()),
     ..Default::default()
   })
+}
+
+#[tokio::test]
+async fn host_network_filter() {
+  let (tx, rx) = tokio::sync::watch::channel(PodsInfo::default());
+  let mut cache = PodsInfoCache::new(
+    make_node_info().into(),
+    tx,
+    KubernetesBootstrapConfig {
+      host_network_pod_by_ip_filter: Some(HostNetworkPodByIpFilter {
+        filter_type: Some(Filter_type::LabelMatcher(MetadataMatcher {
+          name: "hello".into(),
+          value_regex: "world".into(),
+          ..Default::default()
+        })),
+        ..Default::default()
+      })
+      .into(),
+      ..Default::default()
+    },
+    None,
+    &Collector::default(),
+  )
+  .unwrap();
+
+  // The first pod will be excluded based on the filter.
+  let pod1 = Pod {
+    metadata: make_object_meta("my-awesome-pod", btreemap! {}, btreemap! {}),
+    status: make_pod_status("127.0.0.1", "Running"),
+    spec: Some(PodSpec {
+      host_network: Some(true),
+      ..Default::default()
+    }),
+  };
+  cache.apply_pod(&pod1).await;
+  assert!(rx.borrow().by_ip(&"127.0.0.1".parse().unwrap()).is_none());
+
+  // The second pod matches and will be included.
+  let pod2 = Pod {
+    metadata: make_object_meta(
+      "my-awesome-pod2",
+      btreemap! {
+        "hello" => "world".to_string()
+      },
+      btreemap! {},
+    ),
+    status: make_pod_status("127.0.0.1", "Running"),
+    spec: Some(PodSpec {
+      host_network: Some(true),
+      ..Default::default()
+    }),
+  };
+  cache.apply_pod(&pod2).await;
+  assert_eq!(
+    "my-awesome-pod2",
+    rx.borrow()
+      .by_ip(&"127.0.0.1".parse().unwrap())
+      .unwrap()
+      .name
+  );
+
+  // Remove pod1 and make sure we still have pod2 in the map.
+  cache.remove_pod(&pod1);
+  assert_eq!(
+    "my-awesome-pod2",
+    rx.borrow()
+      .by_ip(&"127.0.0.1".parse().unwrap())
+      .unwrap()
+      .name
+  );
+
+  // Remove pod2 and make sure we don't have anything in the map.
+  cache.remove_pod(&pod2);
+  assert!(rx.borrow().by_ip(&"127.0.0.1".parse().unwrap()).is_none());
+}
+
+#[tokio::test]
+async fn host_network() {
+  let (tx, rx) = tokio::sync::watch::channel(PodsInfo::default());
+  let helper = Helper::default();
+  let mut cache = PodsInfoCache::new(
+    make_node_info().into(),
+    tx,
+    KubernetesBootstrapConfig::default(),
+    None,
+    helper.collector(),
+  )
+  .unwrap();
+
+  let pod1 = Pod {
+    metadata: make_object_meta("my-awesome-pod", btreemap! {}, btreemap! {}),
+    status: make_pod_status("127.0.0.1", "Running"),
+    spec: Some(PodSpec {
+      host_network: Some(true),
+      ..Default::default()
+    }),
+  };
+  cache.apply_pod(&pod1).await;
+
+  let pod2 = Pod {
+    metadata: make_object_meta("my-awesome-pod2", btreemap! {}, btreemap! {}),
+    status: make_pod_status("127.0.0.1", "Running"),
+    spec: Some(PodSpec {
+      host_network: Some(true),
+      ..Default::default()
+    }),
+  };
+  cache.apply_pod(&pod2).await;
+
+  // We should still have the first by IP.
+  helper.assert_counter_eq(
+    1,
+    "k8s_pods_info:host_network_pod_by_ip_conflict",
+    &labels! {},
+  );
+  assert_eq!(
+    "my-awesome-pod",
+    rx.borrow()
+      .by_ip(&"127.0.0.1".parse().unwrap())
+      .unwrap()
+      .name
+  );
+
+  // Remove the second pod, which should not remove the first from the map.
+  cache.remove_pod(&pod2);
+  assert_eq!(
+    "my-awesome-pod",
+    rx.borrow()
+      .by_ip(&"127.0.0.1".parse().unwrap())
+      .unwrap()
+      .name
+  );
+
+  // Now removing pod1 should remove it from the map.
+  cache.remove_pod(&pod1);
+  assert!(rx.borrow().by_ip(&"127.0.0.1".parse().unwrap()).is_none());
 }
 
 #[tokio::test]
@@ -81,7 +224,14 @@ async fn pod_cache() {
     });
 
   let services = ServiceCache::new(15.minutes(), Box::new(fetcher));
-  let mut cache = PodsInfoCache::new(make_node_info().into(), tx, vec![], Some(services));
+  let mut cache = PodsInfoCache::new(
+    make_node_info().into(),
+    tx,
+    KubernetesBootstrapConfig::default(),
+    Some(services),
+    &Collector::default(),
+  )
+  .unwrap();
 
   cache
     .apply_pod(&Pod {

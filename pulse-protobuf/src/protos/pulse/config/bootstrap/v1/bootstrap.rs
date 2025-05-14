@@ -1146,6 +1146,8 @@ pub struct KubernetesBootstrapConfig {
     pub services_cache_interval: ::protobuf::MessageField<::protobuf::well_known_types::duration::Duration>,
     // @@protoc_insertion_point(field:pulse.config.bootstrap.v1.KubernetesBootstrapConfig.pod_phases)
     pub pod_phases: ::std::vec::Vec<::protobuf::Chars>,
+    // @@protoc_insertion_point(field:pulse.config.bootstrap.v1.KubernetesBootstrapConfig.host_network_pod_by_ip_filter)
+    pub host_network_pod_by_ip_filter: ::protobuf::MessageField<kubernetes_bootstrap_config::HostNetworkPodByIpFilter>,
     // special fields
     // @@protoc_insertion_point(special_field:pulse.config.bootstrap.v1.KubernetesBootstrapConfig.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -1163,7 +1165,7 @@ impl KubernetesBootstrapConfig {
     }
 
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(4);
+        let mut fields = ::std::vec::Vec::with_capacity(5);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, super::common::EnvOrInline>(
             "node_name",
@@ -1184,6 +1186,11 @@ impl KubernetesBootstrapConfig {
             "pod_phases",
             |m: &KubernetesBootstrapConfig| { &m.pod_phases },
             |m: &mut KubernetesBootstrapConfig| { &mut m.pod_phases },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, kubernetes_bootstrap_config::HostNetworkPodByIpFilter>(
+            "host_network_pod_by_ip_filter",
+            |m: &KubernetesBootstrapConfig| { &m.host_network_pod_by_ip_filter },
+            |m: &mut KubernetesBootstrapConfig| { &mut m.host_network_pod_by_ip_filter },
         ));
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<KubernetesBootstrapConfig>(
             "KubernetesBootstrapConfig",
@@ -1215,6 +1222,9 @@ impl ::protobuf::Message for KubernetesBootstrapConfig {
                 26 => {
                     self.pod_phases.push(is.read_tokio_chars()?);
                 },
+                42 => {
+                    ::protobuf::rt::read_singular_message_into_field(is, &mut self.host_network_pod_by_ip_filter)?;
+                },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                 },
@@ -1241,6 +1251,10 @@ impl ::protobuf::Message for KubernetesBootstrapConfig {
         for value in &self.pod_phases {
             my_size += ::protobuf::rt::string_size(3, &value);
         };
+        if let Some(v) = self.host_network_pod_by_ip_filter.as_ref() {
+            let len = v.compute_size();
+            my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
         my_size
@@ -1259,6 +1273,9 @@ impl ::protobuf::Message for KubernetesBootstrapConfig {
         for v in &self.pod_phases {
             os.write_string(3, &v)?;
         };
+        if let Some(v) = self.host_network_pod_by_ip_filter.as_ref() {
+            ::protobuf::rt::write_message_field_with_cached_size(5, v, os)?;
+        }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
     }
@@ -1280,6 +1297,7 @@ impl ::protobuf::Message for KubernetesBootstrapConfig {
         self.evaluate_services = ::std::option::Option::None;
         self.services_cache_interval.clear();
         self.pod_phases.clear();
+        self.host_network_pod_by_ip_filter.clear();
         self.special_fields.clear();
     }
 
@@ -1289,6 +1307,7 @@ impl ::protobuf::Message for KubernetesBootstrapConfig {
             evaluate_services: ::std::option::Option::None,
             services_cache_interval: ::protobuf::MessageField::none(),
             pod_phases: ::std::vec::Vec::new(),
+            host_network_pod_by_ip_filter: ::protobuf::MessageField::none(),
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -1310,6 +1329,427 @@ impl ::std::fmt::Display for KubernetesBootstrapConfig {
 
 impl ::protobuf::reflect::ProtobufValue for KubernetesBootstrapConfig {
     type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
+}
+
+/// Nested message and enums of message `KubernetesBootstrapConfig`
+pub mod kubernetes_bootstrap_config {
+    // @@protoc_insertion_point(message:pulse.config.bootstrap.v1.KubernetesBootstrapConfig.MetadataMatcher)
+    #[derive(PartialEq,Clone,Default,Debug)]
+    pub struct MetadataMatcher {
+        // message fields
+        // @@protoc_insertion_point(field:pulse.config.bootstrap.v1.KubernetesBootstrapConfig.MetadataMatcher.name)
+        pub name: ::protobuf::Chars,
+        // @@protoc_insertion_point(field:pulse.config.bootstrap.v1.KubernetesBootstrapConfig.MetadataMatcher.value_regex)
+        pub value_regex: ::protobuf::Chars,
+        // special fields
+        // @@protoc_insertion_point(special_field:pulse.config.bootstrap.v1.KubernetesBootstrapConfig.MetadataMatcher.special_fields)
+        pub special_fields: ::protobuf::SpecialFields,
+    }
+
+    impl<'a> ::std::default::Default for &'a MetadataMatcher {
+        fn default() -> &'a MetadataMatcher {
+            <MetadataMatcher as ::protobuf::Message>::default_instance()
+        }
+    }
+
+    impl MetadataMatcher {
+        pub fn new() -> MetadataMatcher {
+            ::std::default::Default::default()
+        }
+
+        pub(in super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
+            let mut fields = ::std::vec::Vec::with_capacity(2);
+            let mut oneofs = ::std::vec::Vec::with_capacity(0);
+            fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+                "name",
+                |m: &MetadataMatcher| { &m.name },
+                |m: &mut MetadataMatcher| { &mut m.name },
+            ));
+            fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+                "value_regex",
+                |m: &MetadataMatcher| { &m.value_regex },
+                |m: &mut MetadataMatcher| { &mut m.value_regex },
+            ));
+            ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<MetadataMatcher>(
+                "KubernetesBootstrapConfig.MetadataMatcher",
+                fields,
+                oneofs,
+            )
+        }
+    }
+
+    impl ::protobuf::Message for MetadataMatcher {
+        const NAME: &'static str = "MetadataMatcher";
+
+        fn is_initialized(&self) -> bool {
+            true
+        }
+
+        fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
+            while let Some(tag) = is.read_raw_tag_or_eof()? {
+                match tag {
+                    10 => {
+                        self.name = is.read_tokio_chars()?;
+                    },
+                    18 => {
+                        self.value_regex = is.read_tokio_chars()?;
+                    },
+                    tag => {
+                        ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
+                    },
+                };
+            }
+            ::std::result::Result::Ok(())
+        }
+
+        // Compute sizes of nested messages
+        #[allow(unused_variables)]
+        fn compute_size(&self) -> u64 {
+            let mut my_size = 0;
+            if !self.name.is_empty() {
+                my_size += ::protobuf::rt::string_size(1, &self.name);
+            }
+            if !self.value_regex.is_empty() {
+                my_size += ::protobuf::rt::string_size(2, &self.value_regex);
+            }
+            my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
+            self.special_fields.cached_size().set(my_size as u32);
+            my_size
+        }
+
+        fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
+            if !self.name.is_empty() {
+                os.write_string(1, &self.name)?;
+            }
+            if !self.value_regex.is_empty() {
+                os.write_string(2, &self.value_regex)?;
+            }
+            os.write_unknown_fields(self.special_fields.unknown_fields())?;
+            ::std::result::Result::Ok(())
+        }
+
+        fn special_fields(&self) -> &::protobuf::SpecialFields {
+            &self.special_fields
+        }
+
+        fn mut_special_fields(&mut self) -> &mut ::protobuf::SpecialFields {
+            &mut self.special_fields
+        }
+
+        fn new() -> MetadataMatcher {
+            MetadataMatcher::new()
+        }
+
+        fn clear(&mut self) {
+            self.name.clear();
+            self.value_regex.clear();
+            self.special_fields.clear();
+        }
+
+        fn default_instance() -> &'static MetadataMatcher {
+            static instance: MetadataMatcher = MetadataMatcher {
+                name: ::protobuf::Chars::new(),
+                value_regex: ::protobuf::Chars::new(),
+                special_fields: ::protobuf::SpecialFields::new(),
+            };
+            &instance
+        }
+    }
+
+    impl ::protobuf::MessageFull for MetadataMatcher {
+        fn descriptor() -> ::protobuf::reflect::MessageDescriptor {
+            static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::Lazy::new();
+            descriptor.get(|| super::file_descriptor().message_by_package_relative_name("KubernetesBootstrapConfig.MetadataMatcher").unwrap()).clone()
+        }
+    }
+
+    impl ::std::fmt::Display for MetadataMatcher {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            ::protobuf::text_format::fmt(self, f)
+        }
+    }
+
+    impl ::protobuf::reflect::ProtobufValue for MetadataMatcher {
+        type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
+    }
+
+    // @@protoc_insertion_point(message:pulse.config.bootstrap.v1.KubernetesBootstrapConfig.HostNetworkPodByIpFilter)
+    #[derive(PartialEq,Clone,Default,Debug)]
+    pub struct HostNetworkPodByIpFilter {
+        // message oneof groups
+        pub filter_type: ::std::option::Option<host_network_pod_by_ip_filter::Filter_type>,
+        // special fields
+        // @@protoc_insertion_point(special_field:pulse.config.bootstrap.v1.KubernetesBootstrapConfig.HostNetworkPodByIpFilter.special_fields)
+        pub special_fields: ::protobuf::SpecialFields,
+    }
+
+    impl<'a> ::std::default::Default for &'a HostNetworkPodByIpFilter {
+        fn default() -> &'a HostNetworkPodByIpFilter {
+            <HostNetworkPodByIpFilter as ::protobuf::Message>::default_instance()
+        }
+    }
+
+    impl HostNetworkPodByIpFilter {
+        pub fn new() -> HostNetworkPodByIpFilter {
+            ::std::default::Default::default()
+        }
+
+        // .pulse.config.bootstrap.v1.KubernetesBootstrapConfig.MetadataMatcher label_matcher = 1;
+
+        pub fn label_matcher(&self) -> &MetadataMatcher {
+            match self.filter_type {
+                ::std::option::Option::Some(host_network_pod_by_ip_filter::Filter_type::LabelMatcher(ref v)) => v,
+                _ => <MetadataMatcher as ::protobuf::Message>::default_instance(),
+            }
+        }
+
+        pub fn clear_label_matcher(&mut self) {
+            self.filter_type = ::std::option::Option::None;
+        }
+
+        pub fn has_label_matcher(&self) -> bool {
+            match self.filter_type {
+                ::std::option::Option::Some(host_network_pod_by_ip_filter::Filter_type::LabelMatcher(..)) => true,
+                _ => false,
+            }
+        }
+
+        // Param is passed by value, moved
+        pub fn set_label_matcher(&mut self, v: MetadataMatcher) {
+            self.filter_type = ::std::option::Option::Some(host_network_pod_by_ip_filter::Filter_type::LabelMatcher(v))
+        }
+
+        // Mutable pointer to the field.
+        pub fn mut_label_matcher(&mut self) -> &mut MetadataMatcher {
+            if let ::std::option::Option::Some(host_network_pod_by_ip_filter::Filter_type::LabelMatcher(_)) = self.filter_type {
+            } else {
+                self.filter_type = ::std::option::Option::Some(host_network_pod_by_ip_filter::Filter_type::LabelMatcher(MetadataMatcher::new()));
+            }
+            match self.filter_type {
+                ::std::option::Option::Some(host_network_pod_by_ip_filter::Filter_type::LabelMatcher(ref mut v)) => v,
+                _ => panic!(),
+            }
+        }
+
+        // Take field
+        pub fn take_label_matcher(&mut self) -> MetadataMatcher {
+            if self.has_label_matcher() {
+                match self.filter_type.take() {
+                    ::std::option::Option::Some(host_network_pod_by_ip_filter::Filter_type::LabelMatcher(v)) => v,
+                    _ => panic!(),
+                }
+            } else {
+                MetadataMatcher::new()
+            }
+        }
+
+        // .pulse.config.bootstrap.v1.KubernetesBootstrapConfig.MetadataMatcher annotation_matcher = 2;
+
+        pub fn annotation_matcher(&self) -> &MetadataMatcher {
+            match self.filter_type {
+                ::std::option::Option::Some(host_network_pod_by_ip_filter::Filter_type::AnnotationMatcher(ref v)) => v,
+                _ => <MetadataMatcher as ::protobuf::Message>::default_instance(),
+            }
+        }
+
+        pub fn clear_annotation_matcher(&mut self) {
+            self.filter_type = ::std::option::Option::None;
+        }
+
+        pub fn has_annotation_matcher(&self) -> bool {
+            match self.filter_type {
+                ::std::option::Option::Some(host_network_pod_by_ip_filter::Filter_type::AnnotationMatcher(..)) => true,
+                _ => false,
+            }
+        }
+
+        // Param is passed by value, moved
+        pub fn set_annotation_matcher(&mut self, v: MetadataMatcher) {
+            self.filter_type = ::std::option::Option::Some(host_network_pod_by_ip_filter::Filter_type::AnnotationMatcher(v))
+        }
+
+        // Mutable pointer to the field.
+        pub fn mut_annotation_matcher(&mut self) -> &mut MetadataMatcher {
+            if let ::std::option::Option::Some(host_network_pod_by_ip_filter::Filter_type::AnnotationMatcher(_)) = self.filter_type {
+            } else {
+                self.filter_type = ::std::option::Option::Some(host_network_pod_by_ip_filter::Filter_type::AnnotationMatcher(MetadataMatcher::new()));
+            }
+            match self.filter_type {
+                ::std::option::Option::Some(host_network_pod_by_ip_filter::Filter_type::AnnotationMatcher(ref mut v)) => v,
+                _ => panic!(),
+            }
+        }
+
+        // Take field
+        pub fn take_annotation_matcher(&mut self) -> MetadataMatcher {
+            if self.has_annotation_matcher() {
+                match self.filter_type.take() {
+                    ::std::option::Option::Some(host_network_pod_by_ip_filter::Filter_type::AnnotationMatcher(v)) => v,
+                    _ => panic!(),
+                }
+            } else {
+                MetadataMatcher::new()
+            }
+        }
+
+        pub(in super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
+            let mut fields = ::std::vec::Vec::with_capacity(2);
+            let mut oneofs = ::std::vec::Vec::with_capacity(1);
+            fields.push(::protobuf::reflect::rt::v2::make_oneof_message_has_get_mut_set_accessor::<_, MetadataMatcher>(
+                "label_matcher",
+                HostNetworkPodByIpFilter::has_label_matcher,
+                HostNetworkPodByIpFilter::label_matcher,
+                HostNetworkPodByIpFilter::mut_label_matcher,
+                HostNetworkPodByIpFilter::set_label_matcher,
+            ));
+            fields.push(::protobuf::reflect::rt::v2::make_oneof_message_has_get_mut_set_accessor::<_, MetadataMatcher>(
+                "annotation_matcher",
+                HostNetworkPodByIpFilter::has_annotation_matcher,
+                HostNetworkPodByIpFilter::annotation_matcher,
+                HostNetworkPodByIpFilter::mut_annotation_matcher,
+                HostNetworkPodByIpFilter::set_annotation_matcher,
+            ));
+            oneofs.push(host_network_pod_by_ip_filter::Filter_type::generated_oneof_descriptor_data());
+            ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<HostNetworkPodByIpFilter>(
+                "KubernetesBootstrapConfig.HostNetworkPodByIpFilter",
+                fields,
+                oneofs,
+            )
+        }
+    }
+
+    impl ::protobuf::Message for HostNetworkPodByIpFilter {
+        const NAME: &'static str = "HostNetworkPodByIpFilter";
+
+        fn is_initialized(&self) -> bool {
+            true
+        }
+
+        fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
+            while let Some(tag) = is.read_raw_tag_or_eof()? {
+                match tag {
+                    10 => {
+                        self.filter_type = ::std::option::Option::Some(host_network_pod_by_ip_filter::Filter_type::LabelMatcher(is.read_message()?));
+                    },
+                    18 => {
+                        self.filter_type = ::std::option::Option::Some(host_network_pod_by_ip_filter::Filter_type::AnnotationMatcher(is.read_message()?));
+                    },
+                    tag => {
+                        ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
+                    },
+                };
+            }
+            ::std::result::Result::Ok(())
+        }
+
+        // Compute sizes of nested messages
+        #[allow(unused_variables)]
+        fn compute_size(&self) -> u64 {
+            let mut my_size = 0;
+            if let ::std::option::Option::Some(ref v) = self.filter_type {
+                match v {
+                    &host_network_pod_by_ip_filter::Filter_type::LabelMatcher(ref v) => {
+                        let len = v.compute_size();
+                        my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+                    },
+                    &host_network_pod_by_ip_filter::Filter_type::AnnotationMatcher(ref v) => {
+                        let len = v.compute_size();
+                        my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+                    },
+                };
+            }
+            my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
+            self.special_fields.cached_size().set(my_size as u32);
+            my_size
+        }
+
+        fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
+            if let ::std::option::Option::Some(ref v) = self.filter_type {
+                match v {
+                    &host_network_pod_by_ip_filter::Filter_type::LabelMatcher(ref v) => {
+                        ::protobuf::rt::write_message_field_with_cached_size(1, v, os)?;
+                    },
+                    &host_network_pod_by_ip_filter::Filter_type::AnnotationMatcher(ref v) => {
+                        ::protobuf::rt::write_message_field_with_cached_size(2, v, os)?;
+                    },
+                };
+            }
+            os.write_unknown_fields(self.special_fields.unknown_fields())?;
+            ::std::result::Result::Ok(())
+        }
+
+        fn special_fields(&self) -> &::protobuf::SpecialFields {
+            &self.special_fields
+        }
+
+        fn mut_special_fields(&mut self) -> &mut ::protobuf::SpecialFields {
+            &mut self.special_fields
+        }
+
+        fn new() -> HostNetworkPodByIpFilter {
+            HostNetworkPodByIpFilter::new()
+        }
+
+        fn clear(&mut self) {
+            self.filter_type = ::std::option::Option::None;
+            self.filter_type = ::std::option::Option::None;
+            self.special_fields.clear();
+        }
+
+        fn default_instance() -> &'static HostNetworkPodByIpFilter {
+            static instance: HostNetworkPodByIpFilter = HostNetworkPodByIpFilter {
+                filter_type: ::std::option::Option::None,
+                special_fields: ::protobuf::SpecialFields::new(),
+            };
+            &instance
+        }
+    }
+
+    impl ::protobuf::MessageFull for HostNetworkPodByIpFilter {
+        fn descriptor() -> ::protobuf::reflect::MessageDescriptor {
+            static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::Lazy::new();
+            descriptor.get(|| super::file_descriptor().message_by_package_relative_name("KubernetesBootstrapConfig.HostNetworkPodByIpFilter").unwrap()).clone()
+        }
+    }
+
+    impl ::std::fmt::Display for HostNetworkPodByIpFilter {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            ::protobuf::text_format::fmt(self, f)
+        }
+    }
+
+    impl ::protobuf::reflect::ProtobufValue for HostNetworkPodByIpFilter {
+        type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
+    }
+
+    /// Nested message and enums of message `HostNetworkPodByIpFilter`
+    pub mod host_network_pod_by_ip_filter {
+
+        #[derive(Clone,PartialEq,Debug)]
+        // @@protoc_insertion_point(oneof:pulse.config.bootstrap.v1.KubernetesBootstrapConfig.HostNetworkPodByIpFilter.filter_type)
+        pub enum Filter_type {
+            // @@protoc_insertion_point(oneof_field:pulse.config.bootstrap.v1.KubernetesBootstrapConfig.HostNetworkPodByIpFilter.label_matcher)
+            LabelMatcher(super::MetadataMatcher),
+            // @@protoc_insertion_point(oneof_field:pulse.config.bootstrap.v1.KubernetesBootstrapConfig.HostNetworkPodByIpFilter.annotation_matcher)
+            AnnotationMatcher(super::MetadataMatcher),
+        }
+
+        impl ::protobuf::Oneof for Filter_type {
+        }
+
+        impl ::protobuf::OneofFull for Filter_type {
+            fn descriptor() -> ::protobuf::reflect::OneofDescriptor {
+                static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::OneofDescriptor> = ::protobuf::rt::Lazy::new();
+                descriptor.get(|| <super::HostNetworkPodByIpFilter as ::protobuf::MessageFull>::descriptor().oneof_by_name("filter_type").unwrap()).clone()
+            }
+        }
+
+        impl Filter_type {
+            pub(in super::super) fn generated_oneof_descriptor_data() -> ::protobuf::reflect::GeneratedOneofDescriptorData {
+                ::protobuf::reflect::GeneratedOneofDescriptorData::new::<Filter_type>("filter_type")
+            }
+        }
+    }
 }
 
 // @@protoc_insertion_point(message:pulse.config.bootstrap.v1.MergedConfig)
@@ -1896,25 +2336,36 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \n\x03key\x18\x01\x20\x01(\tR\x03keyB\x07\xfaB\x04r\x02\x10\x01\x12\x1d\
     \n\x05value\x18\x02\x20\x01(\tR\x05valueB\x07\xfaB\x04r\x02\x10\x01B\x0e\
     \n\x0c_meta_prefix\"*\n\x0bAdminConfig\x12\x1b\n\x04bind\x18\x01\x20\x01\
-    (\tR\x04bindB\x07\xfaB\x04r\x02\x10\x01\"\x97\x02\n\x19KubernetesBootstr\
+    (\tR\x04bindB\x07\xfaB\x04r\x02\x10\x01\"\x97\x06\n\x19KubernetesBootstr\
     apConfig\x12@\n\tnode_name\x18\x01\x20\x01(\x0b2#.pulse.config.common.v1\
     .EnvOrInlineR\x08nodeName\x120\n\x11evaluate_services\x18\x02\x20\x01(\
     \x08H\0R\x10evaluateServices\x88\x01\x01\x12Q\n\x17services_cache_interv\
     al\x18\x04\x20\x01(\x0b2\x19.google.protobuf.DurationR\x15servicesCacheI\
-    nterval\x12\x1d\n\npod_phases\x18\x03\x20\x03(\tR\tpodPhasesB\x14\n\x12_\
-    evaluate_services\"\xb0\x01\n\x0cMergedConfig\x12G\n\tbootstrap\x18\x01\
-    \x20\x01(\x0b2).pulse.config.bootstrap.v1.PipelineConfigR\tbootstrap\x12\
-    W\n\x14fs_watched_pipelines\x18\x02\x20\x03(\x0b2%.pulse.config.common.v\
-    1.RuntimeConfigR\x12fsWatchedPipelines\"\xed\x03\n\x06Config\x12<\n\x05a\
-    dmin\x18\x01\x20\x01(\x0b2&.pulse.config.bootstrap.v1.AdminConfigR\x05ad\
-    min\x12C\n\nmeta_stats\x18\x02\x20\x01(\x0b2$.pulse.config.bootstrap.v1.\
-    MetaStatsR\tmetaStats\x12T\n\nkubernetes\x18\x03\x20\x01(\x0b24.pulse.co\
-    nfig.bootstrap.v1.KubernetesBootstrapConfigR\nkubernetes\x12G\n\x08pipel\
-    ine\x18\x04\x20\x01(\x0b2).pulse.config.bootstrap.v1.PipelineConfigH\0R\
-    \x08pipeline\x12W\n\x13fs_watched_pipeline\x18\x05\x20\x01(\x0b2%.pulse.\
-    config.common.v1.RuntimeConfigH\0R\x11fsWatchedPipeline\x12R\n\x0fmerged\
-    _pipeline\x18\x06\x20\x01(\x0b2'.pulse.config.bootstrap.v1.MergedConfigH\
-    \0R\x0emergedPipelineB\x14\n\rpipeline_type\x12\x03\xf8B\x01b\x06proto3\
+    nterval\x12\x1d\n\npod_phases\x18\x03\x20\x03(\tR\tpodPhases\x12\x8e\x01\
+    \n\x1dhost_network_pod_by_ip_filter\x18\x05\x20\x01(\x0b2M.pulse.config.\
+    bootstrap.v1.KubernetesBootstrapConfig.HostNetworkPodByIpFilterR\x18host\
+    NetworkPodByIpFilter\x1aX\n\x0fMetadataMatcher\x12\x1b\n\x04name\x18\x01\
+    \x20\x01(\tR\x04nameB\x07\xfaB\x04r\x02\x10\x01\x12(\n\x0bvalue_regex\
+    \x18\x02\x20\x01(\tR\nvalueRegexB\x07\xfaB\x04r\x02\x10\x01\x1a\x92\x02\
+    \n\x18HostNetworkPodByIpFilter\x12k\n\rlabel_matcher\x18\x01\x20\x01(\
+    \x0b2D.pulse.config.bootstrap.v1.KubernetesBootstrapConfig.MetadataMatch\
+    erH\0R\x0clabelMatcher\x12u\n\x12annotation_matcher\x18\x02\x20\x01(\x0b\
+    2D.pulse.config.bootstrap.v1.KubernetesBootstrapConfig.MetadataMatcherH\
+    \0R\x11annotationMatcherB\x12\n\x0bfilter_type\x12\x03\xf8B\x01B\x14\n\
+    \x12_evaluate_services\"\xb0\x01\n\x0cMergedConfig\x12G\n\tbootstrap\x18\
+    \x01\x20\x01(\x0b2).pulse.config.bootstrap.v1.PipelineConfigR\tbootstrap\
+    \x12W\n\x14fs_watched_pipelines\x18\x02\x20\x03(\x0b2%.pulse.config.comm\
+    on.v1.RuntimeConfigR\x12fsWatchedPipelines\"\xed\x03\n\x06Config\x12<\n\
+    \x05admin\x18\x01\x20\x01(\x0b2&.pulse.config.bootstrap.v1.AdminConfigR\
+    \x05admin\x12C\n\nmeta_stats\x18\x02\x20\x01(\x0b2$.pulse.config.bootstr\
+    ap.v1.MetaStatsR\tmetaStats\x12T\n\nkubernetes\x18\x03\x20\x01(\x0b24.pu\
+    lse.config.bootstrap.v1.KubernetesBootstrapConfigR\nkubernetes\x12G\n\
+    \x08pipeline\x18\x04\x20\x01(\x0b2).pulse.config.bootstrap.v1.PipelineCo\
+    nfigH\0R\x08pipeline\x12W\n\x13fs_watched_pipeline\x18\x05\x20\x01(\x0b2\
+    %.pulse.config.common.v1.RuntimeConfigH\0R\x11fsWatchedPipeline\x12R\n\
+    \x0fmerged_pipeline\x18\x06\x20\x01(\x0b2'.pulse.config.bootstrap.v1.Mer\
+    gedConfigH\0R\x0emergedPipelineB\x14\n\rpipeline_type\x12\x03\xf8B\x01b\
+    \x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
@@ -1940,7 +2391,7 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
             deps.push(super::wire::file_descriptor().clone());
             deps.push(::protobuf::well_known_types::duration::file_descriptor().clone());
             deps.push(super::validate::file_descriptor().clone());
-            let mut messages = ::std::vec::Vec::with_capacity(9);
+            let mut messages = ::std::vec::Vec::with_capacity(11);
             messages.push(AdvancedPipelineConfig::generated_message_descriptor_data());
             messages.push(PipelineConfig::generated_message_descriptor_data());
             messages.push(MetaStats::generated_message_descriptor_data());
@@ -1950,6 +2401,8 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
             messages.push(Config::generated_message_descriptor_data());
             messages.push(meta_stats::MetaProtocol::generated_message_descriptor_data());
             messages.push(meta_stats::MetaTag::generated_message_descriptor_data());
+            messages.push(kubernetes_bootstrap_config::MetadataMatcher::generated_message_descriptor_data());
+            messages.push(kubernetes_bootstrap_config::HostNetworkPodByIpFilter::generated_message_descriptor_data());
             let mut enums = ::std::vec::Vec::with_capacity(0);
             ::protobuf::reflect::GeneratedFileDescriptor::new_generated(
                 file_descriptor_proto(),

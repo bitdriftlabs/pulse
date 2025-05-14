@@ -18,12 +18,18 @@ use crate::k8s::watcher_base::WatcherBase;
 use crate::proto::env_or_inline_to_string;
 use crate::singleton::{SingletonHandle, SingletonManager};
 use async_trait::async_trait;
+use bd_server_stats::stats::Collector;
 use bd_shutdown::{ComponentShutdown, ComponentShutdownTriggerHandle};
+use bootstrap::KubernetesBootstrapConfig;
+use bootstrap::kubernetes_bootstrap_config::MetadataMatcher;
+use bootstrap::kubernetes_bootstrap_config::host_network_pod_by_ip_filter::Filter_type;
 use futures_util::future::BoxFuture;
 use k8s_openapi::api::core::v1::Pod;
 use kube::Api;
+use prometheus::IntCounter;
 use protobuf::Chars;
-use pulse_protobuf::protos::pulse::config::bootstrap::v1::bootstrap::KubernetesBootstrapConfig;
+use pulse_protobuf::protos::pulse::config::bootstrap::v1::bootstrap;
+use regex::Regex;
 use std::collections::{BTreeMap, HashMap};
 use std::net::IpAddr;
 use std::sync::{Arc, OnceLock};
@@ -106,6 +112,7 @@ impl PodsInfoSingleton {
     singleton_manager: Arc<SingletonManager>,
     k8s_config: KubernetesBootstrapConfig,
     shutdown: ComponentShutdownTriggerHandle,
+    collector: Collector,
   ) -> anyhow::Result<Arc<Self>> {
     static HANDLE: OnceLock<SingletonHandle> = OnceLock::new();
     let handle = HANDLE.get_or_init(SingletonHandle::default);
@@ -135,6 +142,7 @@ impl PodsInfoSingleton {
           pods_info_tx,
           service_cache,
           shutdown.make_shutdown(),
+          &collector,
         )
         .await?;
         Ok::<_, anyhow::Error>(Arc::new(Self::new(pods_info_rx, node_info)))
@@ -144,35 +152,42 @@ impl PodsInfoSingleton {
 }
 
 pub mod container {
-  use super::{PodInfo, make_namespace_and_name};
+  use super::{
+    InternalMetadataMatcher,
+    InternalMetadataMatcherType,
+    PodInfo,
+    make_namespace_and_name,
+  };
   use crate::k8s::services::ServiceCache;
   use crate::k8s::{NodeInfo, object_namespace};
   use crate::metadata::PodMetadata;
-  use bd_log::warn_every;
+  use ahash::AHashMap;
   use k8s_openapi::api::core::v1::Pod;
   use kube::ResourceExt;
+  use prometheus::IntCounter;
   use protobuf::Chars;
-  use std::collections::HashMap;
+  use std::collections::{BTreeMap, HashMap};
   use std::net::IpAddr;
   use std::sync::Arc;
-  use time::ext::NumericalDuration;
 
-  // TODO(mattklein123): Consider using ahash or some faster map since IP lookup will be in the
-  // fast path.
   #[derive(Default, Clone, Debug)]
   pub struct PodsInfo {
-    by_name: HashMap<String, Arc<PodInfo>>,
-    by_ip: HashMap<IpAddr, Arc<PodInfo>>,
+    by_name: AHashMap<String, Arc<PodInfo>>,
+    by_ip: AHashMap<IpAddr, Arc<PodInfo>>,
   }
 
   impl PodsInfo {
-    pub fn insert(&mut self, pod_info: PodInfo) {
+    pub fn insert(&mut self, pod_info: PodInfo, insert_by_ip: bool) {
       let namespace_and_name = pod_info.namespace_and_name();
       let canonical_ip = pod_info.ip.to_canonical();
       log::info!("discovered pod '{namespace_and_name}' at ip '{canonical_ip}'");
       let pod_info = Arc::new(pod_info);
       self.by_name.insert(namespace_and_name, pod_info.clone());
-      self.by_ip.insert(canonical_ip, pod_info);
+
+      if insert_by_ip {
+        let old = self.by_ip.insert(canonical_ip, pod_info);
+        debug_assert!(old.is_none(), "duplicate ip '{canonical_ip}'");
+      }
     }
 
     #[must_use]
@@ -186,14 +201,17 @@ pub mod container {
       if let Some(pod_info) = self.by_name.remove(&namespace_and_name) {
         log::info!("removing pod '{namespace_and_name}'");
         let canonical_ip = pod_info.ip.to_canonical();
-        if self.by_ip.remove(&canonical_ip).is_none() {
-          warn_every!(
-            1.minutes(),
-            "no ip '{}' found for pod '{}'",
-            canonical_ip,
-            namespace_and_name
-          );
+        // In the host network case, make sure we are removing the correct pod from the IP map as
+        // we may have ignored some on entry.
+        if self
+          .by_ip
+          .get(&canonical_ip)
+          .is_some_and(|p| p.namespace_and_name() == namespace_and_name)
+        {
+          log::info!("removing pod '{namespace_and_name}' from ip map");
+          self.by_ip.remove(&canonical_ip);
         }
+
         return true;
       }
       false
@@ -216,12 +234,14 @@ pub mod container {
       self.by_name.iter()
     }
 
-    pub async fn apply_pod(
+    pub(super) async fn apply_pod(
       &mut self,
       node_info: &NodeInfo,
       pod: &Pod,
       service_cache: Option<&mut ServiceCache>,
       pod_phases: &[Chars],
+      host_network_pod_by_ip_filter: Option<&InternalMetadataMatcherType>,
+      host_network_pod_by_ip_conflict: &IntCounter,
     ) -> bool {
       log::debug!("processing pod candidate");
 
@@ -325,8 +345,80 @@ pub mod container {
         }
       }
 
-      self.insert(pod_info);
+      self.insert(
+        pod_info,
+        self.should_insert_by_ip(
+          pod,
+          pod_ip,
+          host_network_pod_by_ip_filter,
+          host_network_pod_by_ip_conflict,
+        ),
+      );
       true
+    }
+
+    fn metadata_matcher_matches(
+      matcher: &InternalMetadataMatcher,
+      metadata: &BTreeMap<String, String>,
+    ) -> bool {
+      metadata
+        .get(matcher.name.as_str())
+        .is_some_and(|v| matcher.value_regex.is_match(v))
+    }
+
+    fn should_insert_by_ip(
+      &self,
+      pod: &Pod,
+      pod_ip: IpAddr,
+      host_network_pod_by_ip_filter: Option<&InternalMetadataMatcherType>,
+      host_network_pod_by_ip_conflict: &IntCounter,
+    ) -> bool {
+      let insert = (|| {
+        if !pod
+          .spec
+          .as_ref()
+          .and_then(|s| s.host_network)
+          .unwrap_or(false)
+        {
+          return true;
+        }
+
+        let Some(host_network_pod_by_ip_filter) = host_network_pod_by_ip_filter else {
+          return true;
+        };
+
+        match host_network_pod_by_ip_filter {
+          InternalMetadataMatcherType::AnnotationMatcher(annotation_matcher) => {
+            Self::metadata_matcher_matches(annotation_matcher, pod.annotations())
+          },
+          InternalMetadataMatcherType::LabelMatcher(label_matcher) => {
+            Self::metadata_matcher_matches(label_matcher, pod.labels())
+          },
+        }
+      })();
+
+      if !insert {
+        log::info!(
+          "host network pod {}/{} with ip {} has been filtered from the IP map",
+          object_namespace(&pod.metadata),
+          pod.name_any(),
+          pod_ip
+        );
+      }
+
+      if insert && self.by_ip.contains_key(&pod_ip) {
+        host_network_pod_by_ip_conflict.inc();
+        log::warn!(
+          "host network pod {}/{} with ip {} conflicts with existing pod {}",
+          object_namespace(&pod.metadata),
+          pod.name_any(),
+          pod_ip,
+          self.by_ip.get(&pod_ip).unwrap().namespace_and_name()
+        );
+        return false;
+      }
+
+      insert
     }
   }
 }
@@ -367,12 +459,13 @@ pub async fn watch_pods(
   update_tx: watch::Sender<PodsInfo>,
   service_cache: Option<ServiceCache>,
   shutdown: ComponentShutdown,
+  collector: &Collector,
 ) -> anyhow::Result<()> {
   log::info!("starting pod watcher");
   let client = kube::Client::try_default().await?;
   let pod_api: Api<Pod> = kube::Api::all(client);
   let field_selector = Some(format!("spec.nodeName={}", node_info.name));
-  let pods_info_cache = PodsInfoCache::new(node_info, update_tx, config.pod_phases, service_cache);
+  let pods_info_cache = PodsInfoCache::new(node_info, update_tx, config, service_cache, collector)?;
   WatcherBase::create(
     "node pod watcher".to_string(),
     pod_api,
@@ -396,6 +489,16 @@ struct PodsInfoCache {
   pod_phases: Vec<Chars>,
   service_cache: Option<ServiceCache>,
   initializing_state: Option<PodsInfo>,
+  host_network_pod_by_ip_filter: Option<InternalMetadataMatcherType>,
+  host_network_pod_by_ip_conflict: IntCounter,
+}
+struct InternalMetadataMatcher {
+  name: String,
+  value_regex: Regex,
+}
+enum InternalMetadataMatcherType {
+  AnnotationMatcher(InternalMetadataMatcher),
+  LabelMatcher(InternalMetadataMatcher),
 }
 
 #[async_trait]
@@ -417,6 +520,8 @@ impl ResourceWatchCallbacks<Pod> for PodsInfoCache {
         &pod,
         self.service_cache.as_mut(),
         &self.pod_phases,
+        self.host_network_pod_by_ip_filter.as_ref(),
+        &self.host_network_pod_by_ip_conflict,
       )
       .await;
   }
@@ -431,21 +536,55 @@ impl PodsInfoCache {
   fn new(
     node_info: Arc<NodeInfo>,
     update_tx: watch::Sender<PodsInfo>,
-    pod_phases: Vec<Chars>,
+    config: KubernetesBootstrapConfig,
     service_cache: Option<ServiceCache>,
-  ) -> Self {
-    Self {
+    collector: &Collector,
+  ) -> anyhow::Result<Self> {
+    fn make_internal_metadata_matcher(
+      matcher: &MetadataMatcher,
+    ) -> anyhow::Result<InternalMetadataMatcher> {
+      let value_regex = Regex::new(&matcher.value_regex)?;
+      Ok(InternalMetadataMatcher {
+        name: matcher.name.to_string(),
+        value_regex,
+      })
+    }
+
+    let host_network_pod_by_ip_filter: Option<InternalMetadataMatcherType> = config
+      .host_network_pod_by_ip_filter
+      .into_option()
+      .map(|host_network_pod_by_ip_filter| {
+        Ok::<_, anyhow::Error>(
+          match host_network_pod_by_ip_filter.filter_type.expect("pgv") {
+            Filter_type::AnnotationMatcher(annotation_matcher) => {
+              InternalMetadataMatcherType::AnnotationMatcher(make_internal_metadata_matcher(
+                &annotation_matcher,
+              )?)
+            },
+            Filter_type::LabelMatcher(label_matcher) => InternalMetadataMatcherType::LabelMatcher(
+              make_internal_metadata_matcher(&label_matcher)?,
+            ),
+          },
+        )
+      })
+      .transpose()?;
+
+    Ok(Self {
       node_info,
       state: PodsInfo::default(),
       update_tx,
-      pod_phases: if pod_phases.is_empty() {
+      pod_phases: if config.pod_phases.is_empty() {
         vec!["Pending".into(), "Running".into()]
       } else {
-        pod_phases
+        config.pod_phases
       },
       service_cache,
       initializing_state: None,
-    }
+      host_network_pod_by_ip_filter,
+      host_network_pod_by_ip_conflict: collector
+        .scope("k8s_pods_info")
+        .counter("host_network_pod_by_ip_conflict"),
+    })
   }
 
   fn swap_state(&mut self, new_state: PodsInfo) {
@@ -461,6 +600,8 @@ impl PodsInfoCache {
         pod,
         self.service_cache.as_mut(),
         &self.pod_phases,
+        self.host_network_pod_by_ip_filter.as_ref(),
+        &self.host_network_pod_by_ip_conflict,
       )
       .await
     {

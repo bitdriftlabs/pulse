@@ -401,21 +401,24 @@ async fn all() {
   )
   .await;
   let mut pods_info = PodsInfo::default();
-  pods_info.insert(make_pod_info(
-    "default",
-    "pod_a",
-    &btreemap!(),
-    btreemap!(
-      "service" => "ghostmatching",
-      "service_name" => "ghostmatchingname",
-      "facet" => "main",
-      "service_instance" => "production",
-      "ec2_region_shortname" => "xyz"
+  pods_info.insert(
+    make_pod_info(
+      "default",
+      "pod_a",
+      &btreemap!(),
+      btreemap!(
+        "service" => "ghostmatching",
+        "service_name" => "ghostmatchingname",
+        "facet" => "main",
+        "service_instance" => "production",
+        "ec2_region_shortname" => "xyz"
+      ),
+      HashMap::default(),
+      "127.0.0.1",
+      vec![],
     ),
-    HashMap::default(),
-    "127.0.0.1",
-    vec![],
-  ));
+    true,
+  );
   let (_pods_tx, pods_rx) = watch::channel(pods_info);
   let az_env_var = Uuid::new_v4().to_string();
   unsafe {

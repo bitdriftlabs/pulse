@@ -108,7 +108,10 @@ pub async fn run_server<
   bind_resolver: Arc<dyn BindResolver>,
   singleton_manager: Arc<SingletonManager>,
   // Broken formatting.
-  #[rustfmt::skip] k8s_watch_factory: impl Fn(ComponentShutdownTriggerHandle) -> K8sWatchFuture
+  #[rustfmt::skip] k8s_watch_factory: impl Fn(
+    ComponentShutdownTriggerHandle,
+    Collector,
+  ) -> K8sWatchFuture
   + Send
   + Sync
   + 'static,
@@ -136,12 +139,15 @@ pub async fn run_server<
 
   let admin_state = AdminState::new(stats_provider.collector().clone());
   let shutdown_trigger_handle = shutdown_trigger.make_handle();
+  let cloned_collector = stats_provider.collector().clone();
   let pipeline = Arc::new(
     MetricPipeline::new_from_config(
       Arc::new(RealItemFactory {}),
       scope.scope("pipeline"),
       config.kubernetes.clone().unwrap_or_default(),
-      Arc::new(move || k8s_watch_factory(shutdown_trigger_handle.clone()).boxed()),
+      Arc::new(move || {
+        k8s_watch_factory(shutdown_trigger_handle.clone(), cloned_collector.clone()).boxed()
+      }),
       config_rx.recv().await.unwrap().unwrap(),
       singleton_manager,
       admin_state.clone(),

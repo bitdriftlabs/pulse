@@ -119,15 +119,18 @@ async fn udp_k8s_pod_metadata() {
   let bind_resolver = HelperBindResolver::new(&["fake_upstream"], &["inflow:udp"]).await;
   let mut upstream = FakeWireUpstream::new("fake_upstream", bind_resolver.clone()).await;
   let mut pods_info = PodsInfo::default();
-  pods_info.insert(make_pod_info(
-    "default",
-    "pod_a",
-    &btreemap!("foo" => "bar"),
-    btreemap!("foo" => "baz"),
-    HashMap::default(),
-    "127.0.0.1",
-    vec![],
-  ));
+  pods_info.insert(
+    make_pod_info(
+      "default",
+      "pod_a",
+      &btreemap!("foo" => "bar"),
+      btreemap!("foo" => "baz"),
+      HashMap::default(),
+      "127.0.0.1",
+      vec![],
+    ),
+    true,
+  );
   let (_pods_tx, pods_rx) = watch::channel(pods_info);
 
   let helper = Helper::new_with_k8s(
@@ -197,15 +200,18 @@ async fn udp_k8s_pre_buffer() {
   let bind_resolver = HelperBindResolver::new(&["fake_upstream"], &["inflow:udp"]).await;
   let mut upstream = FakeWireUpstream::new("fake_upstream", bind_resolver.clone()).await;
   let mut pods_info = PodsInfo::default();
-  pods_info.insert(make_pod_info(
-    "default",
-    "pod_a",
-    &btreemap!("foo" => "bar"),
-    btreemap!("foo" => "baz"),
-    HashMap::default(),
-    "127.0.0.1",
-    vec![],
-  ));
+  pods_info.insert(
+    make_pod_info(
+      "default",
+      "pod_a",
+      &btreemap!("foo" => "bar"),
+      btreemap!("foo" => "baz"),
+      HashMap::default(),
+      "127.0.0.1",
+      vec![],
+    ),
+    true,
+  );
   let (_pods_tx, pods_rx) = watch::channel(pods_info);
 
   let helper = Helper::new_with_k8s(
@@ -291,15 +297,18 @@ async fn tcp_k8s_pod_metadata() {
   let bind_resolver = HelperBindResolver::new(&["fake_upstream", "inflow:tcp"], &[]).await;
   let mut upstream = FakeWireUpstream::new("fake_upstream", bind_resolver.clone()).await;
   let mut pods_info = PodsInfo::default();
-  pods_info.insert(make_pod_info(
-    "default",
-    "pod_a",
-    &btreemap!("foo" => "bar"),
-    btreemap!("foo" => "baz"),
-    HashMap::default(),
-    "127.0.0.1",
-    vec![],
-  ));
+  pods_info.insert(
+    make_pod_info(
+      "default",
+      "pod_a",
+      &btreemap!("foo" => "bar"),
+      btreemap!("foo" => "baz"),
+      HashMap::default(),
+      "127.0.0.1",
+      vec![],
+    ),
+    true,
+  );
   let (_pods_tx, pods_rx) = watch::channel(pods_info);
 
   let helper = Helper::new_with_k8s(
@@ -396,15 +405,18 @@ async fn tcp_k8s_prebuffer() {
   let bind_resolver = HelperBindResolver::new(&["fake_upstream", "inflow:tcp"], &[]).await;
   let mut upstream = FakeWireUpstream::new("fake_upstream", bind_resolver.clone()).await;
   let mut pods_info = PodsInfo::default();
-  pods_info.insert(make_pod_info(
-    "default",
-    "pod_a",
-    &btreemap!("foo" => "bar"),
-    btreemap!("foo" => "baz"),
-    HashMap::default(),
-    "127.0.0.1",
-    vec![],
-  ));
+  pods_info.insert(
+    make_pod_info(
+      "default",
+      "pod_a",
+      &btreemap!("foo" => "bar"),
+      btreemap!("foo" => "baz"),
+      HashMap::default(),
+      "127.0.0.1",
+      vec![],
+    ),
+    true,
+  );
   let (_pods_tx, pods_rx) = watch::channel(pods_info);
 
   let helper = Helper::new_with_k8s(
@@ -469,15 +481,18 @@ async fn tcp_k8s_prebuffer_early_shutdown() {
   let bind_resolver = HelperBindResolver::new(&["fake_upstream", "inflow:tcp"], &[]).await;
   let mut upstream = FakeWireUpstream::new("fake_upstream", bind_resolver.clone()).await;
   let mut pods_info = PodsInfo::default();
-  pods_info.insert(make_pod_info(
-    "default",
-    "pod_a",
-    &btreemap!("foo" => "bar"),
-    btreemap!("foo" => "baz"),
-    HashMap::default(),
-    "127.0.0.1",
-    vec![],
-  ));
+  pods_info.insert(
+    make_pod_info(
+      "default",
+      "pod_a",
+      &btreemap!("foo" => "bar"),
+      btreemap!("foo" => "baz"),
+      HashMap::default(),
+      "127.0.0.1",
+      vec![],
+    ),
+    true,
+  );
   let (_pods_tx, pods_rx) = watch::channel(pods_info);
 
   let helper = Helper::new_with_k8s(
@@ -560,15 +575,18 @@ async fn tcp_k8s_always_prebuffer() {
   let bind_resolver = HelperBindResolver::new(&["fake_upstream", "inflow:tcp"], &[]).await;
   let mut upstream = FakeWireUpstream::new("fake_upstream", bind_resolver.clone()).await;
   let mut pods_info = PodsInfo::default();
-  pods_info.insert(make_pod_info(
-    "default",
-    "pod_a",
-    &btreemap!("foo" => "bar"),
-    btreemap!("foo" => "baz"),
-    HashMap::default(),
-    "127.0.0.1",
-    vec![],
-  ));
+  pods_info.insert(
+    make_pod_info(
+      "default",
+      "pod_a",
+      &btreemap!("foo" => "bar"),
+      btreemap!("foo" => "baz"),
+      HashMap::default(),
+      "127.0.0.1",
+      vec![],
+    ),
+    true,
+  );
   let (_pods_tx, pods_rx) = watch::channel(pods_info);
 
   let helper = Helper::new_with_k8s(

@@ -212,15 +212,18 @@ async fn scrape_path() {
 #[tokio::test]
 async fn multiple_ports() {
   let mut initial_state = PodsInfo::default();
-  initial_state.insert(make_pod_info(
-    "some-namespace",
-    "my-awesome-pod",
-    &btreemap!(),
-    btreemap!("prometheus.io/scrape" => "true", "prometheus.io/port" => "123,124"),
-    HashMap::new(),
-    "127.0.0.1",
-    vec![],
-  ));
+  initial_state.insert(
+    make_pod_info(
+      "some-namespace",
+      "my-awesome-pod",
+      &btreemap!(),
+      btreemap!("prometheus.io/scrape" => "true", "prometheus.io/port" => "123,124"),
+      HashMap::new(),
+      "127.0.0.1",
+      vec![],
+    ),
+    true,
+  );
   let (_tx, rx) = tokio::sync::watch::channel(initial_state);
   let pods_info = Arc::new(PodsInfoSingleton::new(rx, make_node_info().into())).make_owned();
   let mut target = KubePodTarget {
@@ -241,15 +244,18 @@ async fn multiple_ports() {
 #[tokio::test]
 async fn multiple_ports_with_space() {
   let mut initial_state = PodsInfo::default();
-  initial_state.insert(make_pod_info(
-    "some-namespace",
-    "my-awesome-pod",
-    &btreemap!(),
-    btreemap!("prometheus.io/scrape" => "true", "prometheus.io/port" => "123, 124"),
-    HashMap::new(),
-    "127.0.0.1",
-    vec![],
-  ));
+  initial_state.insert(
+    make_pod_info(
+      "some-namespace",
+      "my-awesome-pod",
+      &btreemap!(),
+      btreemap!("prometheus.io/scrape" => "true", "prometheus.io/port" => "123, 124"),
+      HashMap::new(),
+      "127.0.0.1",
+      vec![],
+    ),
+    true,
+  );
   let (_tx, rx) = tokio::sync::watch::channel(initial_state);
   let pods_info = Arc::new(PodsInfoSingleton::new(rx, make_node_info().into())).make_owned();
   let mut target = KubePodTarget {
@@ -270,15 +276,18 @@ async fn multiple_ports_with_space() {
 #[tokio::test]
 async fn annotation_inclusion_filter() {
   let mut initial_state = PodsInfo::default();
-  initial_state.insert(make_pod_info(
-    "some-namespace",
-    "my-awesome-pod",
-    &btreemap!(),
-    btreemap!("match_annotation" => "true", "port_annotation" => "123"),
-    HashMap::new(),
-    "127.0.0.1",
-    vec![],
-  ));
+  initial_state.insert(
+    make_pod_info(
+      "some-namespace",
+      "my-awesome-pod",
+      &btreemap!(),
+      btreemap!("match_annotation" => "true", "port_annotation" => "123"),
+      HashMap::new(),
+      "127.0.0.1",
+      vec![],
+    ),
+    true,
+  );
   let (_tx, rx) = tokio::sync::watch::channel(initial_state);
   let pods_info = Arc::new(PodsInfoSingleton::new(rx, make_node_info().into())).make_owned();
   let mut target = KubePodTarget {
@@ -304,28 +313,31 @@ async fn annotation_inclusion_filter() {
 #[tokio::test]
 async fn inclusion_filters() {
   let mut initial_state = PodsInfo::default();
-  initial_state.insert(make_pod_info(
-    "some-namespace",
-    "my-awesome-pod",
-    &btreemap!(),
-    btreemap!(),
-    HashMap::new(),
-    "127.0.0.1",
-    vec![
-      ContainerPort {
-        name: "scrape_hello".to_string(),
-        port: 123,
-      },
-      ContainerPort {
-        name: "scrape_world".to_string(),
-        port: 124,
-      },
-      ContainerPort {
-        name: "other".to_string(),
-        port: 125,
-      },
-    ],
-  ));
+  initial_state.insert(
+    make_pod_info(
+      "some-namespace",
+      "my-awesome-pod",
+      &btreemap!(),
+      btreemap!(),
+      HashMap::new(),
+      "127.0.0.1",
+      vec![
+        ContainerPort {
+          name: "scrape_hello".to_string(),
+          port: 123,
+        },
+        ContainerPort {
+          name: "scrape_world".to_string(),
+          port: 124,
+        },
+        ContainerPort {
+          name: "other".to_string(),
+          port: 125,
+        },
+      ],
+    ),
+    true,
+  );
   let (_tx, rx) = tokio::sync::watch::channel(initial_state);
   let pods_info = Arc::new(PodsInfoSingleton::new(rx, make_node_info().into())).make_owned();
   let mut target = KubePodTarget {
@@ -435,15 +447,18 @@ async fn test_scheme_annotation() {
 #[tokio::test]
 async fn test_kube_pod_target_endpoint() {
   let mut initial_state = PodsInfo::default();
-  initial_state.insert(make_pod_info(
-    "some-namespace",
-    "my-awesome-pod",
-    &btreemap!(),
-    btreemap!("prometheus.io/scrape" => "true"),
-    HashMap::new(),
-    "127.0.0.1",
-    vec![],
-  ));
+  initial_state.insert(
+    make_pod_info(
+      "some-namespace",
+      "my-awesome-pod",
+      &btreemap!(),
+      btreemap!("prometheus.io/scrape" => "true"),
+      HashMap::new(),
+      "127.0.0.1",
+      vec![],
+    ),
+    true,
+  );
 
   let (_tx, rx) = tokio::sync::watch::channel(initial_state);
   let pods_info = Arc::new(PodsInfoSingleton::new(rx, make_node_info().into())).make_owned();
@@ -696,15 +711,18 @@ async fn test_kube_endpoints_target_auth_matchers() {
       selector: btreemap!(),
     }),
   );
-  initial_state.insert(make_pod_info(
-    "some-namespace",
-    "my-awesome-pod",
-    &btreemap!(),
-    btreemap!("auth-annotation" => "true"),
-    services,
-    "127.0.0.1",
-    vec![],
-  ));
+  initial_state.insert(
+    make_pod_info(
+      "some-namespace",
+      "my-awesome-pod",
+      &btreemap!(),
+      btreemap!("auth-annotation" => "true"),
+      services,
+      "127.0.0.1",
+      vec![],
+    ),
+    true,
+  );
 
   let (_tx, rx) = tokio::sync::watch::channel(initial_state);
   let pods_info = Arc::new(PodsInfoSingleton::new(rx, make_node_info().into())).make_owned();
