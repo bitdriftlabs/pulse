@@ -12,6 +12,7 @@ import "pulse/config/processor/v1/aggregation.proto";
 import "pulse/config/processor/v1/buffer.proto";
 import "pulse/config/processor/v1/cardinality_limiter.proto";
 import "pulse/config/processor/v1/cardinality_tracker.proto";
+import "pulse/config/processor/v1/drop.proto";
 import "pulse/config/processor/v1/elision.proto";
 import "pulse/config/processor/v1/internode.proto";
 import "pulse/config/processor/v1/mutate.proto";
@@ -42,5 +43,6 @@ message ProcessorConfig {
     CardinalityLimiterConfig cardinality_limiter = 10;
     RegexConfig regex = 11;
     CardinalityTrackerConfig cardinality_tracker = 12;
+    DropProcessorConfig drop = 13;
   }
 }
