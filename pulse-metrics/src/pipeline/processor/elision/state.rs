@@ -88,7 +88,7 @@ impl State {
 
   fn update(
     &mut self,
-    metric: &Metric,
+    metric: &ParsedMetric,
     metric_filters: &[DynamicMetricFilter],
   ) -> (FilterDecision, Option<usize>) {
     let (filter_decision, filter_index, saw_initializing) = metric_filters.iter().enumerate().fold(
@@ -112,9 +112,9 @@ impl State {
       },
     );
 
-    self.last_value = Some(metric.value.clone());
-    self.last_type = metric.get_id().mtype();
-    self.last_timestamp = metric.timestamp;
+    self.last_value = Some(metric.metric().value.clone());
+    self.last_type = metric.metric().get_id().mtype();
+    self.last_timestamp = metric.metric().timestamp;
 
     let seconds_since_last_emitted = self
       .last_timestamp
@@ -285,7 +285,7 @@ impl ElisionState {
     let mut state = state.lock();
     let (filter_decision, index) = {
       let _filter_time = self.stats.filter_time.start_timer();
-      state.update(metric.metric(), metric_filters)
+      state.update(metric, metric_filters)
     };
     let skip_decision = skip_decider.decide(metric.metric(), filter_decision, emit_override);
     state.update_last_elided_or_emitted(&skip_decision, metric.metric().timestamp);

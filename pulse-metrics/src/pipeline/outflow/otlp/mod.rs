@@ -7,7 +7,8 @@
 
 use super::http::remote_write::{BatchRouter, DefaultBatchRouter, HttpRemoteWriteOutflow};
 use super::{OutflowFactoryContext, OutflowStats};
-use crate::protos::metric::{CounterType, MetricType, ParsedMetric, TagValue};
+use crate::protos::metric::{CounterType, MetricType, ParsedMetric};
+use crate::protos::prom::prom_name;
 use bd_log::warn_every;
 use bd_shutdown::ComponentShutdown;
 use bytes::Bytes;
@@ -47,7 +48,9 @@ pub fn make_otlp_batch_router(
   shutdown: ComponentShutdown,
 ) -> Arc<dyn BatchRouter> {
   let compression = config.compression.enum_value_or_default();
-  let finisher = Arc::new(move |samples| finish_otlp_batch(samples, compression));
+  let convert_names_to_prom = config.convert_names_to_prometheus;
+  let finisher =
+    Arc::new(move |samples| finish_otlp_batch(samples, compression, convert_names_to_prom));
 
   Arc::new(DefaultBatchRouter::new(
     config.batch_max_samples,
@@ -89,12 +92,21 @@ pub async fn make_otlp_outflow(
   .await
 }
 
-fn tags_to_key_value(tags: &[TagValue]) -> Vec<KeyValue> {
-  tags
+fn tags_to_key_value(metric: &ParsedMetric, convert_names_to_prom: bool) -> Vec<KeyValue> {
+  metric
+    .metric()
+    .get_id()
+    .tags()
     .iter()
     .filter_map(|tag| {
       Some(KeyValue {
-        key: Chars::from_bytes(tag.tag.clone()).ok()?,
+        key: Chars::from_bytes(prom_name(
+          &tag.tag,
+          b'_',
+          convert_names_to_prom,
+          metric.source(),
+        ))
+        .ok()?,
         value: Some(AnyValue {
           value: Some(Value::StringValue(
             Chars::from_bytes(tag.value.clone()).ok()?,
@@ -112,11 +124,12 @@ fn make_simple_metric(
   samples: Vec<ParsedMetric>,
   name: Bytes,
   mtype: MetricType,
+  convert_names_to_prom: bool,
 ) -> Option<Metric> {
   let data_points = samples
     .into_iter()
     .map(|sample| NumberDataPoint {
-      attributes: tags_to_key_value(sample.metric().get_id().tags()),
+      attributes: tags_to_key_value(&sample, convert_names_to_prom),
       time_unix_nano: sample.metric().timestamp * 1_000_000_000,
       value: Some(number_data_point::Value::AsDouble(
         sample.metric().value.to_simple(),
@@ -148,7 +161,11 @@ fn make_simple_metric(
   })
 }
 
-fn make_histogram_metric(samples: Vec<ParsedMetric>, name: Bytes) -> Option<Metric> {
+fn make_histogram_metric(
+  samples: Vec<ParsedMetric>,
+  name: Bytes,
+  convert_names_to_prom: bool,
+) -> Option<Metric> {
   let data_points = samples
     .into_iter()
     .map(|sample| {
@@ -172,7 +189,7 @@ fn make_histogram_metric(samples: Vec<ParsedMetric>, name: Bytes) -> Option<Metr
       }
 
       HistogramDataPoint {
-        attributes: tags_to_key_value(sample.metric().get_id().tags()),
+        attributes: tags_to_key_value(&sample, convert_names_to_prom),
         time_unix_nano: sample.metric().timestamp * 1_000_000_000,
         count: histogram.sample_count.lossy_to_u64(),
         sum: Some(histogram.sample_sum),
@@ -194,7 +211,11 @@ fn make_histogram_metric(samples: Vec<ParsedMetric>, name: Bytes) -> Option<Metr
   })
 }
 
-fn make_summary_metric(samples: Vec<ParsedMetric>, name: Bytes) -> Option<Metric> {
+fn make_summary_metric(
+  samples: Vec<ParsedMetric>,
+  name: Bytes,
+  convert_names_to_prom: bool,
+) -> Option<Metric> {
   let data_points = samples
     .into_iter()
     .map(|sample| {
@@ -210,7 +231,7 @@ fn make_summary_metric(samples: Vec<ParsedMetric>, name: Bytes) -> Option<Metric
         .collect();
 
       SummaryDataPoint {
-        attributes: tags_to_key_value(sample.metric().get_id().tags()),
+        attributes: tags_to_key_value(&sample, convert_names_to_prom),
         time_unix_nano: sample.metric().timestamp * 1_000_000_000,
         count: summary.sample_count.lossy_to_u64(),
         sum: summary.sample_sum,
@@ -231,7 +252,11 @@ fn make_summary_metric(samples: Vec<ParsedMetric>, name: Bytes) -> Option<Metric
 }
 
 #[must_use]
-pub fn finish_otlp_batch(samples: Vec<ParsedMetric>, compression: OtlpCompression) -> Bytes {
+pub fn finish_otlp_batch(
+  samples: Vec<ParsedMetric>,
+  compression: OtlpCompression,
+  convert_names_to_prom: bool,
+) -> Bytes {
   let metrics_by_name_and_type: HashMap<(Bytes, MetricType), Vec<ParsedMetric>> =
     samples.into_iter().fold(HashMap::new(), |mut acc, sample| {
       let key = (
@@ -248,12 +273,15 @@ pub fn finish_otlp_batch(samples: Vec<ParsedMetric>, compression: OtlpCompressio
 
   let mut metrics = Vec::new();
   for ((name, mtype), samples) in metrics_by_name_and_type {
+    // For right now we assume all samples come from the same source for the perspective of name
+    // conversion. This is not necessarily true.
+    let name = prom_name(&name, b':', convert_names_to_prom, samples[0].source());
     let metric = match mtype {
       MetricType::Gauge | MetricType::DirectGauge | MetricType::Counter(_) => {
-        make_simple_metric(samples, name, mtype)
+        make_simple_metric(samples, name, mtype, convert_names_to_prom)
       },
-      MetricType::Histogram => make_histogram_metric(samples, name),
-      MetricType::Summary => make_summary_metric(samples, name),
+      MetricType::Histogram => make_histogram_metric(samples, name, convert_names_to_prom),
+      MetricType::Summary => make_summary_metric(samples, name, convert_names_to_prom),
       MetricType::DeltaGauge | MetricType::Timer | MetricType::BulkTimer => {
         warn_every!(1.minutes(), "unsupported OTLP metric type: {:?}", mtype);
         None

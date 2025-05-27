@@ -28,6 +28,7 @@ use crate::protos::prom::{
   make_timeseries,
   to_write_request,
 };
+use crate::test::{make_gauge, make_metric_ex};
 use assert_matches::assert_matches;
 use bd_proto::protos::prometheus::prompb;
 use config::inflow::v1::prom_remote_write::prom_remote_write_server_config::ParseConfig;
@@ -57,6 +58,44 @@ fn invalid_histogram_or_summary() {
     &errors[0],
     ParseError::PromRemoteWrite(message)
       if message == "foo: invalid histogram or summary timeseries"
+  );
+}
+
+#[test]
+fn name_conversion() {
+  let metric = make_metric_ex(
+    "foo.bar",
+    &[("tag1", "value1"), ("tag2.with.dots", "value2")],
+    1,
+    Some(MetricType::Gauge),
+    None,
+    MetricValue::Simple(1.0),
+    MetricSource::Aggregation { prom_source: false },
+    DownstreamId::LocalOrigin,
+    None,
+  );
+  let write_request = to_write_request(
+    vec![metric],
+    &ToWriteRequestOptions {
+      metadata: MetadataType::Normal,
+      convert_name: true,
+    },
+    &ChangedTypeTracker::new_for_test(),
+  );
+  let (metrics, errors) = from_write_request(write_request, &ParseConfig::default());
+  assert!(errors.is_empty());
+  assert_eq!(
+    metrics,
+    vec![
+      make_gauge(
+        "foo:bar",
+        &[("tag1", "value1"), ("tag2_with_dots", "value2")],
+        1,
+        1.0
+      )
+      .into_metric()
+      .0
+    ]
   );
 }
 

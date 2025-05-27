@@ -5,7 +5,7 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
-use crate::protos::metric::{Metric, MetricType, MetricValue};
+use crate::protos::metric::{MetricType, MetricValue, ParsedMetric};
 
 //
 // MetricFilterDecision
@@ -26,7 +26,7 @@ pub enum MetricFilterDecision {
 pub trait MetricFilter {
   fn decide(
     &self,
-    metric: &Metric,
+    metric: &ParsedMetric,
     last_value: &Option<MetricValue>,
     last_value_type: Option<MetricType>,
   ) -> MetricFilterDecision;
@@ -58,7 +58,7 @@ impl SimpleMetricFilter {
 impl MetricFilter for SimpleMetricFilter {
   fn decide(
     &self,
-    _: &Metric,
+    _: &ParsedMetric,
     _: &Option<MetricValue>,
     _: Option<MetricType>,
   ) -> MetricFilterDecision {

@@ -30,6 +30,7 @@ const fn complete(size: usize) -> Option<TestBatchResult> {
   Some(TestBatchResult::Complete(size))
 }
 
+#[allow(clippy::single_option_map)]
 fn map_return(batches: Option<Vec<TestBatch>>) -> Option<Vec<Vec<&'static str>>> {
   batches.map(|b| b.into_iter().map(|b| b.items).collect())
 }

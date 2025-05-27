@@ -339,7 +339,7 @@ impl SocketHandler {
           Err(std::io::Error::new(ErrorKind::TimedOut, "read timeout"))
         }
         () = shutdown.cancelled() => {
-          Err(std::io::Error::new(ErrorKind::Other, "shutting down"))
+          Err(std::io::Error::other("shutting down"))
         }
         () = async {
           self.pre_buffer.as_mut().unwrap().sleep.as_mut().await;

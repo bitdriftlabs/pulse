@@ -47,4 +47,11 @@ message OtlpClientConfig {
 
   // Compression to use. Defaults to SNAPPY.
   OtlpCompression compression = 9;
+
+  // If sending OTLP to a backend that expects Prometheus-style names, convert the metric names to
+  // Prometheus format:
+  // https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
+  // For tags invalid characters will be replaced with '_'. For names, '.' will be replaced with ':'
+  // and other invalid characters will be replaced with '_'.
+  bool convert_names_to_prometheus = 10;
 }

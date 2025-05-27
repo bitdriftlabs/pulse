@@ -49,6 +49,7 @@ OTLP_INFLOW = r#"
       otlp:
         otlp:
           send_to: "http://{fake_upstream}/v1/metrics"
+          convert_names_to_prometheus: true
   "#;
 }
 
@@ -82,13 +83,13 @@ async fn otlp() {
     .send(vec![
       make_metric("foo", &[], 1),
       make_gauge("bar", &[("hello", "world")], 2, 1.3),
-      make_abs_counter("baz", &[("hello1", "world1")], 3, 4.5),
+      make_abs_counter("baz.something", &[("hello1.blah", "world1")], 3, 4.5),
     ])
     .await;
   assert_eq!(
     vec![
       make_gauge("bar", &[("hello", "world")], 2, 1.3),
-      make_abs_counter("baz", &[("hello1", "world1")], 3, 4.5),
+      make_abs_counter("baz:something", &[("hello1_blah", "world1")], 3, 4.5),
       make_gauge("foo", &[], 1, 0.0),
     ],
     upstream.wait_for_metrics().await.1
