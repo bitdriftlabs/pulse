@@ -53,12 +53,17 @@ fn mock_metric(
   metric_type: Option<MetricType>,
   value: f64,
   timestamp: u64,
-) -> Metric {
-  Metric::new(
-    MetricId::new(name, metric_type, vec![], false).unwrap(),
-    None,
-    timestamp,
-    MetricValue::Simple(value),
+) -> ParsedMetric {
+  ParsedMetric::new(
+    Metric::new(
+      MetricId::new(name, metric_type, vec![], false).unwrap(),
+      None,
+      timestamp,
+      MetricValue::Simple(value),
+    ),
+    MetricSource::PromRemoteWrite,
+    Instant::now(),
+    DownstreamId::LocalOrigin,
   )
 }
 
@@ -66,15 +71,9 @@ fn mock_parsed_metric(
   name: bytes::Bytes,
   value: f64,
   timestamp: u64,
-  received_at: Instant,
   metric_cache: &Arc<MetricCache>,
 ) -> ParsedMetric {
-  let mut parsed_metric = ParsedMetric::new(
-    mock_metric(name, None, value, timestamp),
-    MetricSource::PromRemoteWrite,
-    received_at,
-    DownstreamId::LocalOrigin,
-  );
+  let mut parsed_metric = mock_metric(name, None, value, timestamp);
   parsed_metric.initialize_cache(metric_cache);
   parsed_metric
 }
@@ -218,7 +217,7 @@ fn explicit_skip_decider_with_n_secs() {
   let mut ts = 0;
   let mut up = || -> SkipDecision {
     let result = d.decide(
-      &mock_metric(Bytes::default(), None, 10_f64, ts),
+      mock_metric(Bytes::default(), None, 10_f64, ts).metric(),
       FilterDecision::PeriodicOutput(PeriodicOutputState {
         successive_fails: 0,
         seconds_since_last_emitted: 0,
@@ -261,7 +260,7 @@ fn explicit_skip_decider_with_metric_filter() {
     ts += 1;
     let metric_filters: Vec<DynamicMetricFilter> = vec![mock_filter(v, "")];
     d.decide(
-      &mock_metric(Bytes::default(), None, 10_f64, ts),
+      mock_metric(Bytes::default(), None, 10_f64, ts).metric(),
       s.update(
         &mock_metric(Bytes::default(), None, 10_f64, ts),
         &metric_filters,
@@ -290,7 +289,7 @@ fn explicit_skip_decider_emit_interval() {
     ts += 20;
     let metric_filters: Vec<DynamicMetricFilter> = vec![mock_filter(v, "")];
     let decision = d.decide(
-      &mock_metric(Bytes::default(), None, 0_f64, ts),
+      mock_metric(Bytes::default(), None, 0_f64, ts).metric(),
       s.update(
         &mock_metric(Bytes::default(), None, 0_f64, ts),
         &metric_filters,
@@ -320,7 +319,7 @@ fn state_skip_decider() {
   let mut outputs = 0;
   for t in 0 .. 100 {
     match d.decide(
-      &mock_metric(Bytes::default(), None, 0_f64, t),
+      mock_metric(Bytes::default(), None, 0_f64, t).metric(),
       s.update(
         &mock_metric(Bytes::default(), None, 0_f64, t),
         &[Arc::new(ZeroFilter::new("", &ZeroElisionConfig::default()))],
@@ -351,7 +350,7 @@ fn state_skip_decider_init() {
   let mut outputs = 0;
   for t in 0 .. 100 {
     match d.decide(
-      &mock_metric(Bytes::default(), None, 0_f64, t),
+      mock_metric(Bytes::default(), None, 0_f64, t).metric(),
       s.update(
         &mock_metric(Bytes::default(), None, 0_f64, t),
         &[
@@ -388,10 +387,9 @@ fn overflow() {
   let metric_filters: Vec<DynamicMetricFilter> =
     vec![Arc::new(ZeroFilter::new("", &ZeroElisionConfig::default()))];
   let skip_decider = SkipDecider::new(make_emit_interval(1));
-  let now = Instant::now();
   assert_eq!(
     map.update_and_decide(
-      &mock_parsed_metric("hello".to_string().into(), 1_f64, 0, now, &metric_cache),
+      &mock_parsed_metric("hello".to_string().into(), 1_f64, 0, &metric_cache),
       &metric_filters,
       &skip_decider,
       None,
@@ -400,7 +398,7 @@ fn overflow() {
   );
   assert_eq!(
     map.update_and_decide(
-      &mock_parsed_metric("world".to_string().into(), 1_f64, 0, now, &metric_cache),
+      &mock_parsed_metric("world".to_string().into(), 1_f64, 0, &metric_cache),
       &metric_filters,
       &skip_decider,
       None,
@@ -423,10 +421,9 @@ fn elision_map() {
   let scope = Collector::default().scope("test");
   let metric_cache = MetricCache::new(&scope, None);
   let map = ElisionState::new(metric_cache.clone(), &scope.scope("elision"));
-  let now = Instant::now();
   assert_eq!(
     map.update_and_decide(
-      &mock_parsed_metric(name.clone(), 1_f64, 0, now, &metric_cache),
+      &mock_parsed_metric(name.clone(), 1_f64, 0, &metric_cache),
       &metric_filters,
       &skip_decider,
       None,
@@ -437,7 +434,7 @@ fn elision_map() {
   for ts in 1 .. 100 {
     assert_eq!(
       map.update_and_decide(
-        &mock_parsed_metric(name.clone(), 1_f64, ts, now, &metric_cache),
+        &mock_parsed_metric(name.clone(), 1_f64, ts, &metric_cache),
         &metric_filters,
         &skip_decider,
         None,
@@ -448,7 +445,7 @@ fn elision_map() {
   // Out of order timestamps shouldn't be covered
   assert_eq!(
     map.update_and_decide(
-      &mock_parsed_metric(name.clone(), 0_f64, 100, now, &metric_cache),
+      &mock_parsed_metric(name.clone(), 0_f64, 100, &metric_cache),
       &metric_filters,
       &skip_decider,
       None,
@@ -459,7 +456,7 @@ fn elision_map() {
   for ts in 101 .. 200 {
     match map
       .update_and_decide(
-        &mock_parsed_metric(name.clone(), 0_f64, ts, now, &metric_cache),
+        &mock_parsed_metric(name.clone(), 0_f64, ts, &metric_cache),
         &metric_filters,
         &skip_decider,
         None,
@@ -472,7 +469,7 @@ fn elision_map() {
   }
   let r = map
     .update_and_decide(
-      &mock_parsed_metric(name, 0_f64, 200, now, &metric_cache),
+      &mock_parsed_metric(name, 0_f64, 200, &metric_cache),
       &metric_filters,
       &skip_decider,
       None,

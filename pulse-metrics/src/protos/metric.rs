@@ -20,7 +20,7 @@ use super::prom::{
 use super::statsd::to_statsd_line;
 use crate::pipeline::metric_cache::{CachedMetric, MetricCache};
 use bd_proto::protos::prometheus::prompb::remote::WriteRequest;
-use bytes::{BufMut, Bytes, BytesMut};
+use bytes::Bytes;
 use config::common::v1::common::WireProtocol;
 use config::common::v1::common::wire_protocol::Protocol_type;
 use config::inflow::v1::prom_remote_write::prom_remote_write_server_config::ParseConfig;
@@ -176,25 +176,6 @@ impl MetricId {
       .binary_search_by(|t| t.tag.as_ref().cmp(tag_name.as_bytes()))
       .ok()
       .map(|i| &self.tags[i])
-  }
-
-  pub fn prom_name(&self) -> bytes::Bytes {
-    let mut b = BytesMut::with_capacity(self.name.len());
-    for c in &self.name {
-      let new_c: u8 = match *c {
-        // Statsd to prom separator.
-        b'.' | b':' => b':',
-        // "[^a-zA-Z0-9:_]" are valid.
-        b'_' => b'_',
-        c if c.is_ascii_digit() => c,
-        c if c.is_ascii_lowercase() => c,
-        c if c.is_ascii_uppercase() => c,
-        // All invalid convert to underscore.
-        _ => b'_',
-      };
-      b.put_u8(new_c);
-    }
-    b.freeze()
   }
 
   pub fn into_parts(self) -> (bytes::Bytes, Option<MetricType>, Vec<TagValue>) {
@@ -762,8 +743,8 @@ impl ParsedMetric {
     &self.metric
   }
 
-  pub fn into_metric(self) -> Metric {
-    self.metric
+  pub fn into_metric(self) -> (Metric, MetricSource) {
+    (self.metric, self.source)
   }
 
   pub const fn received_at(&self) -> Instant {

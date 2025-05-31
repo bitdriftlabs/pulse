@@ -53,6 +53,8 @@ pub struct OtlpClientConfig {
     pub retry_policy: ::protobuf::MessageField<super::retry::RetryPolicy>,
     // @@protoc_insertion_point(field:pulse.config.outflow.v1.OtlpClientConfig.compression)
     pub compression: ::protobuf::EnumOrUnknown<otlp_client_config::OtlpCompression>,
+    // @@protoc_insertion_point(field:pulse.config.outflow.v1.OtlpClientConfig.convert_names_to_prometheus)
+    pub convert_names_to_prometheus: bool,
     // special fields
     // @@protoc_insertion_point(special_field:pulse.config.outflow.v1.OtlpClientConfig.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -70,7 +72,7 @@ impl OtlpClientConfig {
     }
 
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(9);
+        let mut fields = ::std::vec::Vec::with_capacity(10);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "send_to",
@@ -117,6 +119,11 @@ impl OtlpClientConfig {
             |m: &OtlpClientConfig| { &m.compression },
             |m: &mut OtlpClientConfig| { &mut m.compression },
         ));
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+            "convert_names_to_prometheus",
+            |m: &OtlpClientConfig| { &m.convert_names_to_prometheus },
+            |m: &mut OtlpClientConfig| { &mut m.convert_names_to_prometheus },
+        ));
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<OtlpClientConfig>(
             "OtlpClientConfig",
             fields,
@@ -162,6 +169,9 @@ impl ::protobuf::Message for OtlpClientConfig {
                 72 => {
                     self.compression = is.read_enum_or_unknown()?;
                 },
+                80 => {
+                    self.convert_names_to_prometheus = is.read_bool()?;
+                },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                 },
@@ -206,6 +216,9 @@ impl ::protobuf::Message for OtlpClientConfig {
         if self.compression != ::protobuf::EnumOrUnknown::new(otlp_client_config::OtlpCompression::SNAPPY) {
             my_size += ::protobuf::rt::int32_size(9, self.compression.value());
         }
+        if self.convert_names_to_prometheus != false {
+            my_size += 1 + 1;
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
         my_size
@@ -239,6 +252,9 @@ impl ::protobuf::Message for OtlpClientConfig {
         if self.compression != ::protobuf::EnumOrUnknown::new(otlp_client_config::OtlpCompression::SNAPPY) {
             os.write_enum(9, ::protobuf::EnumOrUnknown::value(&self.compression))?;
         }
+        if self.convert_names_to_prometheus != false {
+            os.write_bool(10, self.convert_names_to_prometheus)?;
+        }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
     }
@@ -265,6 +281,7 @@ impl ::protobuf::Message for OtlpClientConfig {
         self.request_headers.clear();
         self.retry_policy.clear();
         self.compression = ::protobuf::EnumOrUnknown::new(otlp_client_config::OtlpCompression::SNAPPY);
+        self.convert_names_to_prometheus = false;
         self.special_fields.clear();
     }
 
@@ -279,6 +296,7 @@ impl ::protobuf::Message for OtlpClientConfig {
             request_headers: ::std::vec::Vec::new(),
             retry_policy: ::protobuf::MessageField::none(),
             compression: ::protobuf::EnumOrUnknown::from_i32(0),
+            convert_names_to_prometheus: false,
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -372,7 +390,7 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x1a#pulse/config/common/v1/common.proto\x1a\"pulse/config/common/v1/ret\
     ry.proto\x1a*pulse/config/outflow/v1/queue_policy.proto\x1a,pulse/config\
     /outflow/v1/outflow_common.proto\x1a\x1egoogle/protobuf/duration.proto\
-    \x1a\x17validate/validate.proto\"\xb4\x05\n\x10OtlpClientConfig\x12\x20\
+    \x1a\x17validate/validate.proto\"\xf3\x05\n\x10OtlpClientConfig\x12\x20\
     \n\x07send_to\x18\x01\x20\x01(\tR\x06sendToB\x07\xfaB\x04r\x02\x10\x01\
     \x12L\n\x0frequest_timeout\x18\x02\x20\x01(\x0b2\x19.google.protobuf.Dur\
     ationR\x0erequestTimeoutB\x08\xfaB\x05\xaa\x01\x02*\0\x12'\n\rmax_in_fli\
@@ -385,9 +403,10 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     estHeaders\x12F\n\x0cretry_policy\x18\x08\x20\x01(\x0b2#.pulse.config.co\
     mmon.v1.RetryPolicyR\x0bretryPolicy\x12[\n\x0bcompression\x18\t\x20\x01(\
     \x0e29.pulse.config.outflow.v1.OtlpClientConfig.OtlpCompressionR\x0bcomp\
-    ression\"'\n\x0fOtlpCompression\x12\n\n\x06SNAPPY\x10\0\x12\x08\n\x04NON\
-    E\x10\x01B\x10\n\x0e_max_in_flightB\x14\n\x12_batch_max_samplesb\x06prot\
-    o3\
+    ression\x12=\n\x1bconvert_names_to_prometheus\x18\n\x20\x01(\x08R\x18con\
+    vertNamesToPrometheus\"'\n\x0fOtlpCompression\x12\n\n\x06SNAPPY\x10\0\
+    \x12\x08\n\x04NONE\x10\x01B\x10\n\x0e_max_in_flightB\x14\n\x12_batch_max\
+    _samplesb\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file

@@ -293,14 +293,11 @@ impl MetaStatsSender for PromRemoteWriteMetaStatsSender {
         {
           Ok(()) => Ok(()),
           Err(e) => {
-            let translated_e = Error::new(
-              ErrorKind::Other,
-              format!(
-                "request (size={}) failed: {}",
-                compressed_write_request.len(),
-                e
-              ),
-            );
+            let translated_e = Error::other(format!(
+              "request (size={}) failed: {}",
+              compressed_write_request.len(),
+              e
+            ));
             if should_retry(&e) {
               Err(backoff::Error::transient(translated_e))
             } else {

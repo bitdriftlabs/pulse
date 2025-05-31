@@ -627,7 +627,7 @@ impl OtlpClient {
   }
 
   async fn send(&self, metrics: Vec<ParsedMetric>) {
-    let write_request = finish_otlp_batch(metrics, OtlpCompression::NONE);
+    let write_request = finish_otlp_batch(metrics, OtlpCompression::NONE, false);
     self
       .client
       .send_write_request(write_request, None)

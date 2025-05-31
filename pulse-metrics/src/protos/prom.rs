@@ -30,7 +30,7 @@ use super::metric::{
 use bd_log::warn_every;
 use bd_proto::protos::prometheus::prompb;
 use bd_server_stats::stats::{Collector, Scope};
-use bytes::Bytes;
+use bytes::{BufMut, Bytes, BytesMut};
 use config::inflow::v1::prom_remote_write::prom_remote_write_server_config::ParseConfig;
 use itertools::Itertools;
 use parking_lot::Mutex;
@@ -48,6 +48,44 @@ type HashMap<Key, Value> = std::collections::HashMap<Key, Value, ahash::RandomSt
 
 // https://docs.google.com/document/d/1LPhVRSFkGNSuU1fBd81ulhsCPR4hkSZyyBj1SZ8fWOM/edit#heading=h.hfqkr2527w2g
 const STALE_MARKER_BITS: u64 = 0x7ff0_0000_0000_0002;
+
+pub fn prom_name(
+  input: &Bytes,
+  translate_dot_colon_to: u8,
+  convert_name: bool,
+  source: &MetricSource,
+) -> Bytes {
+  if convert_name {
+    match source {
+      MetricSource::Carbon(_)
+      | MetricSource::Statsd(_)
+      | MetricSource::Aggregation { prom_source: false }
+      | MetricSource::Otlp => {
+        let mut b = BytesMut::with_capacity(input.len());
+        for c in input {
+          let new_c: u8 = match *c {
+            // Statsd to prom separator.
+            b'.' | b':' => translate_dot_colon_to,
+            // "[^a-zA-Z0-9:_]" are valid.
+            b'_' => b'_',
+            c if c.is_ascii_digit() => c,
+            c if c.is_ascii_lowercase() => c,
+            c if c.is_ascii_uppercase() => c,
+            // All invalid convert to underscore.
+            _ => b'_',
+          };
+          b.put_u8(new_c);
+        }
+        b.freeze()
+      },
+      MetricSource::PromRemoteWrite | MetricSource::Aggregation { prom_source: true } => {
+        input.clone()
+      },
+    }
+  } else {
+    input.clone()
+  }
+}
 
 // Convert stale marker bits to an f64. Note, this produces NaN which will never compare equal in
 // Rust.
@@ -823,19 +861,12 @@ fn unwrap_prom_timestamp(timestamp: i64) -> Result<u64, ParseError> {
 
 // Given an internal metric, create the prom metric family name.
 fn make_family_name(metric: &ParsedMetric, options: &ToWriteRequestOptions) -> Chars {
-  let metric_name_to_use = if options.convert_name {
-    match metric.source() {
-      MetricSource::Carbon(_)
-      | MetricSource::Statsd(_)
-      | MetricSource::Aggregation { prom_source: false }
-      | MetricSource::Otlp => metric.metric().get_id().prom_name(),
-      MetricSource::PromRemoteWrite | MetricSource::Aggregation { prom_source: true } => {
-        metric.metric().get_id().name().clone()
-      },
-    }
-  } else {
-    metric.metric().get_id().name().clone()
-  };
+  let metric_name_to_use = prom_name(
+    metric.metric().get_id().name(),
+    b':',
+    options.convert_name,
+    metric.source(),
+  );
   Chars::from_bytes(metric_name_to_use).unwrap_or_default()
 }
 
@@ -907,6 +938,8 @@ fn timeseries_for_summary_metric(
           tag: "quantile".into(),
           value: bucket.quantile.to_string().into(),
         }),
+        metric.source(),
+        options,
       ),
       WriteSampleValue::Simple(bucket.value),
       metric.metric().timestamp,
@@ -920,6 +953,8 @@ fn timeseries_for_summary_metric(
       metric.metric().get_id().tags().to_vec(),
       format!("{family_name}_count").into(),
       None,
+      metric.source(),
+      options,
     ),
     WriteSampleValue::Simple(summary.sample_count),
     metric.metric().timestamp,
@@ -932,6 +967,8 @@ fn timeseries_for_summary_metric(
       metric.metric().get_id().tags().to_vec(),
       format!("{family_name}_sum").into(),
       None,
+      metric.source(),
+      options,
     ),
     WriteSampleValue::Simple(summary.sample_sum),
     metric.metric().timestamp,
@@ -961,6 +998,8 @@ fn timeseries_for_histogram_metric(
           tag: "le".into(),
           value: bucket.le.to_string().into(),
         }),
+        metric.source(),
+        options,
       ),
       WriteSampleValue::Simple(bucket.count),
       metric.metric().timestamp,
@@ -977,6 +1016,8 @@ fn timeseries_for_histogram_metric(
         tag: "le".into(),
         value: "+Inf".into(),
       }),
+      metric.source(),
+      options,
     ),
     WriteSampleValue::Simple(histogram.sample_count),
     metric.metric().timestamp,
@@ -989,6 +1030,8 @@ fn timeseries_for_histogram_metric(
       metric.metric().get_id().tags().to_vec(),
       format!("{family_name}_count").into(),
       None,
+      metric.source(),
+      options,
     ),
     WriteSampleValue::Simple(histogram.sample_count),
     metric.metric().timestamp,
@@ -1001,6 +1044,8 @@ fn timeseries_for_histogram_metric(
       metric.metric().get_id().tags().to_vec(),
       format!("{family_name}_sum").into(),
       None,
+      metric.source(),
+      options,
     ),
     WriteSampleValue::Simple(histogram.sample_sum),
     metric.metric().timestamp,
@@ -1014,7 +1059,13 @@ fn final_tags_for_timeseries(
   mut tags: Vec<TagValue>,
   name: Chars,
   extra_tag: Option<TagValue>,
+  source: &MetricSource,
+  options: &ToWriteRequestOptions,
 ) -> Vec<TagValue> {
+  for tag in &mut tags {
+    tag.tag = prom_name(&tag.tag, b'_', options.convert_name, source);
+  }
+
   tags.push(TagValue {
     tag: "__name__".into(),
     value: name.into_bytes(),
@@ -1062,11 +1113,12 @@ fn timeseries_for_simple_metric(
   let family_name = make_family_name(&metric, options);
   update_metadata_map(metadata_map, &family_name, &metric, changed_type_tracker);
 
-  let (id, sample_rate, timestamp, value) = metric.into_metric().into_parts();
+  let (metric, source) = metric.into_metric();
+  let (id, sample_rate, timestamp, value) = metric.into_parts();
   let (_, mtype, tags) = id.into_parts();
   timeseries_common(
     timeseries_map,
-    final_tags_for_timeseries(tags, family_name, None),
+    final_tags_for_timeseries(tags, family_name, None, &source, options),
     // TODO(mattklein123): Should we make writing bulk timers vs. converting configurable?
     if Some(MetricType::BulkTimer) == mtype {
       let values = value.into_bulk_timer();

@@ -56,7 +56,7 @@ impl PreBuffer {
 
   pub fn buffer(&mut self, metrics: Vec<ParsedMetric>) {
     for metric in metrics {
-      let (metric_id, sample_rate, _, value) = metric.into_metric().into_parts();
+      let (metric_id, sample_rate, _, value) = metric.into_metric().0.into_parts();
       let mtype = metric_id.mtype();
 
       // The hash for MetricKey and MetricId will be consistent. We do the following with hashbrown

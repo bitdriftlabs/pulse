@@ -9,11 +9,14 @@ use crate::filters::filter::{MetricFilter, MetricFilterDecision};
 use crate::filters::zero::ZeroFilter;
 use crate::protos::metric::{
   CounterType,
+  DownstreamId,
   HistogramData,
   Metric,
   MetricId,
+  MetricSource,
   MetricType,
   MetricValue,
+  ParsedMetric,
   SummaryData,
 };
 use bytes::Bytes;
@@ -21,13 +24,19 @@ use elision_config::ZeroElisionConfig;
 use elision_config::zero_elision_config::counters::AbsoluteCounters;
 use elision_config::zero_elision_config::{Counters, Histograms};
 use pulse_protobuf::protos::pulse::config::processor::v1::elision::elision_config;
+use std::time::Instant;
 
-fn mock_metric(metric_value: MetricValue, mtype: Option<MetricType>) -> Metric {
-  Metric::new(
-    MetricId::new(Bytes::new(), mtype, vec![], false).unwrap(),
-    None,
-    1_660_557_239,
-    metric_value,
+fn mock_metric(metric_value: MetricValue, mtype: Option<MetricType>) -> ParsedMetric {
+  ParsedMetric::new(
+    Metric::new(
+      MetricId::new(Bytes::new(), mtype, vec![], false).unwrap(),
+      None,
+      1_660_557_239,
+      metric_value,
+    ),
+    MetricSource::PromRemoteWrite,
+    Instant::now(),
+    DownstreamId::LocalOrigin,
   )
 }
 

@@ -6,7 +6,7 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
 use bd_server_stats::stats::Collector;
-use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use elision::elision_config::emit_config::Emit_type;
 use elision::elision_config::{EmitConfig, ZeroElisionConfig};
 use pulse_metrics::filters::filter::DynamicMetricFilter;
@@ -18,6 +18,7 @@ use pulse_metrics::pipeline::processor::sampler::SamplerState;
 use pulse_metrics::pipeline::time::RealDurationJitter;
 use pulse_metrics::test::make_carbon_wire_protocol;
 use pulse_protobuf::protos::pulse::config::processor::v1::elision;
+use std::hint::black_box;
 use std::sync::Arc;
 use time::Duration;
 use time::ext::NumericalDuration;

@@ -8,7 +8,8 @@
 use super::filter::{MetricFilter, MetricFilterDecision};
 use crate::admin::server::{Admin, AdminHandlerHandle};
 use crate::file_watcher::{DynamicFileWatcher, get_file_watcher};
-use crate::protos::metric::{Metric, MetricType, MetricValue};
+use crate::protos::metric::{MetricType, MetricValue, ParsedMetric};
+use crate::protos::prom::prom_name;
 use axum::response::Response;
 use bd_server_stats::stats::Scope;
 use bd_shutdown::ComponentShutdown;
@@ -224,13 +225,13 @@ impl PollFilter {
     Ok(filter)
   }
 
-  pub fn decide(&self, metric: &Metric) -> MetricFilterDecision {
-    let metric_name = if self.prom {
-      metric.get_id().prom_name()
-    } else {
-      metric.get_id().name().clone()
-    };
-
+  pub fn decide(&self, metric: &ParsedMetric) -> MetricFilterDecision {
+    let metric_name = prom_name(
+      metric.metric().get_id().name(),
+      b':',
+      self.prom,
+      metric.source(),
+    );
     if self.provider.is_match(metric_name.as_ref()) {
       self.match_decision
     } else {
@@ -294,7 +295,7 @@ impl Drop for PollFilter {
 impl MetricFilter for PollFilter {
   fn decide(
     &self,
-    metric: &Metric,
+    metric: &ParsedMetric,
     _: &Option<MetricValue>,
     _: Option<MetricType>,
   ) -> MetricFilterDecision {

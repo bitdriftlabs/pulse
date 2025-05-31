@@ -5,9 +5,10 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
 use pulse_metrics::protos::carbon;
 use std::hash::{Hash, Hasher};
+use std::hint::black_box;
 
 fn criterion_benchmark(c: &mut Criterion) {
   let line: bytes::Bytes = r#"new-york.power.usage 42422 123456 source=local-_-host.edu data-center_.="dc1 and dc2!@#$/%^&*()""#.into();

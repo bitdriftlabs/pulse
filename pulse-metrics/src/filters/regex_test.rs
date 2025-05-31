@@ -8,15 +8,28 @@
 use super::*;
 use crate::filters::filter::MetricFilterDecision;
 use crate::filters::poll_filter::PollFilter;
-use crate::protos::metric::{Metric, MetricId, MetricValue};
+use crate::protos::metric::{
+  DownstreamId,
+  Metric,
+  MetricId,
+  MetricSource,
+  MetricValue,
+  ParsedMetric,
+};
 use bytes::Bytes;
+use std::time::Instant;
 
-fn new_metric(name: bytes::Bytes) -> Metric {
-  Metric::new(
-    MetricId::new(name, None, vec![], false).unwrap(),
-    None,
-    1_660_557_239,
-    MetricValue::Simple(0.),
+fn new_metric(name: bytes::Bytes) -> ParsedMetric {
+  ParsedMetric::new(
+    Metric::new(
+      MetricId::new(name, None, vec![], false).unwrap(),
+      None,
+      1_660_557_239,
+      MetricValue::Simple(0.),
+    ),
+    MetricSource::Aggregation { prom_source: false },
+    Instant::now(),
+    DownstreamId::LocalOrigin,
   )
 }
 
