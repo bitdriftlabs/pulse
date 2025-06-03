@@ -314,6 +314,15 @@ impl MetricValue {
   }
 
   #[must_use]
+  pub fn maybe_simple(&self) -> Option<f64> {
+    if let Self::Simple(value) = self {
+      Some(*value)
+    } else {
+      None
+    }
+  }
+
+  #[must_use]
   pub fn to_histogram(&self) -> &HistogramData {
     match self {
       Self::Simple(_) | Self::Summary(_) | Self::BulkTimer(_) => unreachable!(),

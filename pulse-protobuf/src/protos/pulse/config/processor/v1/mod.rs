@@ -2,6 +2,7 @@ pub mod aggregation;
 pub mod buffer;
 pub mod cardinality_limiter;
 pub mod cardinality_tracker;
+pub mod drop;
 pub mod elision;
 pub mod internode;
 pub mod mutate;

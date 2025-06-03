@@ -46,7 +46,7 @@ pub enum WatchError {
 /// A FileWatcher is a generic interface used to track file modifications, whether the resource is
 /// stored locally or remotely.
 #[async_trait]
-pub trait FileWatcher {
+pub trait FileWatcher: Send + Sync {
   /// Blocks until the file has been modified. This should track all modifications that occur during
   /// the file watcher's lifetime, not just when this function is executing. Returns the new file
   /// bytes.
