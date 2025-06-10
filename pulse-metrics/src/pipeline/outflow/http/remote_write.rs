@@ -58,6 +58,7 @@ struct HttpRemoteWriteOutflowStats {
   requests_time: Histogram,
   offload_queue_tx: IntCounter,
   offload_queue_rx: IntCounter,
+  tx_bytes: IntCounter,
 }
 
 impl HttpRemoteWriteOutflowStats {
@@ -72,6 +73,7 @@ impl HttpRemoteWriteOutflowStats {
       requests_time: stats.histogram("requests_time"),
       offload_queue_tx: stats.counter("offload_queue_tx"),
       offload_queue_rx: stats.counter("offload_queue_rx"),
+      tx_bytes: stats.counter("tx_bytes"),
     }
   }
 }
@@ -239,6 +241,11 @@ impl HttpRemoteWriteOutflow {
         .retry_notify(
           (self.backoff)(),
           || async {
+            self
+              .stats
+              .tx_bytes
+              .inc_by(compressed_write_request.len() as u64);
+
             match self
               .client
               .send_write_request(
