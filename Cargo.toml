@@ -17,7 +17,7 @@ assert_matches         = "1.5.0"
 async-trait            = "0.1"
 aws-config             = "1.6.3"
 aws-credential-types   = "1.2.3"
-aws-sdk-sqs            = "1.70.0"
+aws-sdk-sqs            = "1.72.0"
 aws-sigv4              = "1.3.2"
 aws-smithy-async       = "1.2.5"
 aws-smithy-http        = "0.62.1"
@@ -25,7 +25,7 @@ aws-smithy-runtime-api = { version = "1.8.0", features = ["test-util"] }
 aws-smithy-types       = "1.3.1"
 axum                   = "0.8.4"
 backoff                = { version = "0.4.0", features = ["tokio"] }
-base64ct               = "1.7.3"
+base64ct               = "1.8.0"
 bd-grpc                = { git = "https://github.com/bitdriftlabs/shared-core.git" }
 bd-log                 = { git = "https://github.com/bitdriftlabs/shared-core.git" }
 bd-panic               = { git = "https://github.com/bitdriftlabs/shared-core.git" }
@@ -40,8 +40,8 @@ bd-test-helpers        = { git = "https://github.com/bitdriftlabs/shared-core.gi
 bd-time                = { git = "https://github.com/bitdriftlabs/shared-core.git" }
 built                  = { version = "0.8", features = ["git2"] }
 bytes                  = "1"
-cc                     = "1.2.24"
-clap                   = { version = "4.5.39", features = ["derive", "env"] }
+cc                     = "1.2.26"
+clap                   = { version = "4.5.40", features = ["derive", "env"] }
 comfy-table            = "7.1.4"
 console-subscriber     = "0.4.1"
 criterion              = { version = "0.6", features = ["html_reports"] }
@@ -54,20 +54,20 @@ fst                    = "0.4.7"
 futures                = "0.3"
 futures-util           = "0.3.31"
 gettid                 = "0.1.3"
-hashbrown              = "0.15.3"
+hashbrown              = "0.15.4"
 http                   = "1.3.1"
 http-body-util         = "0.1.3"
 humantime-serde        = "1.1"
 hyper                  = "1.6.0"
 
-hyper-rustls = { version = "0.27.6", default-features = false, features = [
+hyper-rustls = { version = "0.27.7", default-features = false, features = [
   "http1",
   "http2",
   "webpki-tokio",
   "aws-lc-rs",
 ] }
 
-hyper-util            = { version = "0.1.13", features = ["client", "client-legacy"] }
+hyper-util            = { version = "0.1.14", features = ["client", "client-legacy"] }
 hyperloglogplus       = "0.4.1"
 intrusive-collections = "0.9.7"
 itertools             = "0.14.0"
@@ -104,7 +104,7 @@ rand              = { version = "0.9", features = ["small_rng"] }
 rand_xoshiro      = "0.7"
 regex             = "1"
 
-reqwest = { version = "0.12.15", default-features = false, features = [
+reqwest = { version = "0.12.20", default-features = false, features = [
   "rustls-tls-webpki-roots",
   "json",
 ] }
