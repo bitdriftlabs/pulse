@@ -12,10 +12,11 @@ mod mod_test;
 use super::{PipelineProcessor, ProcessorFactoryContext};
 use crate::pipeline::PipelineDispatch;
 use crate::protos::metric::{MetricId, ParsedMetric};
-use crate::vrl::ProgramWrapper;
+use crate::vrl::{ProgramWrapper, PulseDynamicState};
 use ahash::{HashMap, HashMapExt};
 use async_trait::async_trait;
 use bd_log::warn_every;
+use bd_server_stats::stats::Scope;
 use bd_shutdown::{ComponentShutdown, ComponentShutdownTriggerHandle};
 use bd_time::TimeDurationExt;
 use cardinality_limiter_config::per_pod_limit::Override_limit_location;
@@ -157,6 +158,7 @@ impl<H: Hasher + Default + Send + 'static> K8sPodLimiter<H> {
     buckets: usize,
     mut k8s_pods_info: OwnedPodsInfoSingleton,
     shutdown: ComponentShutdown,
+    scope: Scope,
   ) -> anyhow::Result<Self> {
     let pod_limiter_config = K8sPodLimiterConfig {
       default_size_limit: config.default_size_limit,
@@ -164,7 +166,9 @@ impl<H: Hasher + Default + Send + 'static> K8sPodLimiter<H> {
         .override_limit_location
         .as_ref()
         .map(|override_limit_location| match override_limit_location {
-          Override_limit_location::VrlProgram(vrl_program) => ProgramWrapper::new(vrl_program),
+          Override_limit_location::VrlProgram(vrl_program) => {
+            ProgramWrapper::new(vrl_program, PulseDynamicState::new(scope))
+          },
         })
         .transpose()?,
     };
@@ -298,6 +302,7 @@ impl CardinalityLimiterProcessor {
         config.buckets as usize,
         (context.k8s_watch_factory)().await?.make_owned(),
         context.shutdown_trigger_handle.make_shutdown(),
+        context.scope.clone(),
       )?),
     };
 

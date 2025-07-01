@@ -227,7 +227,7 @@ impl<K: Eq + Hash, V, S: BuildHasher + Clone> LruMap<K, V, S> {
       .from_hash(hash, |key_to_match| key_to_match.key.equivalent(key))
     {
       shard.adjust_lru(key.as_ref());
-      let key: *const K = &key.key;
+      let key: *const K = &raw const key.key;
       let value: *const V = value;
       Some(Ref {
         _guard: map,

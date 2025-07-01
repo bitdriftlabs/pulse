@@ -313,6 +313,7 @@ impl AggregationProcessor {
     drop(shutdown);
   }
 
+  #[allow(clippy::cognitive_complexity)]
   async fn do_flush<JitterType: DurationJitter>(self: &Arc<Self>) {
     let _flush_time = self.stats.flush_time.start_timer();
     log::debug!("performing aggregation flush");

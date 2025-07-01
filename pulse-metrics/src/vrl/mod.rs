@@ -6,7 +6,10 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
 use crate::protos::metric::{EditableParsedMetric, MetricType, ParsedMetric, TagValue};
+use crate::vrl::pulse_inc_counter::PulseIncCounter;
+use crate::vrl::pulse_log::PulseLog;
 use anyhow::{anyhow, bail};
+use bd_server_stats::stats::Scope;
 use itertools::Itertools;
 use pulse_common::metadata::Metadata;
 use vrl::compiler::state::{ExternalEnv, RuntimeState};
@@ -25,6 +28,9 @@ use vrl::diagnostic::Formatter;
 use vrl::path::{OwnedTargetPath, PathPrefix};
 use vrl::value::kind::Collection;
 use vrl::value::{Kind, Value};
+
+mod pulse_inc_counter;
+mod pulse_log;
 
 //
 // EditableMetricVrlTarget
@@ -68,7 +74,11 @@ impl Target for EditableMetricVrlTarget<'_> {
         if path.path.is_root() {
           return Err("assigning to root event is not supported".to_string());
         }
-        match path.path.to_alternative_components(3)[0].as_slice() {
+        let Some(path) = path.path.to_alternative_components(3) else {
+          return Err("path does not refer to a field".to_string());
+        };
+
+        match path.as_slice() {
           [name] if name == "name" => {
             self.metric.change_name(
               value
@@ -133,7 +143,10 @@ impl Target for EditableMetricVrlTarget<'_> {
           // asked for.
           return Ok(None);
         }
-        match path.path.to_alternative_components(3)[0].as_slice() {
+        let Some(path) = path.path.to_alternative_components(3) else {
+          return Ok(None);
+        };
+        match path.as_slice() {
           [name] if name == "name" => Ok(Some(OwnedValueOrRef::Owned(Value::Bytes(
             self.metric.metric().metric().get_id().name().clone(),
           )))),
@@ -197,7 +210,10 @@ impl Target for EditableMetricVrlTarget<'_> {
     match path.prefix {
       PathPrefix::Event => {
         log::trace!("removing: path={path}");
-        let removed = match path.path.to_alternative_components(3)[0].as_slice() {
+        let Some(path) = path.path.to_alternative_components(3) else {
+          return Err("path does not refer to a field".to_string());
+        };
+        let removed = match path.as_slice() {
           [tags, tag_name] if tags == "tags" => self
             .metric
             .delete_tag(tag_name.as_bytes())
@@ -269,6 +285,21 @@ pub struct RunWithMetricResult {
 }
 
 //
+// PulseDynamicState
+//
+
+pub struct PulseDynamicState {
+  scope: Scope,
+}
+
+impl PulseDynamicState {
+  #[must_use]
+  pub fn new(scope: Scope) -> Self {
+    Self { scope }
+  }
+}
+
+//
 // ProgramWrapper
 //
 
@@ -277,7 +308,7 @@ pub struct ProgramWrapper {
 }
 
 impl ProgramWrapper {
-  pub fn new(program: &str) -> anyhow::Result<Self> {
+  pub fn new(program: &str, dynamic_state: PulseDynamicState) -> anyhow::Result<Self> {
     let external = ExternalEnv::new_with_kind(
       Kind::object(
         Collection::empty()
@@ -291,13 +322,15 @@ impl ProgramWrapper {
       Metadata::schema(),
     );
 
-    let result = compile_with_external(
-      program,
-      &vrl::stdlib::all(),
-      &external,
-      CompileConfig::default(),
-    )
-    .map_err(|e| anyhow!("VRL compile error: {}", Formatter::new(program, e)))?;
+    let mut functions = vrl::stdlib::all();
+    functions.push(Box::new(PulseLog));
+    functions.push(Box::new(PulseIncCounter));
+
+    let mut compile_config = CompileConfig::default();
+    compile_config.set_custom(dynamic_state);
+
+    let result = compile_with_external(program, &functions, &external, compile_config)
+      .map_err(|e| anyhow!("VRL compile error: {}", Formatter::new(program, e)))?;
     if !result.warnings.is_empty() {
       bail!(Formatter::new(program, result.warnings).to_string(),);
     }

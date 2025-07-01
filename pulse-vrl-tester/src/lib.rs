@@ -9,6 +9,7 @@
 mod test;
 
 use anyhow::{anyhow, bail};
+use bd_server_stats::stats::Collector;
 use cardinality_limiter::cardinality_limiter_config::Limit_type;
 use cardinality_limiter::cardinality_limiter_config::per_pod_limit::Override_limit_location;
 use config::bootstrap::v1::bootstrap::Config;
@@ -20,7 +21,7 @@ use pulse_common::metadata::{Metadata, PodMetadata};
 use pulse_common::proto::yaml_to_proto;
 use pulse_metrics::protos::metric::{DownstreamId, Metric, MetricSource, ParsedMetric};
 use pulse_metrics::protos::statsd;
-use pulse_metrics::vrl::ProgramWrapper;
+use pulse_metrics::vrl::{ProgramWrapper, PulseDynamicState};
 use pulse_protobuf::protos::pulse::config;
 use pulse_protobuf::protos::pulse::config::common::v1::common::wire_protocol::StatsD;
 use pulse_protobuf::protos::pulse::config::processor::v1::cardinality_limiter;
@@ -106,8 +107,11 @@ fn run_test_case(test_case: VrlTestCase, proxy_config: Option<&Config>) -> anyho
   }
 
   let mut num_transforms = 0;
-  let program = ProgramWrapper::new(&program_source)
-    .map_err(|e| anyhow!("unable to compile VRL program '{}': {e}", program_source))?;
+  let program = ProgramWrapper::new(
+    &program_source,
+    PulseDynamicState::new(Collector::default().scope("vrl_tester")),
+  )
+  .map_err(|e| anyhow!("unable to compile VRL program '{}': {e}", program_source))?;
   let metadata = test_case
     .kubernetes_metadata
     .into_option()

@@ -11,6 +11,7 @@ doctest = false
 [dependencies]
 anyhow.workspace            = true
 bd-log.workspace            = true
+bd-server-stats.workspace   = true
 clap.workspace              = true
 ctor.workspace              = true
 log.workspace               = true
