@@ -49,8 +49,14 @@ import "validate/validate.proto";
 // Pulse also implements some custom functions beyond what is available from core VRL. These
 // include:
 //
-// - pulse_inc_counter(name: string, value: int): Increments a counter with the given name by the
-//   given value. The name must be a constant string.
+// - pulse_inc_counter(name: string, value: int, tag_names: array, tag_values: array): Increments a
+//   counter with the given name by the given value. The name must be a constant string.
+//
+//   name: (required) The name of the counter to increment. Must be a constant string.
+//   value: (required) The value to increment the counter by. Must be an integer.
+//   tag_names: (optional) An array of tag names to add to the counter.
+//   tag_values: (optional) An array of tag values to add to the counter. Required if tag_names is
+//     provided. Must be the same length as tag_names.
 //
 // - pulse_log(value: any, level: string, rate_limit_secs: int): Outputs a rate limited log.
 //

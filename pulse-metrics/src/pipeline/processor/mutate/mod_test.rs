@@ -79,7 +79,9 @@ async fn pulse_inc_counter() {
   let mut helper = Helper::new(
     r#"
 if .name == "kube_job_status_failed" {
-  pulse_inc_counter("hello", 1)
+  pulse_inc_counter!("hello", 1)
+  pulse_inc_counter!("hello_with_tags", 1, ["tag1"], ["value1"])
+  pulse_inc_counter!("hello_with_tags", 1, ["tag1"], ["value2"])
 }
     "#,
   );
@@ -101,6 +103,16 @@ if .name == "kube_job_status_failed" {
     .helper
     .stats_helper
     .assert_counter_eq(1, "processor:hello", &labels! {});
+  helper.helper.stats_helper.assert_counter_eq(
+    1,
+    "processor:hello_with_tags",
+    &labels! { "tag1" => "value1" },
+  );
+  helper.helper.stats_helper.assert_counter_eq(
+    1,
+    "processor:hello_with_tags",
+    &labels! { "tag1" => "value2" },
+  );
 }
 
 #[tokio::test(start_paused = true)]
