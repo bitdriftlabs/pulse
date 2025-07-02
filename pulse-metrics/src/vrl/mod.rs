@@ -328,6 +328,10 @@ impl ProgramWrapper {
 
     let mut compile_config = CompileConfig::default();
     compile_config.set_custom(dynamic_state);
+    // TODO(mattklein123): This yields false positives on the functions that we added as the
+    // unused checker operates on the raw AST and does not use the underlying typedef info. This
+    // is not easy to fix so just disable this for now.
+    compile_config.disable_unused_expression_check();
 
     let result = compile_with_external(program, &functions, &external, compile_config)
       .map_err(|e| anyhow!("VRL compile error: {}", Formatter::new(program, e)))?;
