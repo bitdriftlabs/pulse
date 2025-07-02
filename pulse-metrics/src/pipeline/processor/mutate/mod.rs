@@ -20,7 +20,7 @@ use crate::protos::metric::{
   ParsedMetric,
   TagValue,
 };
-use crate::vrl::ProgramWrapper;
+use crate::vrl::{ProgramWrapper, PulseDynamicState};
 use async_trait::async_trait;
 use bd_log::warn_every;
 use bd_server_stats::stats::Scope;
@@ -65,7 +65,10 @@ pub struct MutateProcessor {
 impl MutateProcessor {
   pub fn new(config: &MutateConfig, context: ProcessorFactoryContext) -> anyhow::Result<Self> {
     Ok(Self {
-      program: ProgramWrapper::new(&config.vrl_program)?,
+      program: ProgramWrapper::new(
+        &config.vrl_program,
+        PulseDynamicState::new(context.scope.clone()),
+      )?,
       dispatcher: context.dispatcher,
       stats: MutateStats::new(&context.scope),
     })

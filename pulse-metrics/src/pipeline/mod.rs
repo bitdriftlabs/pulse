@@ -458,6 +458,7 @@ impl MetricPipeline {
   }
 
   // Updating an existing configuration in place.
+  #[allow(clippy::cognitive_complexity)]
   pub async fn update_config(&self, config: PipelineConfig) -> anyhow::Result<()> {
     check_routes(&config)?;
 

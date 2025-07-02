@@ -293,6 +293,7 @@ impl SocketHandler {
     }
   }
 
+  #[allow(clippy::cognitive_complexity)]
   pub(super) async fn run<T>(mut self, mut socket: T, mut shutdown: ComponentShutdown)
   where
     T: AsyncRead + AsyncWrite + Unpin,

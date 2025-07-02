@@ -39,6 +39,8 @@ use pulse_common::k8s::test::make_node_info;
 use pulse_common::metadata::{Metadata, PodMetadata};
 use pulse_protobuf::protos::pulse::config::processor::v1::mutate::MutateConfig;
 use std::sync::Arc;
+use time::ext::NumericalStdDuration;
+use tokio::time::sleep;
 use vrl::btreemap;
 
 // TODO(mattklein123): The use of env vars in these tests needs to be scoped/randomized as any
@@ -70,6 +72,69 @@ impl Helper {
       });
     self.processor.clone().recv_samples(vec![send]).await;
   }
+}
+
+#[tokio::test]
+async fn pulse_inc_counter() {
+  let mut helper = Helper::new(
+    r#"
+if .name == "kube_job_status_failed" {
+  pulse_inc_counter("hello", 1)
+}
+    "#,
+  );
+
+  helper
+    .expect_send_and_receive(
+      make_abs_counter("kube_job_status_failed", &[], 0, 1.0),
+      vec![make_abs_counter("kube_job_status_failed", &[], 0, 1.0)],
+    )
+    .await;
+  helper
+    .expect_send_and_receive(
+      make_abs_counter("kube_job_status_success", &[], 0, 1.0),
+      vec![make_abs_counter("kube_job_status_success", &[], 0, 1.0)],
+    )
+    .await;
+
+  helper
+    .helper
+    .stats_helper
+    .assert_counter_eq(1, "processor:hello", &labels! {});
+}
+
+#[tokio::test(start_paused = true)]
+async fn pulse_log() {
+  let mut helper = Helper::new(
+    r#"
+if .name == "kube_job_status_failed" {
+  pulse_log("hello world")
+  pulse_log("different rate limit")
+}
+    "#,
+  );
+
+  helper
+    .expect_send_and_receive(
+      make_abs_counter("kube_job_status_failed", &[], 0, 1.0),
+      vec![make_abs_counter("kube_job_status_failed", &[], 0, 1.0)],
+    )
+    .await;
+  helper
+    .expect_send_and_receive(
+      make_abs_counter("kube_job_status_failed", &[], 0, 1.0),
+      vec![make_abs_counter("kube_job_status_failed", &[], 0, 1.0)],
+    )
+    .await;
+
+  sleep(1.std_seconds()).await;
+
+  helper
+    .expect_send_and_receive(
+      make_abs_counter("kube_job_status_failed", &[], 0, 1.0),
+      vec![make_abs_counter("kube_job_status_failed", &[], 0, 1.0)],
+    )
+    .await;
 }
 
 #[tokio::test]

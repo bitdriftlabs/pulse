@@ -45,6 +45,19 @@ import "validate/validate.proto";
 // and a <metric>_sum and <metric>_count metric. This is done by setting the following pseudo
 // field to true:
 // .flatten_prom_histogram_and_summary = true
+//
+// Pulse also implements some custom functions beyond what is available from core VRL. These
+// include:
+//
+// - pulse_inc_counter(name: string, value: int): Increments a counter with the given name by the
+//   given value. The name must be a constant string.
+//
+// - pulse_log(value: any, level: string, rate_limit_secs: int): Outputs a rate limited log.
+//
+//     value: (required) The value to log of any type
+//     level: (optional) The log level to use. Must be one of "trace", "debug", "info", "warn",
+//       "error". Defaults to "info".
+//     rate_limit_secs: (optional) The rate limit in seconds for the message. Defaults to 1 second.
 message MutateConfig {
   string vrl_program = 1 [(validate.rules).string = {min_len: 1}];
 }

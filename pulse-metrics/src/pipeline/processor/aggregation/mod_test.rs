@@ -29,7 +29,7 @@ fn make_time_provider(time: i64) -> TestTimeProvider {
   }
 }
 
-#[ignore]
+#[ignore = "stress test, run manually only"]
 #[tokio::test(flavor = "multi_thread")]
 async fn stress() {
   let mut helper = HelperBuilder::default()
