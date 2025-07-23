@@ -90,6 +90,23 @@ message KubernetesPrometheusConfig {
     string path = 1 [(validate.rules).string = {min_len: 1}];
   }
 
+  message PrometheusAnnotationOverrides {
+    // If not set, defaults to "prometheus.io/scrape".
+    optional string scrape = 1;
+
+    // If not set, defaults to "prometheus.io/namespace".
+    optional string namespace = 2;
+
+    // If not set, defaults to "prometheus.io/path".
+    optional string path = 3;
+
+    // If not set, defaults to "prometheus.io/scheme".
+    optional string scheme = 4;
+
+    // If not set, defaults to "prometheus.io/port".
+    optional string port = 5;
+  }
+
   // Scrapes metrics from Prometheus endpoints defined on pods via pod annotations.
   message Pod {
     // Inclusion filters can be used to include pods to be scraped even if they do not have the
@@ -100,6 +117,9 @@ message KubernetesPrometheusConfig {
     // If any of the optionally provided matchers matches, HTTPS K8s service auth will be used
     // against the scrape target.
     repeated UseK8sHttpsServiceAuthMatcher use_k8s_https_service_auth_matchers = 2;
+
+    // Optional overrides for the base Prometheus annotations used to discover scrape targets.
+    PrometheusAnnotationOverrides annotation_overrides = 3;
   }
 
   // An implementation of the Prometheus HTTP service discovery protocol as documented here:

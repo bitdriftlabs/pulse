@@ -43,6 +43,7 @@ use k8s_prom::kubernetes_prometheus_config::{
   self,
   HttpServiceDiscovery,
   InclusionFilter,
+  PrometheusAnnotationOverrides,
   TLS,
   Target,
   UseK8sHttpsServiceAuthMatcher,
@@ -50,6 +51,7 @@ use k8s_prom::kubernetes_prometheus_config::{
 use kube::ResourceExt;
 use parking_lot::Mutex;
 use prometheus::IntCounter;
+use protobuf::Message;
 use pulse_common::k8s::NodeInfo;
 use pulse_common::k8s::endpoints::EndpointsWatcher;
 use pulse_common::k8s::pods_info::{ContainerPort, OwnedPodsInfoSingleton, PodInfo};
@@ -202,6 +204,7 @@ fn create_endpoints<T: PortWithName>(
   service_name: Option<&str>,
   maybe_service_port: Option<&IntOrString>,
   prom_annotations: &BTreeMap<String, String>,
+  prom_annotation_overrides: &PrometheusAnnotationOverrides,
 ) -> Vec<(String, PromEndpoint)> {
   let included_ports = process_inclusion_filters(
     inclusion_filters,
@@ -209,7 +212,12 @@ fn create_endpoints<T: PortWithName>(
     pod_info.map_or(prom_annotations, |p| &p.annotations),
   );
   if prom_annotations
-    .get("prometheus.io/scrape")
+    .get(
+      prom_annotation_overrides
+        .scrape
+        .as_deref()
+        .unwrap_or("prometheus.io/scrape"),
+    )
     .map(String::as_str)
     != Some("true")
     && included_ports.is_empty()
@@ -218,12 +226,22 @@ fn create_endpoints<T: PortWithName>(
   }
 
   let prom_namespace = prom_annotations
-    .get("prometheus.io/namespace")
+    .get(
+      prom_annotation_overrides
+        .namespace
+        .as_deref()
+        .unwrap_or("prometheus.io/namespace"),
+    )
     .cloned()
     .unwrap_or_else(|| namespace.to_string());
 
   let prom_endpoint_path = prom_annotations
-    .get("prometheus.io/path")
+    .get(
+      prom_annotation_overrides
+        .path
+        .as_deref()
+        .unwrap_or("prometheus.io/path"),
+    )
     .cloned()
     .map_or_else(
       || "/metrics".to_string(),
@@ -238,12 +256,22 @@ fn create_endpoints<T: PortWithName>(
 
   // Process the scheme annotation, defaulting to "http" if not specified.
   let scheme = prom_annotations
-    .get("prometheus.io/scheme")
+    .get(
+      prom_annotation_overrides
+        .scheme
+        .as_deref()
+        .unwrap_or("prometheus.io/scheme"),
+    )
     .map_or("http", String::as_str)
     .to_string();
 
   let ports: Vec<i32> = prom_annotations
-    .get("prometheus.io/port")
+    .get(
+      prom_annotation_overrides
+        .port
+        .as_deref()
+        .unwrap_or("prometheus.io/port"),
+    )
     .into_iter()
     .flat_map(|port| {
       port
@@ -772,6 +800,7 @@ pub async fn make(
         inclusion_filters: pod_config.inclusion_filters,
         use_k8s_https_service_auth_matchers: pod_config.use_k8s_https_service_auth_matchers,
         pods_info: (context.k8s_watch_factory)().await?.make_owned(),
+        prom_annotation_overrides: pod_config.annotation_overrides.unwrap_or_default(),
       }),
       scrape_interval,
       ticker_factory,
@@ -885,6 +914,7 @@ struct KubePodTarget {
   inclusion_filters: Vec<InclusionFilter>,
   use_k8s_https_service_auth_matchers: Vec<UseK8sHttpsServiceAuthMatcher>,
   pods_info: OwnedPodsInfoSingleton,
+  prom_annotation_overrides: PrometheusAnnotationOverrides,
 }
 
 #[async_trait]
@@ -907,6 +937,7 @@ impl EndpointProvider for KubePodTarget {
           None,
           None,
           &pod_info.annotations,
+          &self.prom_annotation_overrides,
         )
       })
       .collect::<HashMap<String, PromEndpoint>>()
@@ -946,6 +977,7 @@ impl EndpointProvider for KubeEndpointsTarget {
           Some(&service.name),
           service.maybe_service_port.as_ref(),
           &service.annotations,
+          PrometheusAnnotationOverrides::default_instance(),
         ));
       }
     }
@@ -1000,6 +1032,7 @@ impl EndpointProvider for RemoteEndpointsTarget {
                     Some(&self.service),
                     None,
                     endpoints.annotations(),
+                    PrometheusAnnotationOverrides::default_instance(),
                   )
                 })
             })
