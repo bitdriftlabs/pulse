@@ -1837,6 +1837,200 @@ pub mod kubernetes_prometheus_config {
         type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
     }
 
+    // @@protoc_insertion_point(message:pulse.config.inflow.v1.KubernetesPrometheusConfig.PrometheusAnnotationOverrides)
+    #[derive(PartialEq,Clone,Default,Debug)]
+    pub struct PrometheusAnnotationOverrides {
+        // message fields
+        // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.PrometheusAnnotationOverrides.scrape)
+        pub scrape: ::std::option::Option<::protobuf::Chars>,
+        // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.PrometheusAnnotationOverrides.namespace)
+        pub namespace: ::std::option::Option<::protobuf::Chars>,
+        // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.PrometheusAnnotationOverrides.path)
+        pub path: ::std::option::Option<::protobuf::Chars>,
+        // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.PrometheusAnnotationOverrides.scheme)
+        pub scheme: ::std::option::Option<::protobuf::Chars>,
+        // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.PrometheusAnnotationOverrides.port)
+        pub port: ::std::option::Option<::protobuf::Chars>,
+        // special fields
+        // @@protoc_insertion_point(special_field:pulse.config.inflow.v1.KubernetesPrometheusConfig.PrometheusAnnotationOverrides.special_fields)
+        pub special_fields: ::protobuf::SpecialFields,
+    }
+
+    impl<'a> ::std::default::Default for &'a PrometheusAnnotationOverrides {
+        fn default() -> &'a PrometheusAnnotationOverrides {
+            <PrometheusAnnotationOverrides as ::protobuf::Message>::default_instance()
+        }
+    }
+
+    impl PrometheusAnnotationOverrides {
+        pub fn new() -> PrometheusAnnotationOverrides {
+            ::std::default::Default::default()
+        }
+
+        pub(in super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
+            let mut fields = ::std::vec::Vec::with_capacity(5);
+            let mut oneofs = ::std::vec::Vec::with_capacity(0);
+            fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+                "scrape",
+                |m: &PrometheusAnnotationOverrides| { &m.scrape },
+                |m: &mut PrometheusAnnotationOverrides| { &mut m.scrape },
+            ));
+            fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+                "namespace",
+                |m: &PrometheusAnnotationOverrides| { &m.namespace },
+                |m: &mut PrometheusAnnotationOverrides| { &mut m.namespace },
+            ));
+            fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+                "path",
+                |m: &PrometheusAnnotationOverrides| { &m.path },
+                |m: &mut PrometheusAnnotationOverrides| { &mut m.path },
+            ));
+            fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+                "scheme",
+                |m: &PrometheusAnnotationOverrides| { &m.scheme },
+                |m: &mut PrometheusAnnotationOverrides| { &mut m.scheme },
+            ));
+            fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+                "port",
+                |m: &PrometheusAnnotationOverrides| { &m.port },
+                |m: &mut PrometheusAnnotationOverrides| { &mut m.port },
+            ));
+            ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<PrometheusAnnotationOverrides>(
+                "KubernetesPrometheusConfig.PrometheusAnnotationOverrides",
+                fields,
+                oneofs,
+            )
+        }
+    }
+
+    impl ::protobuf::Message for PrometheusAnnotationOverrides {
+        const NAME: &'static str = "PrometheusAnnotationOverrides";
+
+        fn is_initialized(&self) -> bool {
+            true
+        }
+
+        fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
+            while let Some(tag) = is.read_raw_tag_or_eof()? {
+                match tag {
+                    10 => {
+                        self.scrape = ::std::option::Option::Some(is.read_tokio_chars()?);
+                    },
+                    18 => {
+                        self.namespace = ::std::option::Option::Some(is.read_tokio_chars()?);
+                    },
+                    26 => {
+                        self.path = ::std::option::Option::Some(is.read_tokio_chars()?);
+                    },
+                    34 => {
+                        self.scheme = ::std::option::Option::Some(is.read_tokio_chars()?);
+                    },
+                    42 => {
+                        self.port = ::std::option::Option::Some(is.read_tokio_chars()?);
+                    },
+                    tag => {
+                        ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
+                    },
+                };
+            }
+            ::std::result::Result::Ok(())
+        }
+
+        // Compute sizes of nested messages
+        #[allow(unused_variables)]
+        fn compute_size(&self) -> u64 {
+            let mut my_size = 0;
+            if let Some(v) = self.scrape.as_ref() {
+                my_size += ::protobuf::rt::string_size(1, &v);
+            }
+            if let Some(v) = self.namespace.as_ref() {
+                my_size += ::protobuf::rt::string_size(2, &v);
+            }
+            if let Some(v) = self.path.as_ref() {
+                my_size += ::protobuf::rt::string_size(3, &v);
+            }
+            if let Some(v) = self.scheme.as_ref() {
+                my_size += ::protobuf::rt::string_size(4, &v);
+            }
+            if let Some(v) = self.port.as_ref() {
+                my_size += ::protobuf::rt::string_size(5, &v);
+            }
+            my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
+            self.special_fields.cached_size().set(my_size as u32);
+            my_size
+        }
+
+        fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
+            if let Some(v) = self.scrape.as_ref() {
+                os.write_string(1, v)?;
+            }
+            if let Some(v) = self.namespace.as_ref() {
+                os.write_string(2, v)?;
+            }
+            if let Some(v) = self.path.as_ref() {
+                os.write_string(3, v)?;
+            }
+            if let Some(v) = self.scheme.as_ref() {
+                os.write_string(4, v)?;
+            }
+            if let Some(v) = self.port.as_ref() {
+                os.write_string(5, v)?;
+            }
+            os.write_unknown_fields(self.special_fields.unknown_fields())?;
+            ::std::result::Result::Ok(())
+        }
+
+        fn special_fields(&self) -> &::protobuf::SpecialFields {
+            &self.special_fields
+        }
+
+        fn mut_special_fields(&mut self) -> &mut ::protobuf::SpecialFields {
+            &mut self.special_fields
+        }
+
+        fn new() -> PrometheusAnnotationOverrides {
+            PrometheusAnnotationOverrides::new()
+        }
+
+        fn clear(&mut self) {
+            self.scrape = ::std::option::Option::None;
+            self.namespace = ::std::option::Option::None;
+            self.path = ::std::option::Option::None;
+            self.scheme = ::std::option::Option::None;
+            self.port = ::std::option::Option::None;
+            self.special_fields.clear();
+        }
+
+        fn default_instance() -> &'static PrometheusAnnotationOverrides {
+            static instance: PrometheusAnnotationOverrides = PrometheusAnnotationOverrides {
+                scrape: ::std::option::Option::None,
+                namespace: ::std::option::Option::None,
+                path: ::std::option::Option::None,
+                scheme: ::std::option::Option::None,
+                port: ::std::option::Option::None,
+                special_fields: ::protobuf::SpecialFields::new(),
+            };
+            &instance
+        }
+    }
+
+    impl ::protobuf::MessageFull for PrometheusAnnotationOverrides {
+        fn descriptor() -> ::protobuf::reflect::MessageDescriptor {
+            static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::Lazy::new();
+            descriptor.get(|| super::file_descriptor().message_by_package_relative_name("KubernetesPrometheusConfig.PrometheusAnnotationOverrides").unwrap()).clone()
+        }
+    }
+
+    impl ::std::fmt::Display for PrometheusAnnotationOverrides {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            ::protobuf::text_format::fmt(self, f)
+        }
+    }
+
+    impl ::protobuf::reflect::ProtobufValue for PrometheusAnnotationOverrides {
+        type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
+    }
+
     // @@protoc_insertion_point(message:pulse.config.inflow.v1.KubernetesPrometheusConfig.Pod)
     #[derive(PartialEq,Clone,Default,Debug)]
     pub struct Pod {
@@ -1845,6 +2039,8 @@ pub mod kubernetes_prometheus_config {
         pub inclusion_filters: ::std::vec::Vec<InclusionFilter>,
         // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.Pod.use_k8s_https_service_auth_matchers)
         pub use_k8s_https_service_auth_matchers: ::std::vec::Vec<UseK8sHttpsServiceAuthMatcher>,
+        // @@protoc_insertion_point(field:pulse.config.inflow.v1.KubernetesPrometheusConfig.Pod.annotation_overrides)
+        pub annotation_overrides: ::protobuf::MessageField<PrometheusAnnotationOverrides>,
         // special fields
         // @@protoc_insertion_point(special_field:pulse.config.inflow.v1.KubernetesPrometheusConfig.Pod.special_fields)
         pub special_fields: ::protobuf::SpecialFields,
@@ -1862,7 +2058,7 @@ pub mod kubernetes_prometheus_config {
         }
 
         pub(in super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-            let mut fields = ::std::vec::Vec::with_capacity(2);
+            let mut fields = ::std::vec::Vec::with_capacity(3);
             let mut oneofs = ::std::vec::Vec::with_capacity(0);
             fields.push(::protobuf::reflect::rt::v2::make_vec_simpler_accessor::<_, _>(
                 "inclusion_filters",
@@ -1873,6 +2069,11 @@ pub mod kubernetes_prometheus_config {
                 "use_k8s_https_service_auth_matchers",
                 |m: &Pod| { &m.use_k8s_https_service_auth_matchers },
                 |m: &mut Pod| { &mut m.use_k8s_https_service_auth_matchers },
+            ));
+            fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, PrometheusAnnotationOverrides>(
+                "annotation_overrides",
+                |m: &Pod| { &m.annotation_overrides },
+                |m: &mut Pod| { &mut m.annotation_overrides },
             ));
             ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<Pod>(
                 "KubernetesPrometheusConfig.Pod",
@@ -1898,6 +2099,9 @@ pub mod kubernetes_prometheus_config {
                     18 => {
                         self.use_k8s_https_service_auth_matchers.push(is.read_message()?);
                     },
+                    26 => {
+                        ::protobuf::rt::read_singular_message_into_field(is, &mut self.annotation_overrides)?;
+                    },
                     tag => {
                         ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                     },
@@ -1918,6 +2122,10 @@ pub mod kubernetes_prometheus_config {
                 let len = value.compute_size();
                 my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
             };
+            if let Some(v) = self.annotation_overrides.as_ref() {
+                let len = v.compute_size();
+                my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+            }
             my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
             self.special_fields.cached_size().set(my_size as u32);
             my_size
@@ -1930,6 +2138,9 @@ pub mod kubernetes_prometheus_config {
             for v in &self.use_k8s_https_service_auth_matchers {
                 ::protobuf::rt::write_message_field_with_cached_size(2, v, os)?;
             };
+            if let Some(v) = self.annotation_overrides.as_ref() {
+                ::protobuf::rt::write_message_field_with_cached_size(3, v, os)?;
+            }
             os.write_unknown_fields(self.special_fields.unknown_fields())?;
             ::std::result::Result::Ok(())
         }
@@ -1949,6 +2160,7 @@ pub mod kubernetes_prometheus_config {
         fn clear(&mut self) {
             self.inclusion_filters.clear();
             self.use_k8s_https_service_auth_matchers.clear();
+            self.annotation_overrides.clear();
             self.special_fields.clear();
         }
 
@@ -1956,6 +2168,7 @@ pub mod kubernetes_prometheus_config {
             static instance: Pod = Pod {
                 inclusion_filters: ::std::vec::Vec::new(),
                 use_k8s_https_service_auth_matchers: ::std::vec::Vec::new(),
+                annotation_overrides: ::protobuf::MessageField::none(),
                 special_fields: ::protobuf::SpecialFields::new(),
             };
             &instance
@@ -2283,7 +2496,7 @@ pub mod kubernetes_prometheus_config {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n%pulse/config/inflow/v1/k8s_prom.proto\x12\x16pulse.config.inflow.v1\
     \x1a#pulse/config/common/v1/common.proto\x1a\x1egoogle/protobuf/duration\
-    .proto\x1a\x17validate/validate.proto\"\x9d\x15\n\x1aKubernetesPrometheu\
+    .proto\x1a\x17validate/validate.proto\"\x8a\x18\n\x1aKubernetesPrometheu\
     sConfig\x12L\n\x0fscrape_interval\x18\x01\x20\x01(\x0b2\x19.google.proto\
     buf.DurationR\x0escrapeIntervalB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12Y\n\
     \x08endpoint\x18\x02\x20\x01(\x0b2;.pulse.config.inflow.v1.KubernetesPro\
@@ -2326,19 +2539,28 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x0b2P.pulse.config.inflow.v1.KubernetesPrometheusConfig.UseK8sHttpsServ\
     iceAuthMatcherR\x1euseK8sHttpsServiceAuthMatchers\x1a#\n\x04Node\x12\x1b\
     \n\x04path\x18\x01\x20\x01(\tR\x04pathB\x07\xfaB\x04r\x02\x10\x01\x1a\
-    \x96\x02\n\x03Pod\x12o\n\x11inclusion_filters\x18\x01\x20\x03(\x0b2B.pul\
-    se.config.inflow.v1.KubernetesPrometheusConfig.InclusionFilterR\x10inclu\
-    sionFilters\x12\x9d\x01\n#use_k8s_https_service_auth_matchers\x18\x02\
-    \x20\x03(\x0b2P.pulse.config.inflow.v1.KubernetesPrometheusConfig.UseK8s\
-    HttpsServiceAuthMatcherR\x1euseK8sHttpsServiceAuthMatchers\x1a\x99\x01\n\
-    \x14HttpServiceDiscovery\x12?\n\x03url\x18\x01\x20\x01(\x0b2#.pulse.conf\
-    ig.common.v1.EnvOrInlineR\x03urlB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12@\
-    \n\x0efetch_interval\x18\x02\x20\x01(\x0b2\x19.google.protobuf.DurationR\
-    \rfetchInterval\x1a\x94\x01\n\x03TLS\x12\x20\n\tcert_file\x18\x01\x20\
-    \x01(\tH\0R\x08certFile\x88\x01\x01\x12\x1e\n\x08key_file\x18\x02\x20\
-    \x01(\tH\x01R\x07keyFile\x88\x01\x01\x120\n\x14insecure_skip_verify\x18\
-    \x03\x20\x01(\x08R\x12insecureSkipVerifyB\x0c\n\n_cert_fileB\x0b\n\t_key\
-    _fileB\r\n\x06target\x12\x03\xf8B\x01b\x06proto3\
+    \xe4\x01\n\x1dPrometheusAnnotationOverrides\x12\x1b\n\x06scrape\x18\x01\
+    \x20\x01(\tH\0R\x06scrape\x88\x01\x01\x12!\n\tnamespace\x18\x02\x20\x01(\
+    \tH\x01R\tnamespace\x88\x01\x01\x12\x17\n\x04path\x18\x03\x20\x01(\tH\
+    \x02R\x04path\x88\x01\x01\x12\x1b\n\x06scheme\x18\x04\x20\x01(\tH\x03R\
+    \x06scheme\x88\x01\x01\x12\x17\n\x04port\x18\x05\x20\x01(\tH\x04R\x04por\
+    t\x88\x01\x01B\t\n\x07_scrapeB\x0c\n\n_namespaceB\x07\n\x05_pathB\t\n\
+    \x07_schemeB\x07\n\x05_port\x1a\x9c\x03\n\x03Pod\x12o\n\x11inclusion_fil\
+    ters\x18\x01\x20\x03(\x0b2B.pulse.config.inflow.v1.KubernetesPrometheusC\
+    onfig.InclusionFilterR\x10inclusionFilters\x12\x9d\x01\n#use_k8s_https_s\
+    ervice_auth_matchers\x18\x02\x20\x03(\x0b2P.pulse.config.inflow.v1.Kuber\
+    netesPrometheusConfig.UseK8sHttpsServiceAuthMatcherR\x1euseK8sHttpsServi\
+    ceAuthMatchers\x12\x83\x01\n\x14annotation_overrides\x18\x03\x20\x01(\
+    \x0b2P.pulse.config.inflow.v1.KubernetesPrometheusConfig.PrometheusAnnot\
+    ationOverridesR\x13annotationOverrides\x1a\x99\x01\n\x14HttpServiceDisco\
+    very\x12?\n\x03url\x18\x01\x20\x01(\x0b2#.pulse.config.common.v1.EnvOrIn\
+    lineR\x03urlB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12@\n\x0efetch_interval\
+    \x18\x02\x20\x01(\x0b2\x19.google.protobuf.DurationR\rfetchInterval\x1a\
+    \x94\x01\n\x03TLS\x12\x20\n\tcert_file\x18\x01\x20\x01(\tH\0R\x08certFil\
+    e\x88\x01\x01\x12\x1e\n\x08key_file\x18\x02\x20\x01(\tH\x01R\x07keyFile\
+    \x88\x01\x01\x120\n\x14insecure_skip_verify\x18\x03\x20\x01(\x08R\x12ins\
+    ecureSkipVerifyB\x0c\n\n_cert_fileB\x0b\n\t_key_fileB\r\n\x06target\x12\
+    \x03\xf8B\x01b\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
@@ -2359,13 +2581,14 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
             deps.push(super::common::file_descriptor().clone());
             deps.push(::protobuf::well_known_types::duration::file_descriptor().clone());
             deps.push(super::validate::file_descriptor().clone());
-            let mut messages = ::std::vec::Vec::with_capacity(11);
+            let mut messages = ::std::vec::Vec::with_capacity(12);
             messages.push(KubernetesPrometheusConfig::generated_message_descriptor_data());
             messages.push(kubernetes_prometheus_config::UseK8sHttpsServiceAuthMatcher::generated_message_descriptor_data());
             messages.push(kubernetes_prometheus_config::InclusionFilter::generated_message_descriptor_data());
             messages.push(kubernetes_prometheus_config::Endpoint::generated_message_descriptor_data());
             messages.push(kubernetes_prometheus_config::RemoteEndpoint::generated_message_descriptor_data());
             messages.push(kubernetes_prometheus_config::Node::generated_message_descriptor_data());
+            messages.push(kubernetes_prometheus_config::PrometheusAnnotationOverrides::generated_message_descriptor_data());
             messages.push(kubernetes_prometheus_config::Pod::generated_message_descriptor_data());
             messages.push(kubernetes_prometheus_config::HttpServiceDiscovery::generated_message_descriptor_data());
             messages.push(kubernetes_prometheus_config::TLS::generated_message_descriptor_data());

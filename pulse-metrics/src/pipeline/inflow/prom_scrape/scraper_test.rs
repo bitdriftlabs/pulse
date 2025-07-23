@@ -36,11 +36,13 @@ use k8s_prom::kubernetes_prometheus_config::use_k8s_https_service_auth_matcher::
 use k8s_prom::kubernetes_prometheus_config::{
   HttpServiceDiscovery,
   InclusionFilter,
+  PrometheusAnnotationOverrides,
   UseK8sHttpsServiceAuthMatcher,
 };
 use parking_lot::Mutex;
+use pretty_assertions::assert_eq;
 use prometheus::labels;
-use protobuf::MessageField;
+use protobuf::{Message, MessageField};
 use pulse_common::k8s::pods_info::container::PodsInfo;
 use pulse_common::k8s::pods_info::{ContainerPort, PodsInfoSingleton};
 use pulse_common::k8s::services::ServiceInfo;
@@ -87,6 +89,7 @@ async fn create_endpoint() {
     None,
     None,
     &pod_info.annotations,
+    PrometheusAnnotationOverrides::default_instance(),
   );
   assert_eq!(endpoints.len(), 1);
   assert!(!endpoints[0].1.use_https_k8s_service_auth);
@@ -121,9 +124,76 @@ async fn create_endpoint() {
     None,
     None,
     &pod_info.annotations,
+    PrometheusAnnotationOverrides::default_instance(),
   );
   assert_eq!(endpoints.len(), 1);
   assert!(endpoints[0].1.use_https_k8s_service_auth);
+
+  let pod_info = make_pod_info(
+    "some-namespace",
+    "my-awesome-pod",
+    &btreemap!(),
+    btreemap!(
+      "foo/scrape" => "true",
+      "foo/namespace" => "other-namespace",
+      "foo/path" => "/custom/path",
+      "foo/scheme" => "https",
+      "foo/port" => "123",
+    ),
+    HashMap::new(),
+    "127.0.0.1",
+    vec![],
+  );
+  let endpoints = create_endpoints(
+    &pod_info.namespace,
+    &pod_info.ip_string,
+    &[],
+    &[],
+    Some(&make_node_info()),
+    Some(&pod_info),
+    &pod_info.container_ports,
+    None,
+    None,
+    &pod_info.annotations,
+    &PrometheusAnnotationOverrides {
+      scrape: Some("foo/scrape".into()),
+      namespace: Some("foo/namespace".into()),
+      path: Some("foo/path".into()),
+      scheme: Some("foo/scheme".into()),
+      port: Some("foo/port".into()),
+      ..Default::default()
+    },
+  );
+  assert_eq!(endpoints.len(), 1);
+  assert_eq!(
+    endpoints[0].1,
+    PromEndpoint {
+      address: "127.0.0.1".into(),
+      port: 123,
+      path: "/custom/path".into(),
+      scheme: "https".into(),
+      metadata: Some(Arc::new(Metadata::new(
+        Some(&make_node_info()),
+        Some(PodMetadata {
+          namespace: "other-namespace",
+          pod_name: "my-awesome-pod",
+          pod_ip: "127.0.0.1",
+          pod_labels: &btreemap!(),
+          pod_annotations: &btreemap!(
+            "foo/scrape" => "true",
+            "foo/namespace" => "other-namespace",
+            "foo/path" => "/custom/path",
+            "foo/scheme" => "https",
+            "foo/port" => "123",
+          ),
+          service: None,
+        }),
+        Some("127.0.0.1:123".to_string()),
+      ))),
+      use_https_k8s_service_auth: false,
+      extra_tags: vec![],
+    }
+  );
 }
 
 #[tokio::test]
@@ -151,6 +221,7 @@ async fn scrape_path() {
     None,
     None,
     &pod_info.annotations,
+    PrometheusAnnotationOverrides::default_instance(),
   );
   assert_eq!(endpoints[0].1.path, "/metrics");
 
@@ -178,6 +249,7 @@ async fn scrape_path() {
     None,
     None,
     &pod_info.annotations,
+    PrometheusAnnotationOverrides::default_instance(),
   );
   assert_eq!(endpoints[0].1.path, "/metrics");
 
@@ -205,6 +277,7 @@ async fn scrape_path() {
     None,
     None,
     &pod_info.annotations,
+    PrometheusAnnotationOverrides::default_instance(),
   );
   assert_eq!(endpoints[0].1.path, "/custom/path");
 }
@@ -230,6 +303,7 @@ async fn multiple_ports() {
     inclusion_filters: vec![],
     use_k8s_https_service_auth_matchers: vec![],
     pods_info,
+    prom_annotation_overrides: PrometheusAnnotationOverrides::default(),
   };
   let endpoints = target.get();
   assert_eq!(
@@ -262,6 +336,7 @@ async fn multiple_ports_with_space() {
     inclusion_filters: vec![],
     use_k8s_https_service_auth_matchers: vec![],
     pods_info,
+    prom_annotation_overrides: PrometheusAnnotationOverrides::default(),
   };
   let endpoints = target.get();
   assert_eq!(
@@ -302,6 +377,7 @@ async fn annotation_inclusion_filter() {
     }],
     use_k8s_https_service_auth_matchers: vec![],
     pods_info,
+    prom_annotation_overrides: PrometheusAnnotationOverrides::default(),
   };
   let endpoints = target.get();
   assert_eq!(
@@ -347,6 +423,7 @@ async fn inclusion_filters() {
     }],
     use_k8s_https_service_auth_matchers: vec![],
     pods_info,
+    prom_annotation_overrides: PrometheusAnnotationOverrides::default(),
   };
   let endpoints = target.get();
   assert_eq!(
@@ -384,6 +461,7 @@ async fn test_scheme_annotation() {
     None,
     None,
     &pod_info.annotations,
+    PrometheusAnnotationOverrides::default_instance(),
   );
   assert_eq!(endpoints[0].1.scheme, "http");
 
@@ -412,6 +490,7 @@ async fn test_scheme_annotation() {
     None,
     None,
     &pod_info.annotations,
+    PrometheusAnnotationOverrides::default_instance(),
   );
   assert_eq!(endpoints[0].1.scheme, "http");
 
@@ -440,6 +519,7 @@ async fn test_scheme_annotation() {
     None,
     None,
     &pod_info.annotations,
+    PrometheusAnnotationOverrides::default_instance(),
   );
   assert_eq!(endpoints[0].1.scheme, "https");
 }
@@ -466,6 +546,7 @@ async fn test_kube_pod_target_endpoint() {
     inclusion_filters: vec![],
     use_k8s_https_service_auth_matchers: vec![],
     pods_info,
+    prom_annotation_overrides: PrometheusAnnotationOverrides::default(),
   };
   let endpoints = target.get();
   assert_eq!(endpoints.len(), 1);
@@ -1054,6 +1135,7 @@ fn test_create_endpoints_port_resolution() {
     None,
     None,
     &pod_info.annotations,
+    PrometheusAnnotationOverrides::default_instance(),
   );
   assert_eq!(endpoints.len(), 1);
   assert_eq!(endpoints[0].1.port, 9090);
@@ -1082,6 +1164,7 @@ fn test_create_endpoints_port_resolution() {
     None,
     None,
     &pod_info.annotations,
+    PrometheusAnnotationOverrides::default_instance(),
   );
   assert_eq!(endpoints.len(), 1);
   assert_eq!(endpoints[0].1.port, 8080);
@@ -1111,6 +1194,7 @@ fn test_create_endpoints_port_resolution() {
     None,
     Some(&IntOrString::Int(8080)),
     &pod_info.annotations,
+    PrometheusAnnotationOverrides::default_instance(),
   );
   assert_eq!(endpoints.len(), 1);
   assert_eq!(endpoints[0].1.port, 8080);
@@ -1139,6 +1223,7 @@ fn test_create_endpoints_port_resolution() {
     None,
     Some(&IntOrString::String("metrics".to_string())),
     &pod_info.annotations,
+    PrometheusAnnotationOverrides::default_instance(),
   );
   assert_eq!(endpoints.len(), 1);
   assert_eq!(endpoints[0].1.port, 9101);
@@ -1167,6 +1252,7 @@ fn test_create_endpoints_port_resolution() {
     None,
     Some(&IntOrString::String("non-existent".to_string())),
     &pod_info.annotations,
+    PrometheusAnnotationOverrides::default_instance(),
   );
   assert_eq!(endpoints.len(), 1);
   assert_eq!(endpoints[0].1.port, 9090);
@@ -1211,6 +1297,7 @@ fn test_create_endpoints_port_resolution() {
     None,
     None,
     &pod_info.annotations,
+    PrometheusAnnotationOverrides::default_instance(),
   );
   assert_eq!(endpoints.len(), 2);
   let ports: Vec<i32> = endpoints.iter().map(|e| e.1.port).collect();
@@ -1241,6 +1328,7 @@ fn test_create_endpoints_port_resolution() {
     None,
     None,
     &pod_info.annotations,
+    PrometheusAnnotationOverrides::default_instance(),
   );
   assert_eq!(endpoints.len(), 2);
   let ports: Vec<i32> = endpoints.iter().map(|e| e.1.port).collect();

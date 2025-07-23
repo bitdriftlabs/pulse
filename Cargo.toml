@@ -15,13 +15,13 @@ ahash                  = "0.8"
 anyhow                 = "1"
 assert_matches         = "1.5.0"
 async-trait            = "0.1"
-aws-config             = "1.8.0"
-aws-credential-types   = "1.2.3"
-aws-sdk-sqs            = "1.73.0"
+aws-config             = "1.8.2"
+aws-credential-types   = "1.2.4"
+aws-sdk-sqs            = "1.76.0"
 aws-sigv4              = "1.3.3"
 aws-smithy-async       = "1.2.5"
-aws-smithy-http        = "0.62.1"
-aws-smithy-runtime-api = { version = "1.8.1", features = ["test-util"] }
+aws-smithy-http        = "0.62.2"
+aws-smithy-runtime-api = { version = "1.8.4", features = ["test-util"] }
 aws-smithy-types       = "1.3.2"
 axum                   = "0.8.4"
 backoff                = { version = "0.4.0", features = ["tokio"] }
@@ -40,8 +40,8 @@ bd-test-helpers        = { git = "https://github.com/bitdriftlabs/shared-core.gi
 bd-time                = { git = "https://github.com/bitdriftlabs/shared-core.git" }
 built                  = { version = "0.8", features = ["git2"] }
 bytes                  = "1"
-cc                     = "1.2.27"
-clap                   = { version = "4.5.40", features = ["derive", "env"] }
+cc                     = "1.2.30"
+clap                   = { version = "4.5.41", features = ["derive", "env"] }
 comfy-table            = "7.1.4"
 console-subscriber     = "0.4.1"
 criterion              = { version = "0.6", features = ["html_reports"] }
@@ -67,7 +67,7 @@ hyper-rustls = { version = "0.27.7", default-features = false, features = [
   "aws-lc-rs",
 ] }
 
-hyper-util            = { version = "0.1.14", features = ["client", "client-legacy"] }
+hyper-util            = { version = "0.1.16", features = ["client", "client-legacy"] }
 hyperloglogplus       = "0.4.1"
 intrusive-collections = "0.9.7"
 itertools             = "0.14.0"
@@ -85,7 +85,7 @@ matches           = "0.1"
 memchr            = "2"
 mockall           = "0.13.1"
 nom               = "8"
-notify            = "8.0.0"
+notify            = "8.1.0"
 parking_lot       = "0.12"
 pretty_assertions = "1.4.1"
 prometheus        = { version = "0.14", features = ["process"] }
@@ -110,12 +110,12 @@ reqwest = { version = "0.12.22", default-features = false, features = [
 ] }
 
 reusable-fmt               = "0.2.0"
-rustls                     = "0.23.28"
+rustls                     = "0.23.29"
 serde                      = { version = "1", features = ["derive"] }
 serde_json                 = "1"
 serde_yaml                 = "0.9.34"
 snap                       = "1"
-socket2                    = "0.5.10"
+socket2                    = "0.6.0"
 tempfile                   = "3.20"
 thiserror                  = "2"
 tikv-jemalloc-ctl          = "0.6.0"
