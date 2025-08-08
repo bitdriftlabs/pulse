@@ -579,6 +579,7 @@ impl PromClient {
         None,
         PROM_REMOTE_WRITE_HEADERS,
         vec![],
+        None,
       )
       .await
       .unwrap(),
@@ -620,6 +621,7 @@ impl OtlpClient {
         None,
         &[],
         vec![],
+        None,
       )
       .await
       .unwrap(),

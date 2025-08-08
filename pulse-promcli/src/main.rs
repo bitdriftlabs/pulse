@@ -107,6 +107,7 @@ async fn main() -> anyhow::Result<()> {
     None,
     PROM_REMOTE_WRITE_HEADERS,
     vec![],
+    None,
   )
   .await?;
   client

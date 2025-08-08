@@ -168,10 +168,17 @@ impl HyperHttpRemoteWriteClient {
     auth_config: Option<HttpRemoteWriteAuthConfig>,
     core_request_headers: &[(&str, &str)],
     config_request_headers: Vec<RequestHeader>,
+    pool_idle_timeout: Option<Duration>,
   ) -> Result<Self> {
     Ok(Self {
       // TODO(mattklein123): Make connect timeout configurable.
-      inner: Client::builder(TokioExecutor::new()).build(make_tls_connector(250.milliseconds())),
+      inner: Client::builder(TokioExecutor::new())
+        .pool_idle_timeout(
+          pool_idle_timeout
+            .unwrap_or_else(|| 90.seconds())
+            .unsigned_abs(),
+        )
+        .build(make_tls_connector(250.milliseconds())),
       endpoint,
       timeout,
       auth: Self::create_auth(auth_config).await?,

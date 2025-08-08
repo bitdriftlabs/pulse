@@ -88,6 +88,7 @@ pub async fn make_otlp_outflow(
     &[],
     config.request_headers,
     context,
+    None.into(),
   )
   .await
 }

@@ -64,4 +64,7 @@ message PromRemoteWriteClientConfig {
 
   // Lyft specific configuration. To be generalized later.
   LyftSpecificConfig lyft_specific_config = 11;
+
+  // Idle time for outbound connections in the connection pool. If not set, defaults to 90s.
+  google.protobuf.Duration pool_idle_timeout = 12;
 }

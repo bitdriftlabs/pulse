@@ -344,6 +344,7 @@ impl MetaStatsEmitter {
             prom_remote_write.auth.into_option(),
             PROM_REMOTE_WRITE_HEADERS,
             prom_remote_write.request_headers,
+            None,
           )
           .await?,
         }) as Box<dyn MetaStatsSender>,
