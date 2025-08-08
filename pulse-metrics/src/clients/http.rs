@@ -278,13 +278,12 @@ impl HttpRemoteWriteClient for HyperHttpRemoteWriteClient {
     }
 
     let (parts, body) = request.into_parts();
-    let result = match self
+    let Ok(result) = self
       .timeout
       .timeout(self.inner.request(Request::from_parts(parts, body.into())))
       .await
-    {
-      Err(_) => return Err(HttpRemoteWriteError::Timeout),
-      Ok(result) => result,
+    else {
+      return Err(HttpRemoteWriteError::Timeout);
     };
     match result {
       Ok(r) => {

@@ -42,10 +42,10 @@ impl SingletonManager {
     if singletons.len() < handle.slot + 1 {
       singletons.resize(handle.slot + 1, None);
     }
-    if let Some(singleton) = &singletons[handle.slot] {
-      if let Some(singleton) = singleton.upgrade() {
-        return Ok(singleton.clone().downcast().unwrap());
-      }
+    if let Some(singleton) = &singletons[handle.slot]
+      && let Some(singleton) = singleton.upgrade()
+    {
+      return Ok(singleton.clone().downcast().unwrap());
     }
 
     let to_insert = init_func.await?;

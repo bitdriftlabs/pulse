@@ -34,9 +34,9 @@ pub mod wire;
 // PipelineInflow
 //
 
-/// A PipelineInflow is responsible for ingesting data into the [crate::pipeline::MetricPipeline] by
-/// using the [crate::pipeline::DispatchSender] to route metric samples to the next hop in the
-/// processor.
+/// A `PipelineInflow` is responsible for ingesting data into the
+/// [`crate::pipeline::MetricPipeline`] by using the [`crate::pipeline::DispatchSender`] to route
+/// metric samples to the next hop in the processor.
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait PipelineInflow {

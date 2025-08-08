@@ -56,6 +56,7 @@ rustflags = [
 
     # This is triggering in built.rs and disabling it in the owning mod is not working.
     "-Aclippy::needless_raw_string_hashes",
+    "-Aclippy::doc_markdown",
 ]
 
 # Fetch internal repos via git

@@ -502,10 +502,10 @@ impl AggregationProcessor {
     let metrics = input.into_iter().filter_map(|mut m| {
       if let Some(metric) = &mut m {
         metric.initialize_cache(&self.metric_cache);
-        if let Some(last_aggregated_keys) = last_aggregated_keys {
-          if let CachedMetric::Loaded(metric_key, _) = metric.cached_metric() {
-            last_aggregated_keys.push(metric_key);
-          }
+        if let Some(last_aggregated_keys) = last_aggregated_keys
+          && let CachedMetric::Loaded(metric_key, _) = metric.cached_metric()
+        {
+          last_aggregated_keys.push(metric_key);
         }
       }
       m

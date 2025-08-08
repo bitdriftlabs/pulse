@@ -150,10 +150,10 @@ impl StateSlots {
 
     // If the slot already has data and is the right id, downcast and return it. Otherwise, make a
     // new value, insert it, and return it.
-    if let Some(entry) = &slots[handle.index] {
-      if entry.id == handle.id {
-        return GetOrInitResult::Existed(entry.slot.clone().downcast().unwrap());
-      }
+    if let Some(entry) = &slots[handle.index]
+      && entry.id == handle.id
+    {
+      return GetOrInitResult::Existed(entry.slot.clone().downcast().unwrap());
     }
 
     let entry = Arc::new(init());
@@ -424,14 +424,14 @@ impl MetricCache {
     const MAX_AGE: Duration = Duration::from_secs(60 * 60);
 
     // First, try to get the metric without obtaining a write lock.
-    if let Some(cached_metric) = self.cache.get(metric.get_id()) {
-      if received_at - cached_metric.value().last_seen < MAX_AGE {
-        log::trace!("returning cached metric: {}", metric.get_id());
-        return CachedMetric::Loaded(
-          cached_metric.key().clone(),
-          cached_metric.value().state_slots.clone(),
-        );
-      }
+    if let Some(cached_metric) = self.cache.get(metric.get_id())
+      && received_at - cached_metric.value().last_seen < MAX_AGE
+    {
+      log::trace!("returning cached metric: {}", metric.get_id());
+      return CachedMetric::Loaded(
+        cached_metric.key().clone(),
+        cached_metric.value().state_slots.clone(),
+      );
     }
 
     // Check to see if have overflowed. If so, attempt to purge, and if that fails, return the

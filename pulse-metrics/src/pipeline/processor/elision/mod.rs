@@ -233,10 +233,10 @@ pub struct ElisionProcessor {
 
 impl ElisionProcessor {
   fn validate_emit(emit: &EmitConfig) -> anyhow::Result<()> {
-    if let Emit_type::Ratio(ratio) = emit.emit_type.as_ref().unwrap() {
-      if *ratio <= 0.0 || *ratio > 1.0 {
-        bail!("elision ratio must be > 0.0 and <= 1.0");
-      }
+    if let Emit_type::Ratio(ratio) = emit.emit_type.as_ref().unwrap()
+      && (*ratio <= 0.0 || *ratio > 1.0)
+    {
+      bail!("elision ratio must be > 0.0 and <= 1.0");
     }
     Ok(())
   }

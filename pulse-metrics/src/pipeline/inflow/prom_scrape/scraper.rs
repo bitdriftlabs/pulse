@@ -475,12 +475,12 @@ impl<Jitter: DurationJitter + 'static> Scraper<Jitter> {
           &std::fs::read("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt")?,
         )?);
 
-      if let Some(tls) = tls_config {
-        if let (Some(cert_file), Some(key_file)) = (tls.cert_file.as_ref(), tls.key_file.as_ref()) {
-          let cert = std::fs::read(cert_file)?;
-          let key = std::fs::read(key_file)?;
-          builder = builder.identity(reqwest::Identity::from_pem(&[cert, key].concat())?);
-        }
+      if let Some(tls) = tls_config
+        && let (Some(cert_file), Some(key_file)) = (tls.cert_file.as_ref(), tls.key_file.as_ref())
+      {
+        let cert = std::fs::read(cert_file)?;
+        let key = std::fs::read(key_file)?;
+        builder = builder.identity(reqwest::Identity::from_pem(&[cert, key].concat())?);
       }
 
       // TODO(mattklein123): This was here for a while, and then I removed it thinking that it
