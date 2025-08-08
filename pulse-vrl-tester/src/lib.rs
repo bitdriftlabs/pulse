@@ -87,14 +87,12 @@ fn run_test_case(test_case: VrlTestCase, proxy_config: Option<&Config>) -> anyho
       proxy_config,
       processor_name,
       |value| {
-        if let Some(Processor_type::CardinalityLimiter(cardinality)) = &value.processor_type {
-          if let Some(Limit_type::PerPodLimit(per_pod_limit)) = &cardinality.limit_type {
-            if let Some(Override_limit_location::VrlProgram(vrl_program)) =
-              &per_pod_limit.override_limit_location
-            {
-              return Some(vrl_program.as_str().to_string());
-            }
-          }
+        if let Some(Processor_type::CardinalityLimiter(cardinality)) = &value.processor_type
+          && let Some(Limit_type::PerPodLimit(per_pod_limit)) = &cardinality.limit_type
+          && let Some(Override_limit_location::VrlProgram(vrl_program)) =
+            &per_pod_limit.override_limit_location
+        {
+          return Some(vrl_program.as_str().to_string());
         }
 
         None

@@ -151,14 +151,13 @@ impl FunctionExpression for LogFn {
     let rate_limit_secs = rate_limit_secs.try_integer()?;
     {
       let mut last_emit_time = self.last_emit_time.lock();
-      if let Some(last_time) = *last_emit_time {
-        if last_time.elapsed().as_secs()
+      if let Some(last_time) = *last_emit_time
+        && last_time.elapsed().as_secs()
           < rate_limit_secs.try_into().map_err(|_| {
             ExpressionError::from("rate_limit_secs must be an integer that can be converted to u64")
           })?
-        {
-          return Ok(Value::Null);
-        }
+      {
+        return Ok(Value::Null);
       }
       *last_emit_time = Some(Instant::now());
     }

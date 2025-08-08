@@ -265,7 +265,7 @@ impl<T: RemoteFileWatcherClient + Send + Sync + 'static> FileWatcher for RemoteF
 #[automock]
 #[async_trait]
 pub trait RemoteFileWatcherClient {
-  /// Fetches the specified resource. Returns [WatchError::ResourceNotModified] if the specified
+  /// Fetches the specified resource. Returns [`WatchError::ResourceNotModified`] if the specified
   /// resource matches the given etag.
   async fn get_file(&self, etag: Option<String>) -> Result<(Bytes, String), WatchError>;
 }

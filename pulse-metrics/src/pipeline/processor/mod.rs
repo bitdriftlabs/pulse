@@ -52,9 +52,9 @@ pub mod sampler;
 #[async_trait]
 #[cfg_attr(test, mockall::automock)]
 pub trait PipelineProcessor {
-  /// Receive samples from the [crate::pipeline::MetricsPipeline] dispatch loop.
+  /// Receive samples from the [`crate::pipeline::MetricsPipeline`] dispatch loop.
   /// Processing occurs asynchronously and results can be sent back to the dispatch
-  /// loop through the [crate::pipeline::DispatchSender] channel.
+  /// loop through the [`crate::pipeline::DispatchSender`] channel.
   async fn recv_samples(self: Arc<Self>, samples: Vec<ParsedMetric>);
 
   /// Start the inflow (listen on sockets, etc.). This is called after the entire pipeline is

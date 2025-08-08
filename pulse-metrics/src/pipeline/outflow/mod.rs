@@ -91,7 +91,7 @@ impl OutflowStats {
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait PipelineOutflow {
-  /// Receive samples from the [crate::pipeline::MetricsPipeline] dispatch loop.
+  /// Receive samples from the [`crate::pipeline::MetricsPipeline`] dispatch loop.
   /// Processing occurs asynchronously.
   async fn recv_samples(&self, samples: Vec<ParsedMetric>);
 }

@@ -636,11 +636,11 @@ fn timeseries_to_metrics(
     None
   };
 
-  if let Some((family_name, data_type)) = maybe_histogram {
-    if let Some(InProgressMetric::Histogram(histogram)) = metric_type_map.get_mut(family_name) {
-      process_in_progress_histogram(family_name, histogram, data_type, tags, time_series.samples)?;
-      return Ok(vec![]);
-    }
+  if let Some((family_name, data_type)) = maybe_histogram
+    && let Some(InProgressMetric::Histogram(histogram)) = metric_type_map.get_mut(family_name)
+  {
+    process_in_progress_histogram(family_name, histogram, data_type, tags, time_series.samples)?;
+    return Ok(vec![]);
   }
 
   let maybe_summary = if tags.iter().any(|t| t.tag.as_ref() == b"quantile") {
@@ -656,11 +656,11 @@ fn timeseries_to_metrics(
     None
   };
 
-  if let Some((family_name, data_type)) = maybe_summary {
-    if let Some(InProgressMetric::Summary(summary)) = metric_type_map.get_mut(family_name) {
-      process_in_progress_summary(family_name, summary, data_type, tags, time_series.samples)?;
-      return Ok(vec![]);
-    }
+  if let Some((family_name, data_type)) = maybe_summary
+    && let Some(InProgressMetric::Summary(summary)) = metric_type_map.get_mut(family_name)
+  {
+    process_in_progress_summary(family_name, summary, data_type, tags, time_series.samples)?;
+    return Ok(vec![]);
   }
 
   let mtype = match metric_type_map.get(&name) {
