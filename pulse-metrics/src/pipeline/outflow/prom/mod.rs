@@ -96,6 +96,7 @@ pub async fn make_prom_outflow(
     PROM_REMOTE_WRITE_HEADERS,
     config.request_headers,
     context,
+    config.pool_idle_timeout,
   )
   .await
 }

@@ -57,6 +57,8 @@ pub struct PromRemoteWriteClientConfig {
     pub retry_policy: ::protobuf::MessageField<super::retry::RetryPolicy>,
     // @@protoc_insertion_point(field:pulse.config.outflow.v1.PromRemoteWriteClientConfig.lyft_specific_config)
     pub lyft_specific_config: ::protobuf::MessageField<prom_remote_write_client_config::LyftSpecificConfig>,
+    // @@protoc_insertion_point(field:pulse.config.outflow.v1.PromRemoteWriteClientConfig.pool_idle_timeout)
+    pub pool_idle_timeout: ::protobuf::MessageField<::protobuf::well_known_types::duration::Duration>,
     // special fields
     // @@protoc_insertion_point(special_field:pulse.config.outflow.v1.PromRemoteWriteClientConfig.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -74,7 +76,7 @@ impl PromRemoteWriteClientConfig {
     }
 
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(11);
+        let mut fields = ::std::vec::Vec::with_capacity(12);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "send_to",
@@ -131,6 +133,11 @@ impl PromRemoteWriteClientConfig {
             |m: &PromRemoteWriteClientConfig| { &m.lyft_specific_config },
             |m: &mut PromRemoteWriteClientConfig| { &mut m.lyft_specific_config },
         ));
+        fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, ::protobuf::well_known_types::duration::Duration>(
+            "pool_idle_timeout",
+            |m: &PromRemoteWriteClientConfig| { &m.pool_idle_timeout },
+            |m: &mut PromRemoteWriteClientConfig| { &mut m.pool_idle_timeout },
+        ));
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<PromRemoteWriteClientConfig>(
             "PromRemoteWriteClientConfig",
             fields,
@@ -181,6 +188,9 @@ impl ::protobuf::Message for PromRemoteWriteClientConfig {
                 },
                 90 => {
                     ::protobuf::rt::read_singular_message_into_field(is, &mut self.lyft_specific_config)?;
+                },
+                98 => {
+                    ::protobuf::rt::read_singular_message_into_field(is, &mut self.pool_idle_timeout)?;
                 },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
@@ -233,6 +243,10 @@ impl ::protobuf::Message for PromRemoteWriteClientConfig {
             let len = v.compute_size();
             my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
         }
+        if let Some(v) = self.pool_idle_timeout.as_ref() {
+            let len = v.compute_size();
+            my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
         my_size
@@ -272,6 +286,9 @@ impl ::protobuf::Message for PromRemoteWriteClientConfig {
         if let Some(v) = self.lyft_specific_config.as_ref() {
             ::protobuf::rt::write_message_field_with_cached_size(11, v, os)?;
         }
+        if let Some(v) = self.pool_idle_timeout.as_ref() {
+            ::protobuf::rt::write_message_field_with_cached_size(12, v, os)?;
+        }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
     }
@@ -300,6 +317,7 @@ impl ::protobuf::Message for PromRemoteWriteClientConfig {
         self.convert_metric_name = ::std::option::Option::None;
         self.retry_policy.clear();
         self.lyft_specific_config.clear();
+        self.pool_idle_timeout.clear();
         self.special_fields.clear();
     }
 
@@ -316,6 +334,7 @@ impl ::protobuf::Message for PromRemoteWriteClientConfig {
             convert_metric_name: ::std::option::Option::None,
             retry_policy: ::protobuf::MessageField::none(),
             lyft_specific_config: ::protobuf::MessageField::none(),
+            pool_idle_timeout: ::protobuf::MessageField::none(),
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -505,30 +524,31 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     utflow.v1\x1a#pulse/config/common/v1/common.proto\x1a\"pulse/config/comm\
     on/v1/retry.proto\x1a*pulse/config/outflow/v1/queue_policy.proto\x1a,pul\
     se/config/outflow/v1/outflow_common.proto\x1a\x1egoogle/protobuf/duratio\
-    n.proto\x1a\x17validate/validate.proto\"\xe2\x08\n\x1bPromRemoteWriteCli\
-    entConfig\x12\x20\n\x07send_to\x18\x01\x20\x01(\tR\x06sendToB\x07\xfaB\
-    \x04r\x02\x10\x01\x12L\n\x0frequest_timeout\x18\x02\x20\x01(\x0b2\x19.go\
-    ogle.protobuf.DurationR\x0erequestTimeoutB\x08\xfaB\x05\xaa\x01\x02*\0\
-    \x12'\n\rmax_in_flight\x18\x03\x20\x01(\x04H\0R\x0bmaxInFlight\x88\x01\
-    \x01\x12G\n\x0cqueue_policy\x18\x04\x20\x01(\x0b2$.pulse.config.outflow.\
-    v1.QueuePolicyR\x0bqueuePolicy\x12/\n\x11batch_max_samples\x18\x05\x20\
-    \x01(\x04H\x01R\x0fbatchMaxSamples\x88\x01\x01\x12#\n\rmetadata_only\x18\
-    \x06\x20\x01(\x08R\x0cmetadataOnly\x12F\n\x04auth\x18\x07\x20\x01(\x0b22\
-    .pulse.config.outflow.v1.HttpRemoteWriteAuthConfigR\x04auth\x12O\n\x0fre\
-    quest_headers\x18\x08\x20\x03(\x0b2&.pulse.config.outflow.v1.RequestHead\
-    erR\x0erequestHeaders\x123\n\x13convert_metric_name\x18\t\x20\x01(\x08H\
-    \x02R\x11convertMetricName\x88\x01\x01\x12F\n\x0cretry_policy\x18\n\x20\
-    \x01(\x0b2#.pulse.config.common.v1.RetryPolicyR\x0bretryPolicy\x12y\n\
-    \x14lyft_specific_config\x18\x0b\x20\x01(\x0b2G.pulse.config.outflow.v1.\
-    PromRemoteWriteClientConfig.LyftSpecificConfigR\x12lyftSpecificConfig\
-    \x1a\xb9\x02\n\x12LyftSpecificConfig\x12=\n\x16general_storage_policy\
-    \x18\x01\x20\x01(\tR\x14generalStoragePolicyB\x07\xfaB\x04r\x02\x10\x01\
-    \x12J\n\x1finstance_metrics_storage_policy\x18\x02\x20\x01(\tH\0R\x1cins\
-    tanceMetricsStoragePolicy\x88\x01\x01\x12N\n!cloudwatch_metrics_storage_\
-    policy\x18\x03\x20\x01(\tH\x01R\x1ecloudwatchMetricsStoragePolicy\x88\
-    \x01\x01B\"\n\x20_instance_metrics_storage_policyB$\n\"_cloudwatch_metri\
-    cs_storage_policyB\x10\n\x0e_max_in_flightB\x14\n\x12_batch_max_samplesB\
-    \x16\n\x14_convert_metric_nameb\x06proto3\
+    n.proto\x1a\x17validate/validate.proto\"\xa9\t\n\x1bPromRemoteWriteClien\
+    tConfig\x12\x20\n\x07send_to\x18\x01\x20\x01(\tR\x06sendToB\x07\xfaB\x04\
+    r\x02\x10\x01\x12L\n\x0frequest_timeout\x18\x02\x20\x01(\x0b2\x19.google\
+    .protobuf.DurationR\x0erequestTimeoutB\x08\xfaB\x05\xaa\x01\x02*\0\x12'\
+    \n\rmax_in_flight\x18\x03\x20\x01(\x04H\0R\x0bmaxInFlight\x88\x01\x01\
+    \x12G\n\x0cqueue_policy\x18\x04\x20\x01(\x0b2$.pulse.config.outflow.v1.Q\
+    ueuePolicyR\x0bqueuePolicy\x12/\n\x11batch_max_samples\x18\x05\x20\x01(\
+    \x04H\x01R\x0fbatchMaxSamples\x88\x01\x01\x12#\n\rmetadata_only\x18\x06\
+    \x20\x01(\x08R\x0cmetadataOnly\x12F\n\x04auth\x18\x07\x20\x01(\x0b22.pul\
+    se.config.outflow.v1.HttpRemoteWriteAuthConfigR\x04auth\x12O\n\x0freques\
+    t_headers\x18\x08\x20\x03(\x0b2&.pulse.config.outflow.v1.RequestHeaderR\
+    \x0erequestHeaders\x123\n\x13convert_metric_name\x18\t\x20\x01(\x08H\x02\
+    R\x11convertMetricName\x88\x01\x01\x12F\n\x0cretry_policy\x18\n\x20\x01(\
+    \x0b2#.pulse.config.common.v1.RetryPolicyR\x0bretryPolicy\x12y\n\x14lyft\
+    _specific_config\x18\x0b\x20\x01(\x0b2G.pulse.config.outflow.v1.PromRemo\
+    teWriteClientConfig.LyftSpecificConfigR\x12lyftSpecificConfig\x12E\n\x11\
+    pool_idle_timeout\x18\x0c\x20\x01(\x0b2\x19.google.protobuf.DurationR\
+    \x0fpoolIdleTimeout\x1a\xb9\x02\n\x12LyftSpecificConfig\x12=\n\x16genera\
+    l_storage_policy\x18\x01\x20\x01(\tR\x14generalStoragePolicyB\x07\xfaB\
+    \x04r\x02\x10\x01\x12J\n\x1finstance_metrics_storage_policy\x18\x02\x20\
+    \x01(\tH\0R\x1cinstanceMetricsStoragePolicy\x88\x01\x01\x12N\n!cloudwatc\
+    h_metrics_storage_policy\x18\x03\x20\x01(\tH\x01R\x1ecloudwatchMetricsSt\
+    oragePolicy\x88\x01\x01B\"\n\x20_instance_metrics_storage_policyB$\n\"_c\
+    loudwatch_metrics_storage_policyB\x10\n\x0e_max_in_flightB\x14\n\x12_bat\
+    ch_max_samplesB\x16\n\x14_convert_metric_nameb\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file

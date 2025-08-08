@@ -24,7 +24,7 @@ use backoff::backoff::Backoff;
 use bd_log::warn_every;
 use bd_server_stats::stats::{AutoGauge, Scope};
 use bd_shutdown::{ComponentShutdown, ComponentStatus};
-use bd_time::TimeDurationExt;
+use bd_time::{ProtoDurationExt, TimeDurationExt};
 use bytes::Bytes;
 use http::HeaderMap;
 use prometheus::{Histogram, IntCounter, IntGauge};
@@ -124,6 +124,7 @@ impl HttpRemoteWriteOutflow {
     core_request_headers: &[(&str, &str)],
     config_request_headers: Vec<RequestHeader>,
     context: OutflowFactoryContext,
+    pool_idle_timeout: MessageField<Duration>,
   ) -> anyhow::Result<Arc<Self>> {
     let request_timeout = request_timeout.unwrap_duration_or(DEFAULT_REQUEST_TIMEOUT);
     let client = Arc::new(
@@ -133,6 +134,9 @@ impl HttpRemoteWriteOutflow {
         auth_config,
         core_request_headers,
         config_request_headers,
+        pool_idle_timeout
+          .map(|d| d.to_time_duration())
+          .into_option(),
       )
       .await?,
     );
