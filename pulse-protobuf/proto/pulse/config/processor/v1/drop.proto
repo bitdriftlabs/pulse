@@ -90,6 +90,9 @@ message DropRule {
 
       // Will perform a logical AND on the set of conditions and match if all of them match.
       AndMatch and_match = 4;
+
+      // Matches if the condition does NOT match.
+      DropCondition not_match = 5;
     }
   }
 

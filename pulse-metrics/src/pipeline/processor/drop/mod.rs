@@ -46,6 +46,7 @@ enum TranslatedDropCondition {
   },
   ValueMatch(ValueMatch),
   AndMatch(Vec<TranslatedDropCondition>),
+  NotMatch(Box<TranslatedDropCondition>),
 }
 
 impl TranslatedDropCondition {
@@ -76,6 +77,10 @@ impl TranslatedDropCondition {
       Condition_type::AndMatch(and_match) => {
         let translated_conditions = and_match.conditions.iter().map(Self::new).try_collect()?;
         Ok(Self::AndMatch(translated_conditions))
+      },
+      Condition_type::NotMatch(not_match) => {
+        let translated_condition = Self::new(not_match.as_ref())?;
+        Ok(Self::NotMatch(Box::new(translated_condition)))
       },
     }
   }
@@ -117,6 +122,7 @@ impl TranslatedDropCondition {
       Self::AndMatch(conditions) => conditions
         .iter()
         .all(|condition| condition.drop_sample(sample)),
+      Self::NotMatch(condition) => !condition.drop_sample(sample),
     }
   }
 }

@@ -229,7 +229,7 @@ struct AwsSqsOffloadQueue {
 impl AwsSqsOffloadQueue {
   async fn create(config: &AwsSqsRetryOffloadQueue) -> anyhow::Result<Arc<dyn OffloadQueue>> {
     // Turn off stale protection for long polls.
-    let sdk_config = aws_config::defaults(BehaviorVersion::v2025_01_17())
+    let sdk_config = aws_config::defaults(BehaviorVersion::v2025_08_07())
       .stalled_stream_protection(StalledStreamProtectionConfig::disabled())
       .load()
       .await;
