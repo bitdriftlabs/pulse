@@ -29,6 +29,58 @@ use pulse_protobuf::protos::pulse::config::processor::v1::drop;
 use std::sync::Arc;
 
 #[tokio::test]
+async fn not() {
+  let (mut helper, context) = processor_factory_context_for_test();
+  let processor = Arc::new(
+    DropProcessor::new(
+      DropProcessorConfig {
+        config_source: Some(Config_source::Inline(DropConfig {
+          rules: vec![DropRule {
+            name: "rule1".into(),
+            mode: DropMode::ENABLED.into(),
+            conditions: vec![DropCondition {
+              condition_type: Some(Condition_type::NotMatch(Box::new(DropCondition {
+                condition_type: Some(Condition_type::MetricName(StringMatch {
+                  string_match_type: Some(String_match_type::Exact("exact_name".into())),
+                  ..Default::default()
+                })),
+                ..Default::default()
+              }))),
+              ..Default::default()
+            }],
+            ..Default::default()
+          }],
+          ..Default::default()
+        })),
+        ..Default::default()
+      },
+      context,
+    )
+    .await
+    .unwrap(),
+  );
+
+  make_mut(&mut helper.dispatcher)
+    .expect_send()
+    .times(1)
+    .returning(|metrics| {
+      assert_eq!(metrics, vec![make_metric("exact_name", &[], 0),]);
+    });
+  processor
+    .clone()
+    .recv_samples(vec![
+      make_metric("dropped", &[], 0),
+      make_metric("exact_name", &[], 0),
+    ])
+    .await;
+  helper.stats_helper.assert_counter_eq(
+    1,
+    "processor:dropped",
+    &labels! { "rule_name" => "rule1", "mode" => "enabled" },
+  );
+}
+
+#[tokio::test]
 async fn all() {
   let (mut helper, context) = processor_factory_context_for_test();
   let processor = Arc::new(
