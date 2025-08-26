@@ -37,7 +37,7 @@ mod aggregation;
 mod buffer;
 mod cardinality_limiter;
 mod cardinality_tracker;
-mod drop;
+pub mod drop;
 pub mod elision;
 mod internode;
 mod mutate;

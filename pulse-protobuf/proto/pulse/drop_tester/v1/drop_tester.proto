@@ -1,0 +1,45 @@
+// pulse - bitdrift's observability proxy
+// Copyright Bitdrift, Inc. All rights reserved.
+//
+// Use of this source code is governed by a source available license that can be found in the
+// LICENSE file or at:
+// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+
+syntax = "proto3";
+package pulse.drop_tester.v1;
+
+import "pulse/config/processor/v1/drop.proto";
+import "validate/validate.proto";
+
+// A metric transform to test in a given test context.
+message MetricDropTest {
+  // The input metric. Currently this string must be specified in statsd format. For example:
+  // foo:1|c|#foo:bar
+  string input = 1 [(validate.rules).string = {min_len: 1}];
+
+  // The expected rule name that drops the metric. If the metric is not meant to be dropped, this
+  // field should be left empty.
+  string dropped_by = 2;
+}
+
+// An individual test case, composed of a drop config and a number of test transforms to perform.
+message DropTestCase {
+  oneof config_type {
+    option (validate.required) = true;
+
+    // The drop config to test against.
+    config.processor.v1.DropConfig config = 1 [(validate.rules).string = {min_len: 1}];
+
+    // The name of the drop processor in the supplied proxy config to load the program from.
+    string drop_processor_name = 2 [(validate.rules).string = {min_len: 1}];
+  }
+
+  // 1 or more metrics that will be tested against the above parameters.
+  repeated MetricDropTest metrics = 3 [(validate.rules).repeated .min_items = 1];
+}
+
+// Root configuration for a test run. Each test run is composed of 1 or more test cases.
+message DropTesterConfig {
+  // The test cases in the test run.
+  repeated DropTestCase test_cases = 1 [(validate.rules).repeated .min_items = 1];
+}
