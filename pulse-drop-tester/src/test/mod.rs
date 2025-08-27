@@ -5,7 +5,23 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
-pub mod config;
-pub mod drop_tester;
-pub mod internode;
-pub mod vrl_tester;
+use crate::run;
+
+#[test]
+fn basic_case() {
+  let config = r"
+test_cases:
+- config:
+    rules:
+    - name: foo
+      conditions:
+      - metric_name:
+          exact: bar
+  metrics:
+  - input: bar:1|c
+    dropped_by: foo
+  - input: baz:1|g
+  ";
+
+  run(config, None).unwrap();
+}

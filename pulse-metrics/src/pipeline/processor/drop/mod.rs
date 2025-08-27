@@ -186,12 +186,12 @@ impl TranslatedDropRule {
 // TranslatedDropConfig
 //
 
-struct TranslatedDropConfig {
+pub struct TranslatedDropConfig {
   rules: Vec<TranslatedDropRule>,
 }
 
 impl TranslatedDropConfig {
-  fn new(config: &DropConfig, scope: &Scope) -> anyhow::Result<Self> {
+  pub fn new(config: &DropConfig, scope: &Scope) -> anyhow::Result<Self> {
     let rules = config
       .rules
       .iter()
@@ -201,8 +201,14 @@ impl TranslatedDropConfig {
     Ok(Self { rules })
   }
 
-  fn drop_sample(&self, sample: &ParsedMetric) -> bool {
-    self.rules.iter().any(|rule| rule.drop_sample(sample))
+  pub fn drop_sample(&self, sample: &ParsedMetric) -> Option<&str> {
+    self.rules.iter().find_map(|rule| {
+      if rule.drop_sample(sample) {
+        Some(rule.name.as_str())
+      } else {
+        None
+      }
+    })
   }
 }
 
@@ -279,7 +285,7 @@ impl PipelineProcessor for DropProcessor {
       let config = self.current_config.read();
       samples
         .into_iter()
-        .filter(|sample| !config.drop_sample(sample))
+        .filter(|sample| config.drop_sample(sample).is_none())
         .collect()
     };
     log::debug!("forwarding {} sample(s)", samples.len());
