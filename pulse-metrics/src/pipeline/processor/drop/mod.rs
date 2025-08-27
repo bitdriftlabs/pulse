@@ -35,14 +35,32 @@ use std::sync::Arc;
 // 2) Otherwise we can use a RegexSet and perform a single match across all names.
 
 //
+// TranslatedStringMatchCondition
+//
+
+enum TranslatedStringMatchCondition {
+  Exact(String),
+  Regex(Regex),
+}
+
+impl TranslatedStringMatchCondition {
+  fn is_match(&self, value: &[u8]) -> bool {
+    match self {
+      Self::Exact(exact) => exact.as_bytes() == value,
+      Self::Regex(regex) => regex.is_match(value),
+    }
+  }
+}
+
+//
 // TranslatedDropCondition
 //
 
 enum TranslatedDropCondition {
-  MetricName(Regex),
+  MetricName(TranslatedStringMatchCondition),
   TagMatch {
     name: String,
-    value_regex: Option<Regex>,
+    value_match: Option<TranslatedStringMatchCondition>,
   },
   ValueMatch(ValueMatch),
   AndMatch(Vec<TranslatedDropCondition>),
@@ -50,13 +68,16 @@ enum TranslatedDropCondition {
 }
 
 impl TranslatedDropCondition {
-  fn string_match_to_regex(string_match: &StringMatch) -> anyhow::Result<Regex> {
-    // TODO(mattklein123): For simplicity we use regex for all matching currently.
+  fn string_match_to_regex(
+    string_match: &StringMatch,
+  ) -> anyhow::Result<TranslatedStringMatchCondition> {
     Ok(
       match string_match.string_match_type.as_ref().expect("pgv") {
-        String_match_type::Exact(exact) => Regex::new(exact),
-        String_match_type::Regex(regex) => Regex::new(regex),
-      }?,
+        String_match_type::Exact(exact) => TranslatedStringMatchCondition::Exact(exact.to_string()),
+        String_match_type::Regex(regex) => {
+          TranslatedStringMatchCondition::Regex(Regex::new(regex)?)
+        },
+      },
     )
   }
 
@@ -67,7 +88,7 @@ impl TranslatedDropCondition {
       },
       Condition_type::TagMatch(tag_match) => Ok(Self::TagMatch {
         name: tag_match.tag_name.to_string(),
-        value_regex: tag_match
+        value_match: tag_match
           .tag_value
           .as_ref()
           .map(Self::string_match_to_regex)
@@ -108,15 +129,15 @@ impl TranslatedDropCondition {
 
   fn drop_sample(&self, sample: &ParsedMetric) -> bool {
     match self {
-      Self::MetricName(regex) => regex.is_match(sample.metric().get_id().name()),
-      Self::TagMatch { name, value_regex } => sample
+      Self::MetricName(value_match) => value_match.is_match(sample.metric().get_id().name()),
+      Self::TagMatch { name, value_match } => sample
         .metric()
         .get_id()
         .tag(name.as_str())
         .is_some_and(|tag_value| {
-          value_regex
+          value_match
             .as_ref()
-            .is_none_or(|value_regex| value_regex.is_match(&tag_value.value))
+            .is_none_or(|value_match| value_match.is_match(&tag_value.value))
         }),
       Self::ValueMatch(value_match) => Self::is_value_match(sample, value_match),
       Self::AndMatch(conditions) => conditions
@@ -162,6 +183,12 @@ impl TranslatedDropRule {
   }
 
   fn drop_sample(&self, sample: &ParsedMetric) -> bool {
+    log::trace!(
+      "checking drop rule {} mode {:?} for sample {}",
+      self.name,
+      self.mode,
+      sample.metric()
+    );
     let drop = self
       .conditions
       .iter()
