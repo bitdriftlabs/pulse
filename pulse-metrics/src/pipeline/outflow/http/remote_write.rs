@@ -319,7 +319,13 @@ impl HttpRemoteWriteOutflow {
           .await
           {
             self.stats.offload_queue_tx.inc();
-            log::debug!("request sent to offload queue");
+            warn_every!(
+              15.seconds(),
+              "remote write request failed, but sent to retry queue: size={}, outflow=\"{}\": {}",
+              compressed_write_request.len(),
+              self.name,
+              e
+            );
             return;
           }
 
@@ -330,7 +336,7 @@ impl HttpRemoteWriteOutflow {
             .inc_by(num_metrics);
           warn_every!(
             15.seconds(),
-            "prometheus remote write request failed: size={}, outflow=\"{}\": {}",
+            "remote write request failed: size={}, outflow=\"{}\": {}",
             compressed_write_request.len(),
             self.name,
             e

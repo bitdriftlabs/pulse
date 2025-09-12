@@ -24,6 +24,7 @@ axum.workspace                   = true
 backoff.workspace                = true
 base64ct.workspace               = true
 bd-grpc.workspace                = true
+bd-grpc-codec.workspace          = true
 bd-log.workspace                 = true
 bd-proto.workspace               = true
 bd-proto-util.workspace          = true
