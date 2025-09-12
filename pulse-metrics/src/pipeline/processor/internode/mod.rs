@@ -620,7 +620,7 @@ impl Handler<LastElidedTimestampRequest, LastElidedTimestampResponse> for Intern
         ..Default::default()
       }),
       Err(e) => Err(bd_grpc::error::Error::Grpc(bd_grpc::status::Status::new(
-        bd_grpc::status::Code::Internal,
+        bd_grpc_codec::code::Code::Internal,
         e.to_string(),
       ))),
     }
