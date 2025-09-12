@@ -30,6 +30,7 @@ use http::HeaderMap;
 use prometheus::{Histogram, IntCounter, IntGauge};
 use protobuf::MessageField;
 use protobuf::well_known_types::duration::Duration;
+use pulse_common::LossyIntToFloat;
 use pulse_common::proto::ProtoDurationToStdDuration;
 use pulse_protobuf::protos::pulse::config::common::v1::retry::RetryPolicy;
 use pulse_protobuf::protos::pulse::config::outflow::v1::outflow_common::{
@@ -56,6 +57,7 @@ struct HttpRemoteWriteOutflowStats {
   requests_retry: IntCounter,
   requests_total: IntCounter,
   requests_time: Histogram,
+  requests_size: Histogram,
   offload_queue_tx: IntCounter,
   offload_queue_rx: IntCounter,
   tx_bytes: IntCounter,
@@ -71,6 +73,20 @@ impl HttpRemoteWriteOutflowStats {
       requests_retry: stats.counter("requests_retry"),
       requests_total: stats.counter("requests_total"),
       requests_time: stats.histogram("requests_time"),
+      requests_size: stats.histogram_with_buckets(
+        "requests_size",
+        &[
+          65536.0,     // 64 KiB
+          131_072.0,   // 128 KiB
+          262_144.0,   // 256 KiB
+          393_216.0,   // 384 KiB
+          524_288.0,   // 512 KiB
+          786_432.0,   // 768 KiB
+          1_048_576.0, // 1 MiB
+          1_310_720.0, // 1.25 MiB
+          1_572_864.0, // 1.5 MiB
+        ],
+      ),
       offload_queue_tx: stats.counter("offload_queue_tx"),
       offload_queue_rx: stats.counter("offload_queue_rx"),
       tx_bytes: stats.counter("tx_bytes"),
@@ -239,6 +255,10 @@ impl HttpRemoteWriteOutflow {
         };
 
       log::debug!("sending batch of {num_metrics} metric(s)");
+      self
+        .stats
+        .requests_size
+        .observe(compressed_write_request.len().lossy_to_f64());
       let time = self.stats.requests_time.start_timer();
       let res = self
         .retry
