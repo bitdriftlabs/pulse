@@ -118,6 +118,52 @@ async fn remote_write() {
 }
 
 fmt_reuse! {
+MAX_BATCH_SIZE = r#"
+  pipeline:
+    inflows:
+      prom_remote_write:
+        routes: ["outflow:prom"]
+        prom_remote_write:
+          bind: "inflow:prom"
+
+    outflows:
+      prom:
+        prom_remote_write:
+          send_to: "http://{fake_upstream}/api/v1/prom/write"
+          batch_max_size: 1024
+  "#;
+}
+
+#[tokio::test]
+async fn max_batch_size() {
+  let bind_resolver = HelperBindResolver::new(&["fake_upstream", "inflow:prom"], &[]).await;
+  let mut upstream = FakeHttpUpstream::new_prom(
+    "fake_upstream",
+    bind_resolver.clone(),
+    ParseConfig::default(),
+  )
+  .await;
+  let helper = Helper::new(
+    &fmt!(
+      MAX_BATCH_SIZE,
+      fake_upstream = bind_resolver.local_tcp_addr("fake_upstream"),
+    ),
+    bind_resolver.clone(),
+  )
+  .await;
+  let client = PromClient::new(bind_resolver.local_tcp_addr("inflow:prom")).await;
+
+  let metrics = (0 .. 150)
+    .map(|i| make_metric(&format!("metric_{i:03}"), &[], 1))
+    .collect_vec();
+  client.send(metrics).await;
+  assert_eq!(upstream.wait_for_metrics().await.1.len(), 75);
+  assert_eq!(upstream.wait_for_metrics().await.1.len(), 75);
+
+  helper.shutdown().await;
+}
+
+fmt_reuse! {
 LYFT_SPECIFIC_CONFIG = r#"
   pipeline:
     inflows:

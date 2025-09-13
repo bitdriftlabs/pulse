@@ -58,6 +58,7 @@ struct HttpRemoteWriteOutflowStats {
   requests_total: IntCounter,
   requests_time: Histogram,
   requests_size: Histogram,
+  requests_split: IntCounter,
   offload_queue_tx: IntCounter,
   offload_queue_rx: IntCounter,
   tx_bytes: IntCounter,
@@ -87,6 +88,7 @@ impl HttpRemoteWriteOutflowStats {
           1_572_864.0, // 1.5 MiB
         ],
       ),
+      requests_split: stats.counter("requests_split"),
       offload_queue_tx: stats.counter("offload_queue_tx"),
       offload_queue_rx: stats.counter("offload_queue_rx"),
       tx_bytes: stats.counter("tx_bytes"),
@@ -101,7 +103,7 @@ impl HttpRemoteWriteOutflowStats {
 enum SendRequest {
   // Request coming from the standard inflow/batch system.
   Normal {
-    compressed_write_request: Bytes,
+    compressed_write_requests: Vec<Bytes>,
     received_at: Vec<Instant>,
     extra_headers: Option<Arc<HeaderMap>>,
   },
@@ -232,73 +234,132 @@ impl HttpRemoteWriteOutflow {
     let auto_requests_in_flight = AutoGauge::new(self.stats.requests_in_flight.clone());
 
     tokio::spawn(async move {
-      let (compressed_write_request, num_metrics, received_at, extra_headers, serialized) =
-        match send_request {
-          SendRequest::Normal {
-            compressed_write_request,
-            received_at,
-            extra_headers,
-          } => (
-            compressed_write_request,
-            received_at.len().try_into().unwrap(),
-            Some(received_at),
-            extra_headers,
-            None,
-          ),
-          SendRequest::OffloadQueue { serialized } => (
-            serialized.compressed_write_request(),
-            serialized.num_metrics(),
-            None,
-            serialized.extra_headers(),
-            Some(serialized),
-          ),
-        };
+      let (compressed_write_requests, num_metrics, received_at, extra_headers) = match send_request
+      {
+        SendRequest::Normal {
+          compressed_write_requests,
+          received_at,
+          extra_headers,
+        } => (
+          compressed_write_requests,
+          received_at.len().try_into().unwrap(),
+          Some(received_at),
+          extra_headers,
+        ),
+        SendRequest::OffloadQueue { serialized } => (
+          vec![serialized.compressed_write_request()],
+          serialized.num_metrics(),
+          None,
+          serialized.extra_headers(),
+        ),
+      };
 
       log::debug!("sending batch of {num_metrics} metric(s)");
-      self
-        .stats
-        .requests_size
-        .observe(compressed_write_request.len().lossy_to_f64());
-      let time = self.stats.requests_time.start_timer();
-      let res = self
-        .retry
-        .retry_notify(
-          (self.backoff)(),
-          || async {
+      if compressed_write_requests.len() > 1 {
+        self
+          .stats
+          .requests_split
+          .inc_by(compressed_write_requests.len() as u64);
+      }
+      for compressed_write_request in compressed_write_requests {
+        self
+          .stats
+          .requests_size
+          .observe(compressed_write_request.len().lossy_to_f64());
+        let time = self.stats.requests_time.start_timer();
+        let res = self
+          .retry
+          .retry_notify(
+            (self.backoff)(),
+            || async {
+              self
+                .stats
+                .tx_bytes
+                .inc_by(compressed_write_request.len() as u64);
+
+              match self
+                .client
+                .send_write_request(
+                  compressed_write_request.clone(),
+                  extra_headers.as_ref().map(std::convert::AsRef::as_ref),
+                )
+                .await
+              {
+                Ok(()) => Ok(()),
+                Err(e) => {
+                  // Skip retries if shutdown is pending.
+                  if should_retry(&e)
+                    && shutdown.component_status() != ComponentStatus::PendingShutdown
+                  {
+                    Err(backoff::Error::transient(e))
+                  } else {
+                    Err(backoff::Error::permanent(e))
+                  }
+                },
+              }
+            },
+            || {
+              self.stats.requests_retry.inc();
+            },
+          )
+          .await;
+
+        drop(time);
+        self.stats.requests_total.inc();
+
+        match res {
+          Ok(()) => {
             self
               .stats
-              .tx_bytes
-              .inc_by(compressed_write_request.len() as u64);
+              .outflow_stats
+              .messages_outgoing_success
+              .inc_by(num_metrics);
+          },
+          Err(e) => {
+            // This is incremented whether we offload or not, so that we get accurate SR for
+            // upstream. Alarming should happen on drops.
+            self.stats.requests_fail.inc();
 
-            match self
-              .client
-              .send_write_request(
-                compressed_write_request.clone(),
-                extra_headers.as_ref().map(std::convert::AsRef::as_ref),
-              )
-              .await
+            if maybe_queue_for_retry(
+              self.offload_queue.as_ref(),
+              &self.retry_policy.offload_queue,
+              &e,
+              SerializedOffloadRequest::new(
+                &compressed_write_request,
+                extra_headers.clone(),
+                num_metrics,
+                &RealTimeProvider {},
+              ),
+              &RealTimeProvider {},
+            )
+            .await
             {
-              Ok(()) => Ok(()),
-              Err(e) => {
-                // Skip retries if shutdown is pending.
-                if should_retry(&e)
-                  && shutdown.component_status() != ComponentStatus::PendingShutdown
-                {
-                  Err(backoff::Error::transient(e))
-                } else {
-                  Err(backoff::Error::permanent(e))
-                }
-              },
+              self.stats.offload_queue_tx.inc();
+              warn_every!(
+                15.seconds(),
+                "remote write request failed, but sent to retry queue: size={}, outflow=\"{}\": {}",
+                compressed_write_request.len(),
+                self.name,
+                e
+              );
+              return;
             }
-          },
-          || {
-            self.stats.requests_retry.inc();
-          },
-        )
-        .await;
 
-      drop(time);
-      self.stats.requests_total.inc();
+            self
+              .stats
+              .outflow_stats
+              .messages_outgoing_failed
+              .inc_by(num_metrics);
+            warn_every!(
+              15.seconds(),
+              "remote write request failed: size={}, outflow=\"{}\": {}",
+              compressed_write_request.len(),
+              self.name,
+              e
+            );
+          },
+        }
+      }
 
       // TODO(mattklein123): We don't attempt to serialize received_at for offload given it's an
       // edge case. Perhaps we should do this?
@@ -307,61 +368,6 @@ impl HttpRemoteWriteOutflow {
           .stats
           .outflow_stats
           .messages_e2e_timer_observe(&received_at);
-      }
-
-      match res {
-        Ok(()) => {
-          self
-            .stats
-            .outflow_stats
-            .messages_outgoing_success
-            .inc_by(num_metrics);
-        },
-        Err(e) => {
-          // This is incremented whether we offload or not, so that we get accurate SR for
-          // upstream. Alarming should happen on drops.
-          self.stats.requests_fail.inc();
-
-          if maybe_queue_for_retry(
-            self.offload_queue.as_ref(),
-            &self.retry_policy.offload_queue,
-            &e,
-            serialized.unwrap_or_else(|| {
-              SerializedOffloadRequest::new(
-                &compressed_write_request,
-                extra_headers,
-                num_metrics,
-                &RealTimeProvider {},
-              )
-            }),
-            &RealTimeProvider {},
-          )
-          .await
-          {
-            self.stats.offload_queue_tx.inc();
-            warn_every!(
-              15.seconds(),
-              "remote write request failed, but sent to retry queue: size={}, outflow=\"{}\": {}",
-              compressed_write_request.len(),
-              self.name,
-              e
-            );
-            return;
-          }
-
-          self
-            .stats
-            .outflow_stats
-            .messages_outgoing_failed
-            .inc_by(num_metrics);
-          warn_every!(
-            15.seconds(),
-            "remote write request failed: size={}, outflow=\"{}\": {}",
-            compressed_write_request.len(),
-            self.name,
-            e
-          );
-        },
       }
 
       drop(shutdown);
@@ -431,7 +437,7 @@ impl HttpRemoteWriteOutflow {
 
       for batch in batch_set {
         let HttpBatch::Complete {
-          compressed_write_request,
+          compressed_write_requests,
           received_at,
           extra_headers,
         } = batch
@@ -444,7 +450,7 @@ impl HttpRemoteWriteOutflow {
           .clone()
           .send_request(
             SendRequest::Normal {
-              compressed_write_request,
+              compressed_write_requests,
               extra_headers,
               received_at,
             },
@@ -486,6 +492,7 @@ pub struct DefaultBatchRouter {
 impl DefaultBatchRouter {
   pub(crate) fn new(
     batch_max_samples: Option<u64>,
+    batch_max_size: Option<u64>,
     queue_policy: &QueuePolicy,
     scope: &Scope,
     shutdown: ComponentShutdown,
@@ -495,6 +502,7 @@ impl DefaultBatchRouter {
     Self {
       builder: Self::make_batch_builder(
         batch_max_samples,
+        batch_max_size,
         queue_policy,
         scope,
         shutdown,
@@ -507,6 +515,7 @@ impl DefaultBatchRouter {
   #[allow(clippy::needless_pass_by_value)] // Spurious
   pub(crate) fn make_batch_builder(
     batch_max_samples: Option<u64>,
+    batch_max_size: Option<u64>,
     queue_policy: &QueuePolicy,
     scope: &Scope,
     shutdown: ComponentShutdown,
@@ -521,7 +530,14 @@ impl DefaultBatchRouter {
     BatchBuilder::new(
       scope,
       queue_policy,
-      move || HttpBatch::new(batch_max_samples, extra_headers.clone(), finisher.clone()),
+      move || {
+        HttpBatch::new(
+          batch_max_samples,
+          batch_max_size.map(|s| s.try_into().unwrap()),
+          extra_headers.clone(),
+          finisher.clone(),
+        )
+      },
       shutdown,
     )
   }
@@ -547,11 +563,12 @@ pub enum HttpBatch {
   Building {
     samples: Vec<ParsedMetric>,
     max_samples: usize,
+    max_size: Option<usize>,
     extra_headers: Option<Arc<HeaderMap>>,
     finisher: Arc<dyn Fn(Vec<ParsedMetric>) -> Bytes + Send + Sync>,
   },
   Complete {
-    compressed_write_request: Bytes,
+    compressed_write_requests: Vec<Bytes>,
     received_at: Vec<Instant>,
     extra_headers: Option<Arc<HeaderMap>>,
   },
@@ -560,15 +577,49 @@ pub enum HttpBatch {
 impl HttpBatch {
   fn new(
     max_samples: usize,
+    max_size: Option<usize>,
     extra_headers: Option<Arc<HeaderMap>>,
     finisher: Arc<dyn Fn(Vec<ParsedMetric>) -> Bytes + Send + Sync>,
   ) -> Self {
     Self::Building {
       samples: Vec::with_capacity(max_samples),
       max_samples,
+      max_size,
       extra_headers,
       finisher,
     }
+  }
+
+  fn maybe_split_requests(
+    finisher: &(dyn Fn(Vec<ParsedMetric>) -> Bytes + Send + Sync),
+    samples: Vec<ParsedMetric>,
+    max_size: Option<usize>,
+  ) -> (Vec<Bytes>, usize) {
+    // If max_size is set, we may need to split the request. To do this, we clone the samples
+    // so that we can split them in half if needed. This is not ideal as this is done for all
+    // requests.
+    let maybe_cloned_samples = max_size.map(|_| samples.clone());
+    let compressed_write_request = (finisher)(samples);
+    let (requests, size) = if max_size.is_some_and(|size| compressed_write_request.len() > size) {
+      // If the compressed request is larger than the max size, we need to split it.
+      // TODO(mattklein123): The requests could still be too large after splitting. We ignore this
+      // for now.
+      log::debug!(
+        "splitting remote write request of size {}",
+        compressed_write_request.len()
+      );
+      let mut first = maybe_cloned_samples.unwrap();
+      let rest = first.split_off(first.len() / 2);
+      let first = (finisher)(first);
+      let rest = (finisher)(rest);
+      let size = first.len() + rest.len();
+      (vec![first, rest], size)
+    } else {
+      let size = compressed_write_request.len();
+      (vec![compressed_write_request], size)
+    };
+
+    (requests, size)
   }
 }
 
@@ -591,25 +642,27 @@ impl Batch<ParsedMetric> for HttpBatch {
   }
 
   fn finish(&mut self) -> usize {
-    let (samples, extra_headers, finisher) = match self {
+    let (samples, extra_headers, finisher, max_size) = match self {
       Self::Building {
         samples,
         extra_headers,
         finisher,
+        max_size,
         ..
       } => (
         std::mem::take(samples),
         std::mem::take(extra_headers),
         finisher,
+        *max_size,
       ),
       Self::Complete { .. } => unreachable!(),
     };
 
     let received_at = samples.iter().map(ParsedMetric::received_at).collect();
-    let compressed_write_request = (finisher)(samples);
-    let size = compressed_write_request.len();
+    let (compressed_write_requests, size) =
+      Self::maybe_split_requests(finisher.as_ref(), samples, max_size);
     *self = Self::Complete {
-      compressed_write_request,
+      compressed_write_requests,
       received_at,
       extra_headers,
     };

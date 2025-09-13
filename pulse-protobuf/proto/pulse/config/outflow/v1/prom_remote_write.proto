@@ -41,8 +41,14 @@ message PromRemoteWriteClientConfig {
   // Queue policy for the client.
   QueuePolicy queue_policy = 4;
 
-  // The maximum numer of samples per batch. Defaults to 1000.
+  // The maximum number of samples per batch. Defaults to 1000.
   optional uint64 batch_max_samples = 5;
+
+  // The maximum size of each batch in bytes, *after* compression. There is no default for this.
+  // This can be used of the TSDB has a strict maximum request size. Since it's impossible to know
+  // the size before compression, batch_max_samples should be tuned alongside this. If the limit is
+  // hit, the batch will be split in half into 2 requests so this is an expensive operation.
+  optional uint64 batch_max_size = 13;
 
   // Whether to send metadata (name and tags) only. If true, samples are dropped.
   bool metadata_only = 6;

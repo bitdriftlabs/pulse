@@ -68,6 +68,7 @@ pub fn make_prom_batch_router(
   } else {
     Arc::new(DefaultBatchRouter::new(
       config.batch_max_samples,
+      config.batch_max_size,
       &config.queue_policy,
       &stats.stats,
       shutdown,
@@ -147,6 +148,7 @@ impl LyftBatchRouter {
   ) -> Self {
     let generic = DefaultBatchRouter::make_batch_builder(
       batch_max_samples,
+      None,
       queue_policy,
       &scope.scope("general"),
       shutdown.clone(),
@@ -161,6 +163,7 @@ impl LyftBatchRouter {
       .map(|p| {
         DefaultBatchRouter::make_batch_builder(
           batch_max_samples,
+          None,
           queue_policy,
           &scope.scope("instance"),
           shutdown.clone(),
@@ -174,6 +177,7 @@ impl LyftBatchRouter {
       .map(|p| {
         DefaultBatchRouter::make_batch_builder(
           batch_max_samples,
+          None,
           queue_policy,
           &scope.scope("cloudwatch"),
           shutdown,

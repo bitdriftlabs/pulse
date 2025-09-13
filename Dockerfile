@@ -1,4 +1,4 @@
-FROM ubuntu:jammy as base
+FROM ubuntu:noble as base
 
 RUN apt-get update \
     && apt-get upgrade -y \
