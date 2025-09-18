@@ -871,7 +871,7 @@ pub async fn make(
       let interval = http_service_discovery
         .fetch_interval
         .as_ref()
-        .map_or(1.minutes(), bd_time::ProtoDurationExt::to_time_duration)
+        .map_or_else(|| 1.minutes(), bd_time::ProtoDurationExt::to_time_duration)
         .interval(MissedTickBehavior::Delay);
       let target = HttpServiceDiscoveryEndpointTarget::new(
         http_service_discovery,

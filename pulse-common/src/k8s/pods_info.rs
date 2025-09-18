@@ -129,7 +129,7 @@ impl PodsInfoSingleton {
             k8s_config
               .services_cache_interval
               .as_ref()
-              .map_or(15.minutes(), bd_time::ProtoDurationExt::to_time_duration),
+              .map_or_else(|| 15.minutes(), bd_time::ProtoDurationExt::to_time_duration),
             Box::new(RealServiceFetcher),
           ))
         } else {
@@ -514,7 +514,7 @@ impl ResourceWatchCallbacks<Pod> for PodsInfoCache {
   async fn init_apply(&mut self, pod: Pod) {
     self
       .initializing_state
-      .get_or_insert(PodsInfo::default())
+      .get_or_insert_with(PodsInfo::default)
       .apply_pod(
         &self.node_info,
         &pod,

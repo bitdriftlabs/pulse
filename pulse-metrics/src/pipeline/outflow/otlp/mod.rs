@@ -54,6 +54,7 @@ pub fn make_otlp_batch_router(
 
   Arc::new(DefaultBatchRouter::new(
     config.batch_max_samples,
+    None,
     &config.queue_policy,
     &stats.stats,
     shutdown,
