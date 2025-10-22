@@ -164,6 +164,6 @@ fn parsed_metric_roundtrip_metric(metric: Metric) -> anyhow::Result<()> {
   if m.eq(&m2) {
     Ok(())
   } else {
-    Err(anyhow::anyhow!("m = {:?}, m2 = {:?}", m, m2))
+    Err(anyhow::anyhow!("m = {m:?}, m2 = {m2:?}"))
   }
 }

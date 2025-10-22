@@ -60,6 +60,8 @@ struct PerBatchLockedData<T> {
 struct Stats {
   dropped_bytes: IntCounter,
   queued_bytes: IntGauge,
+  total_batches: IntCounter,
+  timeout_batches: IntCounter,
 }
 
 //
@@ -99,6 +101,8 @@ impl<I: Send + Sync + 'static, B: Batch<I> + Send + Sync + 'static> BatchBuilder
     let stats = Stats {
       dropped_bytes: scope.counter("dropped_bytes"),
       queued_bytes: scope.gauge("queued_bytes"),
+      total_batches: scope.counter("total_batches"),
+      timeout_batches: scope.counter("timeout_batches"),
     };
 
     let batch_builder = Arc::new(Self {
@@ -151,6 +155,7 @@ impl<I: Send + Sync + 'static, B: Batch<I> + Send + Sync + 'static> BatchBuilder
           &cloned_batch_builder.notify_on_data,
           batch,
           size,
+          true,
         );
       }
 
@@ -255,6 +260,7 @@ impl<I: Send + Sync + 'static, B: Batch<I> + Send + Sync + 'static> BatchBuilder
           &self.notify_on_data,
           pending_batch,
           finished_size,
+          false,
         );
       } else if locked_pending_data.batch_fill_wait_task.is_none() {
         // If there is no fill task, start one.
@@ -286,6 +292,7 @@ impl<I: Send + Sync + 'static, B: Batch<I> + Send + Sync + 'static> BatchBuilder
             &cloned_self.notify_on_data,
             pending_batch,
             size,
+            true,
           );
         }));
       }
@@ -299,8 +306,13 @@ impl<I: Send + Sync + 'static, B: Batch<I> + Send + Sync + 'static> BatchBuilder
     notify_on_data: &Notify,
     pending_batch: B,
     size: usize,
+    timeout_batch: bool,
   ) {
     Self::inc_total_size(locked_data, stats, size);
+    stats.total_batches.inc();
+    if timeout_batch {
+      stats.timeout_batches.inc();
+    }
 
     // In order to avoid spurious wakeups, we keep track of whether there are any waiters.
     // TODO(mattklein123): Due to the use of multiple batch builders in the Lyft specific config

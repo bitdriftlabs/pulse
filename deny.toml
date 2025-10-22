@@ -1,5 +1,6 @@
 [graph]
 all-features        = false
+exclude             = ["bd-workspace-hack"]
 no-default-features = false
 targets             = []
 
