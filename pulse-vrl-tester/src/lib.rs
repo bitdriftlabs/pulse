@@ -109,7 +109,7 @@ fn run_test_case(test_case: VrlTestCase, proxy_config: Option<&Config>) -> anyho
     &program_source,
     PulseDynamicState::new(Collector::default().scope("vrl_tester")),
   )
-  .map_err(|e| anyhow!("unable to compile VRL program '{}': {e}", program_source))?;
+  .map_err(|e| anyhow!("unable to compile VRL program '{program_source}': {e}"))?;
   let metadata = test_case
     .kubernetes_metadata
     .into_option()
@@ -158,10 +158,7 @@ fn run_test_case(test_case: VrlTestCase, proxy_config: Option<&Config>) -> anyho
         match result {
           Ok(Value::Integer(result)) if result == integer => {},
           _ => bail!(
-            "VRL program '{}' failed to transform into '{}', got '{:?}'",
-            program_source,
-            integer,
-            result
+            "VRL program '{program_source}' failed to transform into '{integer}', got '{result:?}'"
           ),
         }
       },

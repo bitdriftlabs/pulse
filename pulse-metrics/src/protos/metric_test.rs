@@ -129,22 +129,14 @@ fn metrics_roundtrip_write_request(input: Vec<ParsedMetric>) -> anyhow::Result<(
   );
   assert!(errors.is_empty());
   if input.len() != output.len() {
-    bail!(
-      "mismatched lengths: input {:?}, output: {:?}",
-      input,
-      output
-    );
+    bail!("mismatched lengths: input {input:?}, output: {output:?}");
   }
   for input_metric in input.clone() {
     let matching = output
       .iter()
       .find(|output_metric| &input_metric.metric == *output_metric);
     if Some(&input_metric.metric.clone()) != matching {
-      bail!(
-        "input missing from output: input {:?}, output: {:?}",
-        input_metric,
-        output
-      );
+      bail!("input missing from output: input {input_metric:?}, output: {output:?}");
     }
   }
   for output_metric in output {
@@ -153,11 +145,7 @@ fn metrics_roundtrip_write_request(input: Vec<ParsedMetric>) -> anyhow::Result<(
       .find(|input_metric| input_metric.metric == output_metric)
       .map(|metric| &metric.metric);
     if Some(&output_metric.clone()) != matching {
-      bail!(
-        "output missing from input: output {:?}, input: {:?}",
-        output_metric,
-        input
-      );
+      bail!("output missing from input: output {output_metric:?}, input: {input:?}");
     }
   }
   Ok(())
