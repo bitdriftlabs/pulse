@@ -14,7 +14,7 @@ release-all: test
 .PHONY: test
 test: setup
 	SKIP_PROTO_GEN=1 RUST_LOG=off,bd_panic=error RUST_BACKTRACE=1 cargo test --profile ci-test --workspace
-	SKIP_PROTO_GEN=1 cargo build --profile ci-test --workspace
+	SKIP_PROTO_GEN=1 cargo nextest run --cargo-profile ci-test --workspace
 
 .PHONY: clippy
 clippy: setup
