@@ -673,7 +673,7 @@ impl<Jitter: DurationJitter + 'static> Scraper<Jitter> {
       let mut updated_state = HashMap::new();
       for (id, endpoint) in &current_endpoints {
         if let Some(job) = active_jobs.remove(id) {
-          updated_state.insert(id.to_string(), job);
+          updated_state.insert(id.clone(), job);
         } else {
           let shutdown_trigger = ComponentShutdownTrigger::default();
           let shutdown = shutdown_trigger.make_shutdown();
@@ -1059,9 +1059,9 @@ impl NodeEndpointsTarget {
   fn new(node_info: &NodeInfo, details: &kubernetes_prometheus_config::Node) -> Self {
     Self {
       endpoints: HashMap::from([(
-        node_info.name.to_string(),
+        node_info.name.clone(),
         PromEndpoint::new(
-          node_info.name.to_string(),
+          node_info.name.clone(),
           node_info.kubelet_port,
           details.path.to_string(),
           Some(Arc::new(Metadata::new(

@@ -259,3 +259,156 @@ async fn max_size_overflow() {
     map_return(batch_builder.next_batch_set(Some(16)).await)
   );
 }
+
+#[tokio::test(start_paused = true)]
+async fn fifo_simple_batch() {
+  let shutdown_trigger = ComponentShutdownTrigger::default();
+  let batch_builder = BatchBuilder::new(
+    &Collector::default().scope("test"),
+    &QueuePolicy {
+      use_fifo: true,
+      ..Default::default()
+    },
+    TestBatch::default,
+    shutdown_trigger.make_shutdown(),
+  );
+
+  let batch_future = batch_builder.next_batch_set(None);
+  pin!(batch_future);
+  assert_eq!(Poll::Pending, poll!(batch_future.as_mut()));
+
+  batch_builder.send(once(("a", expect_finish(4096))));
+  assert_eq!(Poll::Pending, poll!(batch_future.as_mut()));
+
+  // Sleep to advance past the batch fill time.
+  51.milliseconds().sleep().await;
+  assert_eq!(Some(vec![vec!["a"]]), map_return(batch_future.await));
+
+  // Add 2 items that together will meet the max batch size. This should flush it and cancel the
+  // fill wait task.
+  batch_builder.send(once(("a", None)));
+  batch_builder.send(once(("b", complete(4096))));
+  51.milliseconds().sleep().await;
+  assert_eq!(
+    Some(vec![vec!["a", "b"]]),
+    map_return(batch_builder.next_batch_set(Some(1)).await)
+  );
+
+  // Add another item, and advance past the batch fill time and make sure we get it back.
+  batch_builder.send(once(("a", expect_finish(1))));
+  51.milliseconds().sleep().await;
+  assert_eq!(
+    Some(vec![vec!["a"]]),
+    map_return(batch_builder.next_batch_set(Some(16)).await)
+  );
+
+  // Add another item, and advance past the batch fill time and make sure we get it back.
+  batch_builder.send(once(("b", expect_finish(1))));
+  51.milliseconds().sleep().await;
+  assert_eq!(
+    Some(vec![vec!["b"]]),
+    map_return(batch_builder.next_batch_set(None).await)
+  );
+}
+
+#[tokio::test(start_paused = true)]
+async fn fifo_ordering() {
+  let shutdown_trigger = ComponentShutdownTrigger::default();
+  let batch_builder = BatchBuilder::new(
+    &Collector::default().scope("test"),
+    &QueuePolicy {
+      use_fifo: true,
+      ..Default::default()
+    },
+    TestBatch::default,
+    shutdown_trigger.make_shutdown(),
+  );
+
+  // Send multiple batches and verify they are returned in FIFO order (oldest first).
+  batch_builder.send(once(("a", None)));
+  batch_builder.send(once(("b", complete(2))));
+  batch_builder.send(once(("c", None)));
+  batch_builder.send(once(("d", complete(2))));
+  batch_builder.send(once(("e", None)));
+  batch_builder.send(once(("f", complete(2))));
+
+  // In FIFO mode, oldest batch should come first.
+  assert_eq!(
+    vec![vec!["a", "b"], vec!["c", "d"], vec!["e", "f"]],
+    map_return(batch_builder.next_batch_set(None).await).unwrap()
+  );
+}
+
+#[tokio::test(start_paused = true)]
+async fn fifo_overflow() {
+  let shutdown_trigger = ComponentShutdownTrigger::default();
+  let batch_builder = BatchBuilder::new(
+    &Collector::default().scope("test"),
+    &QueuePolicy {
+      queue_max_bytes: Some(6),
+      use_fifo: true,
+      ..Default::default()
+    },
+    TestBatch::default,
+    shutdown_trigger.make_shutdown(),
+  );
+
+  // Send multiple batches that exceed the queue size.
+  batch_builder.send(once(("a", None)));
+  batch_builder.send(once(("b", complete(2))));
+  batch_builder.send(once(("c", complete(2))));
+  batch_builder.send(once(("d", None)));
+  batch_builder.send(once(("e", complete(3))));
+
+  // In FIFO mode with overflow:
+  // - Batches are pushed to back of queue: ["a","b"], ["c"], ["d","e"]
+  // - Queue max is 6 bytes
+  // - After ["a","b"](2) + ["c"](2) = 4 bytes
+  // - Adding ["d","e"](3) would be 7 bytes total
+  // - Need to evict 1 byte, so evict from back: drop ["d","e"] itself? No, we evict BEFORE adding
+  // - Actually the logic evicts AFTER checking we need room, so it evicts ["c"](2) from back
+  // - Final state: ["a","b"](2) + ["d","e"](3) = 5 bytes, ["c"] was dropped
+  assert_eq!(
+    Some(vec![vec!["a", "b"]]),
+    map_return(batch_builder.next_batch_set(Some(1)).await)
+  );
+  assert_eq!(
+    Some(vec![vec!["d", "e"]]),
+    map_return(batch_builder.next_batch_set(Some(1)).await)
+  );
+
+  let poll_future = batch_builder.next_batch_set(Some(16));
+  pin!(poll_future);
+  assert_eq!(Poll::Pending, poll!(poll_future));
+}
+
+#[tokio::test(start_paused = true)]
+async fn fifo_multiple_queues() {
+  let shutdown_trigger = ComponentShutdownTrigger::default();
+  let batch_builder = BatchBuilder::new(
+    &Collector::default().scope("test"),
+    &QueuePolicy {
+      concurrent_batch_queues: Some(2),
+      use_fifo: true,
+      ..Default::default()
+    },
+    TestBatch::default,
+    shutdown_trigger.make_shutdown(),
+  );
+
+  batch_builder.send(
+    [
+      ("a", None),
+      ("b", complete(2)),
+      ("c", None),
+      ("d", complete(2)),
+    ]
+    .into_iter(),
+  );
+
+  // In FIFO mode, batches should be returned in order they were completed.
+  assert_eq!(
+    vec![vec!["a", "b"], vec!["c", "d"]],
+    map_return(batch_builder.next_batch_set(None).await).unwrap()
+  );
+}
