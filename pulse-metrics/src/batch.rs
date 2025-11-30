@@ -39,7 +39,7 @@ pub trait Batch<I> {
 }
 
 // A combined batch and its size. Used for construction of both pending batches as well as entries
-// in the LIFO queue.
+// in the LIFO/FIFO queue.
 struct QueueEntry<T> {
   size: usize,
   item: T,
@@ -69,14 +69,12 @@ struct Stats {
 // BatchBuilder
 //
 
-// The batch builder combines the ability to create generic batches of items, as well as a LIFO
+// The batch builder combines the ability to create generic batches of items, as well as a LIFO/FIFO
 // queue of completed batches. The total size of both completed batches and pending batches are
-// tracked, and if there is overflow, the oldest entries are evicted from the LIFO queue to make
-// room.
+// tracked, and if there is overflow, the oldest entries are evicted from the LIFO/FIFO queue to
+// make room.
 // The LIFO requirement means we cannot use tokio::mpsc, which is why this file contains so much
 // manual synchronization code.
-// TODO(mattklein123): Potentially make the LIFO configurable. Some backends might not like this?
-// (Though if we send in parallel seems like it shouldn't matter.)
 pub struct BatchBuilder<I, B: Batch<I>> {
   global_locked_data: Mutex<GlobalLockedData<B>>,
   shutdown: AtomicBool,
@@ -191,7 +189,7 @@ impl<I: Send + Sync + 'static, B: Batch<I> + Send + Sync + 'static> BatchBuilder
   }
 
   // Send an item through the batch builder. This may result in old data getting dropped if the
-  // total data in the LIFO queue and the pending batch is too large.
+  // total data in the queue and the pending batch is too large.
   pub fn send(self: &Arc<Self>, items: impl Iterator<Item = I>) {
     if self.shutdown.load(Ordering::Relaxed) {
       // Just silently drop the data.
