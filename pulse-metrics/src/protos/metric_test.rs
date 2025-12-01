@@ -53,7 +53,7 @@ pub mod arbitraries {
       }
       .into();
 
-      let potential_tags = vec![
+      let potential_tags = [
         make_tag("name", "value"),
         make_tag("name2", "value2"),
         make_tag("name3", "value:value:value"),

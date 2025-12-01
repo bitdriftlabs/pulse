@@ -39,7 +39,7 @@ pub trait Batch<I> {
 }
 
 // A combined batch and its size. Used for construction of both pending batches as well as entries
-// in the LIFO queue.
+// in the LIFO/FIFO queue.
 struct QueueEntry<T> {
   size: usize,
   item: T,
@@ -50,6 +50,7 @@ struct GlobalLockedData<T> {
   batch_queue: VecDeque<QueueEntry<T>>,
   current_total_size: usize,
   waiters: bool,
+  lifo: bool,
 }
 struct PerBatchLockedData<T> {
   pending_batch: Option<T>,
@@ -68,14 +69,12 @@ struct Stats {
 // BatchBuilder
 //
 
-// The batch builder combines the ability to create generic batches of items, as well as a LIFO
+// The batch builder combines the ability to create generic batches of items, as well as a LIFO/FIFO
 // queue of completed batches. The total size of both completed batches and pending batches are
-// tracked, and if there is overflow, the oldest entries are evicted from the LIFO queue to make
-// room.
+// tracked, and if there is overflow, the oldest entries are evicted from the LIFO/FIFO queue to
+// make room.
 // The LIFO requirement means we cannot use tokio::mpsc, which is why this file contains so much
 // manual synchronization code.
-// TODO(mattklein123): Potentially make the LIFO configurable. Some backends might not like this?
-// (Though if we send in parallel seems like it shouldn't matter.)
 pub struct BatchBuilder<I, B: Batch<I>> {
   global_locked_data: Mutex<GlobalLockedData<B>>,
   shutdown: AtomicBool,
@@ -110,6 +109,7 @@ impl<I: Send + Sync + 'static, B: Batch<I> + Send + Sync + 'static> BatchBuilder
         batch_queue: VecDeque::new(),
         current_total_size: 0,
         waiters: false,
+        lifo: !policy.use_fifo,
       }),
       shutdown: AtomicBool::new(false),
       concurrent_batch_index: AtomicUsize::new(0),
@@ -189,7 +189,7 @@ impl<I: Send + Sync + 'static, B: Batch<I> + Send + Sync + 'static> BatchBuilder
   }
 
   // Send an item through the batch builder. This may result in old data getting dropped if the
-  // total data in the LIFO queue and the pending batch is too large.
+  // total data in the queue and the pending batch is too large.
   pub fn send(self: &Arc<Self>, items: impl Iterator<Item = I>) {
     if self.shutdown.load(Ordering::Relaxed) {
       // Just silently drop the data.
@@ -240,18 +240,21 @@ impl<I: Send + Sync + 'static, B: Batch<I> + Send + Sync + 'static> BatchBuilder
         let mut locked_data = self.global_locked_data.lock();
 
         // See if we need to evict old entries to make room for new data.
+        // For LIFO, evict from back (oldest).
+        // For FIFO, evict from back (newest to preserve oldest).
         while self.max_total_bytes - locked_data.current_total_size < finished_size {
-          let back = locked_data.batch_queue.pop_back().unwrap();
+          let evicted = locked_data.batch_queue.pop_back().unwrap();
           warn_every!(
             15.seconds(),
-            "batch overflow, evicting oldest with size: {}",
-            back.size
+            "batch overflow, evicting {} with size: {}",
+            if locked_data.lifo { "oldest" } else { "newest" },
+            evicted.size
           );
           self
             .stats
             .dropped_bytes
-            .inc_by(back.size.try_into().unwrap());
-          Self::dec_total_size(&mut locked_data, &self.stats, back.size);
+            .inc_by(evicted.size.try_into().unwrap());
+          Self::dec_total_size(&mut locked_data, &self.stats, evicted.size);
         }
 
         Self::finish_batch(
@@ -299,7 +302,7 @@ impl<I: Send + Sync + 'static, B: Batch<I> + Send + Sync + 'static> BatchBuilder
     }
   }
 
-  // Finish a pending batch and push it onto the LIFO queue.
+  // Finish a pending batch and push it onto the queue.
   fn finish_batch(
     locked_data: &mut GlobalLockedData<B>,
     stats: &Stats,
@@ -326,10 +329,19 @@ impl<I: Send + Sync + 'static, B: Batch<I> + Send + Sync + 'static> BatchBuilder
       notify_on_data.notify_waiters();
     }
     log::trace!("finalizing and pushing batch with size: {size}");
-    locked_data.batch_queue.push_front(QueueEntry {
-      size,
-      item: pending_batch,
-    });
+    // For LIFO, push to front and pop from front (newest first).
+    // For FIFO, push to back and pop from front (oldest first).
+    if locked_data.lifo {
+      locked_data.batch_queue.push_front(QueueEntry {
+        size,
+        item: pending_batch,
+      });
+    } else {
+      locked_data.batch_queue.push_back(QueueEntry {
+        size,
+        item: pending_batch,
+      });
+    }
   }
 
   // Get the next set of batches. Returns None when the builder has been shutdown and
@@ -345,6 +357,7 @@ impl<I: Send + Sync + 'static, B: Batch<I> + Send + Sync + 'static> BatchBuilder
         if len_to_pop > 0 {
           let mut batch_set = Vec::with_capacity(len_to_pop);
           for _ in 0 .. len_to_pop {
+            // Always pop from front for both LIFO and FIFO.
             let entry = locked_data.batch_queue.pop_front().unwrap();
             Self::dec_total_size(&mut locked_data, &self.stats, entry.size);
             log::trace!("popping entry with size: {}", entry.size);

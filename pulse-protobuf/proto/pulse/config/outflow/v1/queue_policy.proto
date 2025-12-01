@@ -13,8 +13,7 @@ import "validate/validate.proto";
 
 // Defines the policy used for batching and queueing data within clients. In general memory
 // usage is mostly bounded (some of the byte calculations are fuzzy when dealing with proto outputs)
-// by the limits specified within this policy. Queueing is performed in a LIFO manner, with the
-// oldest data dropped.
+// by the limits specified within this policy.
 // TODO(mattkleni123): Add a drop policy, including queueing to disk.
 message QueuePolicy {
   // The maximum number of bytes that can be queued for sending before dropping. Bytes beyond this
@@ -34,4 +33,9 @@ message QueuePolicy {
   // environment. A good setting for a high throughput scenario is likely somewhere between CPU
   // requests and limit. If not set, this default to 1.
   optional uint64 concurrent_batch_queues = 3;
+
+  // By default the queue operates as a LIFO queue to prioritize newer data. If set to true, the
+  // queue operates as a FIFO queue. This may be desirable in some scenarios to preserve ordering of
+  // data. Defaults to false.
+  bool use_fifo = 4;
 }

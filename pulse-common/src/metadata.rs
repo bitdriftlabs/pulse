@@ -60,8 +60,8 @@ impl Metadata {
     let pod_annotations = pod_metadata
       .as_ref()
       .map(|p| btree_to_value(p.pod_annotations));
-    let node_name = node_info.as_ref().map(|n| n.name.to_string());
-    let node_ip = node_info.as_ref().map(|n| n.ip.to_string());
+    let node_name = node_info.as_ref().map(|n| n.name.clone());
+    let node_ip = node_info.as_ref().map(|n| n.ip.clone());
     let node_labels = node_info.as_ref().map(|n| btree_to_value(&n.labels));
     let node_annotations = node_info.as_ref().map(|n| btree_to_value(&n.annotations));
     let service = pod_metadata.and_then(|p| p.service.map(|s| value!({"name": s})));

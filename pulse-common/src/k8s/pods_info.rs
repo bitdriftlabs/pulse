@@ -316,7 +316,7 @@ pub mod container {
         PodInfo {
           services: HashMap::new(),
           namespace: namespace.to_string(),
-          name: pod_name.to_string(),
+          name: pod_name.clone(),
           labels: pod.labels().clone(),
           annotations: pod.annotations().clone(),
           metadata: Arc::new(crate::metadata::Metadata::new(
@@ -332,7 +332,7 @@ pub mod container {
             None,
           )),
           ip: pod_ip,
-          ip_string: pod_ip_string.to_string(),
+          ip_string: pod_ip_string.clone(),
           container_ports,
         }
       };
