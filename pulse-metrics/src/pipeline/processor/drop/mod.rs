@@ -28,6 +28,7 @@ use pulse_common::proto::yaml_to_proto;
 use pulse_protobuf::protos::pulse::config::processor::v1::drop;
 use regex::bytes::Regex;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 // TODO(mattklein123): There are many performance optimizations that we can do as follow ups,
 // mainly around drop rules that only use name matches.
@@ -65,6 +66,7 @@ enum TranslatedDropCondition {
   ValueMatch(ValueMatch),
   AndMatch(Vec<TranslatedDropCondition>),
   NotMatch(Box<TranslatedDropCondition>),
+  TimestampAgeMatch(Duration),
 }
 
 impl TranslatedDropCondition {
@@ -103,6 +105,9 @@ impl TranslatedDropCondition {
         let translated_condition = Self::new(not_match.as_ref())?;
         Ok(Self::NotMatch(Box::new(translated_condition)))
       },
+      Condition_type::TimestampAgeMatch(timestamp_age_match) => Ok(Self::TimestampAgeMatch(
+        Duration::from_secs(timestamp_age_match.max_age_seconds),
+      )),
     }
   }
 
@@ -127,6 +132,19 @@ impl TranslatedDropCondition {
     }
   }
 
+  fn is_timestamp_age_match(sample: &ParsedMetric, max_age: Duration) -> bool {
+    let current_timestamp = crate::protos::metric::default_timestamp();
+    let metric_timestamp = sample.metric().timestamp;
+
+    // If the metric timestamp is in the future, don't drop it.
+    if metric_timestamp > current_timestamp {
+      return false;
+    }
+
+    let age_seconds = current_timestamp - metric_timestamp;
+    age_seconds > max_age.as_secs()
+  }
+
   fn drop_sample(&self, sample: &ParsedMetric) -> bool {
     match self {
       Self::MetricName(value_match) => value_match.is_match(sample.metric().get_id().name()),
@@ -144,6 +162,7 @@ impl TranslatedDropCondition {
         .iter()
         .all(|condition| condition.drop_sample(sample)),
       Self::NotMatch(condition) => !condition.drop_sample(sample),
+      Self::TimestampAgeMatch(max_age) => Self::is_timestamp_age_match(sample, *max_age),
     }
   }
 }
@@ -157,10 +176,18 @@ struct TranslatedDropRule {
   mode: DropMode,
   conditions: Vec<TranslatedDropCondition>,
   drop_counter: IntCounter,
+  warn_interval: Option<Duration>,
+  last_warning_time: parking_lot::Mutex<Option<Instant>>,
 }
 
 impl TranslatedDropRule {
   fn new(rule: &DropRule, scope: &Scope) -> anyhow::Result<Self> {
+    let warn_interval = if rule.warn_interval_seconds > 0 {
+      Some(Duration::from_secs(rule.warn_interval_seconds))
+    } else {
+      None
+    };
+
     Ok(Self {
       name: rule.name.to_string(),
       mode: rule.mode.enum_value_or_default(),
@@ -179,6 +206,8 @@ impl TranslatedDropRule {
           }
         },
       ),
+      warn_interval,
+      last_warning_time: parking_lot::Mutex::new(None),
     })
   }
 
@@ -194,7 +223,25 @@ impl TranslatedDropRule {
       .iter()
       .any(|condition| condition.drop_sample(sample));
     if drop {
-      log::debug!(
+      // Determine the log level based on warning interval configuration
+      let log_level = self
+        .warn_interval
+        .map_or(log::Level::Debug, |warn_interval| {
+          let mut last_warning = self.last_warning_time.lock();
+          let now = Instant::now();
+          let should_warn =
+            last_warning.is_none_or(|last| now.duration_since(last) >= warn_interval);
+
+          if should_warn {
+            *last_warning = Some(now);
+            log::Level::Warn
+          } else {
+            log::Level::Debug
+          }
+        });
+
+      log::log!(
+        log_level,
         "dropping sample {} for rule {} mode {:?}",
         sample.metric(),
         self.name,

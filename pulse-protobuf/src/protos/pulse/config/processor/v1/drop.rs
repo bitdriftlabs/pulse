@@ -41,6 +41,8 @@ pub struct DropRule {
     pub mode: ::protobuf::EnumOrUnknown<drop_rule::DropMode>,
     // @@protoc_insertion_point(field:pulse.config.processor.v1.DropRule.conditions)
     pub conditions: ::std::vec::Vec<drop_rule::DropCondition>,
+    // @@protoc_insertion_point(field:pulse.config.processor.v1.DropRule.warn_interval_seconds)
+    pub warn_interval_seconds: u64,
     // special fields
     // @@protoc_insertion_point(special_field:pulse.config.processor.v1.DropRule.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -58,7 +60,7 @@ impl DropRule {
     }
 
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(3);
+        let mut fields = ::std::vec::Vec::with_capacity(4);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "name",
@@ -74,6 +76,11 @@ impl DropRule {
             "conditions",
             |m: &DropRule| { &m.conditions },
             |m: &mut DropRule| { &mut m.conditions },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+            "warn_interval_seconds",
+            |m: &DropRule| { &m.warn_interval_seconds },
+            |m: &mut DropRule| { &mut m.warn_interval_seconds },
         ));
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<DropRule>(
             "DropRule",
@@ -102,6 +109,9 @@ impl ::protobuf::Message for DropRule {
                 26 => {
                     self.conditions.push(is.read_message()?);
                 },
+                32 => {
+                    self.warn_interval_seconds = is.read_uint64()?;
+                },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                 },
@@ -124,6 +134,9 @@ impl ::protobuf::Message for DropRule {
             let len = value.compute_size();
             my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
         };
+        if self.warn_interval_seconds != 0 {
+            my_size += ::protobuf::rt::uint64_size(4, self.warn_interval_seconds);
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
         my_size
@@ -139,6 +152,9 @@ impl ::protobuf::Message for DropRule {
         for v in &self.conditions {
             ::protobuf::rt::write_message_field_with_cached_size(3, v, os)?;
         };
+        if self.warn_interval_seconds != 0 {
+            os.write_uint64(4, self.warn_interval_seconds)?;
+        }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
     }
@@ -159,6 +175,7 @@ impl ::protobuf::Message for DropRule {
         self.name.clear();
         self.mode = ::protobuf::EnumOrUnknown::new(drop_rule::DropMode::ENABLED);
         self.conditions.clear();
+        self.warn_interval_seconds = 0;
         self.special_fields.clear();
     }
 
@@ -167,6 +184,7 @@ impl ::protobuf::Message for DropRule {
             name: ::protobuf::Chars::new(),
             mode: ::protobuf::EnumOrUnknown::from_i32(0),
             conditions: ::std::vec::Vec::new(),
+            warn_interval_seconds: 0,
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -1079,6 +1097,128 @@ pub mod drop_rule {
         }
     }
 
+    // @@protoc_insertion_point(message:pulse.config.processor.v1.DropRule.TimestampAgeMatch)
+    #[derive(PartialEq,Clone,Default,Debug)]
+    pub struct TimestampAgeMatch {
+        // message fields
+        // @@protoc_insertion_point(field:pulse.config.processor.v1.DropRule.TimestampAgeMatch.max_age_seconds)
+        pub max_age_seconds: u64,
+        // special fields
+        // @@protoc_insertion_point(special_field:pulse.config.processor.v1.DropRule.TimestampAgeMatch.special_fields)
+        pub special_fields: ::protobuf::SpecialFields,
+    }
+
+    impl<'a> ::std::default::Default for &'a TimestampAgeMatch {
+        fn default() -> &'a TimestampAgeMatch {
+            <TimestampAgeMatch as ::protobuf::Message>::default_instance()
+        }
+    }
+
+    impl TimestampAgeMatch {
+        pub fn new() -> TimestampAgeMatch {
+            ::std::default::Default::default()
+        }
+
+        pub(in super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
+            let mut fields = ::std::vec::Vec::with_capacity(1);
+            let mut oneofs = ::std::vec::Vec::with_capacity(0);
+            fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+                "max_age_seconds",
+                |m: &TimestampAgeMatch| { &m.max_age_seconds },
+                |m: &mut TimestampAgeMatch| { &mut m.max_age_seconds },
+            ));
+            ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<TimestampAgeMatch>(
+                "DropRule.TimestampAgeMatch",
+                fields,
+                oneofs,
+            )
+        }
+    }
+
+    impl ::protobuf::Message for TimestampAgeMatch {
+        const NAME: &'static str = "TimestampAgeMatch";
+
+        fn is_initialized(&self) -> bool {
+            true
+        }
+
+        fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
+            while let Some(tag) = is.read_raw_tag_or_eof()? {
+                match tag {
+                    8 => {
+                        self.max_age_seconds = is.read_uint64()?;
+                    },
+                    tag => {
+                        ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
+                    },
+                };
+            }
+            ::std::result::Result::Ok(())
+        }
+
+        // Compute sizes of nested messages
+        #[allow(unused_variables)]
+        fn compute_size(&self) -> u64 {
+            let mut my_size = 0;
+            if self.max_age_seconds != 0 {
+                my_size += ::protobuf::rt::uint64_size(1, self.max_age_seconds);
+            }
+            my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
+            self.special_fields.cached_size().set(my_size as u32);
+            my_size
+        }
+
+        fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
+            if self.max_age_seconds != 0 {
+                os.write_uint64(1, self.max_age_seconds)?;
+            }
+            os.write_unknown_fields(self.special_fields.unknown_fields())?;
+            ::std::result::Result::Ok(())
+        }
+
+        fn special_fields(&self) -> &::protobuf::SpecialFields {
+            &self.special_fields
+        }
+
+        fn mut_special_fields(&mut self) -> &mut ::protobuf::SpecialFields {
+            &mut self.special_fields
+        }
+
+        fn new() -> TimestampAgeMatch {
+            TimestampAgeMatch::new()
+        }
+
+        fn clear(&mut self) {
+            self.max_age_seconds = 0;
+            self.special_fields.clear();
+        }
+
+        fn default_instance() -> &'static TimestampAgeMatch {
+            static instance: TimestampAgeMatch = TimestampAgeMatch {
+                max_age_seconds: 0,
+                special_fields: ::protobuf::SpecialFields::new(),
+            };
+            &instance
+        }
+    }
+
+    impl ::protobuf::MessageFull for TimestampAgeMatch {
+        fn descriptor() -> ::protobuf::reflect::MessageDescriptor {
+            static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::Lazy::new();
+            descriptor.get(|| super::file_descriptor().message_by_package_relative_name("DropRule.TimestampAgeMatch").unwrap()).clone()
+        }
+    }
+
+    impl ::std::fmt::Display for TimestampAgeMatch {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            ::protobuf::text_format::fmt(self, f)
+        }
+    }
+
+    impl ::protobuf::reflect::ProtobufValue for TimestampAgeMatch {
+        type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
+    }
+
     // @@protoc_insertion_point(message:pulse.config.processor.v1.DropRule.DropCondition)
     #[derive(PartialEq,Clone,Default,Debug)]
     pub struct DropCondition {
@@ -1345,8 +1485,57 @@ pub mod drop_rule {
             }
         }
 
+        // .pulse.config.processor.v1.DropRule.TimestampAgeMatch timestamp_age_match = 6;
+
+        pub fn timestamp_age_match(&self) -> &TimestampAgeMatch {
+            match self.condition_type {
+                ::std::option::Option::Some(drop_condition::Condition_type::TimestampAgeMatch(ref v)) => v,
+                _ => <TimestampAgeMatch as ::protobuf::Message>::default_instance(),
+            }
+        }
+
+        pub fn clear_timestamp_age_match(&mut self) {
+            self.condition_type = ::std::option::Option::None;
+        }
+
+        pub fn has_timestamp_age_match(&self) -> bool {
+            match self.condition_type {
+                ::std::option::Option::Some(drop_condition::Condition_type::TimestampAgeMatch(..)) => true,
+                _ => false,
+            }
+        }
+
+        // Param is passed by value, moved
+        pub fn set_timestamp_age_match(&mut self, v: TimestampAgeMatch) {
+            self.condition_type = ::std::option::Option::Some(drop_condition::Condition_type::TimestampAgeMatch(v))
+        }
+
+        // Mutable pointer to the field.
+        pub fn mut_timestamp_age_match(&mut self) -> &mut TimestampAgeMatch {
+            if let ::std::option::Option::Some(drop_condition::Condition_type::TimestampAgeMatch(_)) = self.condition_type {
+            } else {
+                self.condition_type = ::std::option::Option::Some(drop_condition::Condition_type::TimestampAgeMatch(TimestampAgeMatch::new()));
+            }
+            match self.condition_type {
+                ::std::option::Option::Some(drop_condition::Condition_type::TimestampAgeMatch(ref mut v)) => v,
+                _ => panic!(),
+            }
+        }
+
+        // Take field
+        pub fn take_timestamp_age_match(&mut self) -> TimestampAgeMatch {
+            if self.has_timestamp_age_match() {
+                match self.condition_type.take() {
+                    ::std::option::Option::Some(drop_condition::Condition_type::TimestampAgeMatch(v)) => v,
+                    _ => panic!(),
+                }
+            } else {
+                TimestampAgeMatch::new()
+            }
+        }
+
         pub(in super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-            let mut fields = ::std::vec::Vec::with_capacity(5);
+            let mut fields = ::std::vec::Vec::with_capacity(6);
             let mut oneofs = ::std::vec::Vec::with_capacity(1);
             fields.push(::protobuf::reflect::rt::v2::make_oneof_message_has_get_mut_set_accessor::<_, StringMatch>(
                 "metric_name",
@@ -1383,6 +1572,13 @@ pub mod drop_rule {
                 DropCondition::mut_not_match,
                 DropCondition::set_not_match,
             ));
+            fields.push(::protobuf::reflect::rt::v2::make_oneof_message_has_get_mut_set_accessor::<_, TimestampAgeMatch>(
+                "timestamp_age_match",
+                DropCondition::has_timestamp_age_match,
+                DropCondition::timestamp_age_match,
+                DropCondition::mut_timestamp_age_match,
+                DropCondition::set_timestamp_age_match,
+            ));
             oneofs.push(drop_condition::Condition_type::generated_oneof_descriptor_data());
             ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<DropCondition>(
                 "DropRule.DropCondition",
@@ -1416,6 +1612,9 @@ pub mod drop_rule {
                     },
                     42 => {
                         self.condition_type = ::std::option::Option::Some(drop_condition::Condition_type::NotMatch(::std::boxed::Box::new(is.read_message()?)));
+                    },
+                    50 => {
+                        self.condition_type = ::std::option::Option::Some(drop_condition::Condition_type::TimestampAgeMatch(is.read_message()?));
                     },
                     tag => {
                         ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
@@ -1451,6 +1650,10 @@ pub mod drop_rule {
                         let len = v.compute_size();
                         my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
                     },
+                    &drop_condition::Condition_type::TimestampAgeMatch(ref v) => {
+                        let len = v.compute_size();
+                        my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+                    },
                 };
             }
             my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
@@ -1476,6 +1679,9 @@ pub mod drop_rule {
                     &drop_condition::Condition_type::NotMatch(ref v) => {
                         ::protobuf::rt::write_message_field_with_cached_size(5, &**v, os)?;
                     },
+                    &drop_condition::Condition_type::TimestampAgeMatch(ref v) => {
+                        ::protobuf::rt::write_message_field_with_cached_size(6, v, os)?;
+                    },
                 };
             }
             os.write_unknown_fields(self.special_fields.unknown_fields())?;
@@ -1495,6 +1701,7 @@ pub mod drop_rule {
         }
 
         fn clear(&mut self) {
+            self.condition_type = ::std::option::Option::None;
             self.condition_type = ::std::option::Option::None;
             self.condition_type = ::std::option::Option::None;
             self.condition_type = ::std::option::Option::None;
@@ -1545,6 +1752,8 @@ pub mod drop_rule {
             AndMatch(super::AndMatch),
             // @@protoc_insertion_point(oneof_field:pulse.config.processor.v1.DropRule.DropCondition.not_match)
             NotMatch(::std::boxed::Box<super::DropCondition>),
+            // @@protoc_insertion_point(oneof_field:pulse.config.processor.v1.DropRule.DropCondition.timestamp_age_match)
+            TimestampAgeMatch(super::TimestampAgeMatch),
         }
 
         impl ::protobuf::Oneof for Condition_type {
@@ -2113,41 +2322,45 @@ pub mod drop_processor_config {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n$pulse/config/processor/v1/drop.proto\x12\x19pulse.config.processor.v1\
     \x1a)pulse/config/common/v1/file_watcher.proto\x1a\x17validate/validate.\
-    proto\"\xd9\n\n\x08DropRule\x12\x1b\n\x04name\x18\x01\x20\x01(\tR\x04nam\
-    eB\x07\xfaB\x04r\x02\x10\x01\x12@\n\x04mode\x18\x02\x20\x01(\x0e2,.pulse\
-    .config.processor.v1.DropRule.DropModeR\x04mode\x12Q\n\nconditions\x18\
+    proto\"\xbc\x0c\n\x08DropRule\x12\x1b\n\x04name\x18\x01\x20\x01(\tR\x04n\
+    ameB\x07\xfaB\x04r\x02\x10\x01\x12@\n\x04mode\x18\x02\x20\x01(\x0e2,.pul\
+    se.config.processor.v1.DropRule.DropModeR\x04mode\x12Q\n\nconditions\x18\
     \x03\x20\x03(\x0b21.pulse.config.processor.v1.DropRule.DropConditionR\nc\
-    onditions\x1a]\n\x08AndMatch\x12Q\n\nconditions\x18\x01\x20\x03(\x0b21.p\
-    ulse.config.processor.v1.DropRule.DropConditionR\nconditions\x1ai\n\x0bS\
-    tringMatch\x12\x1f\n\x05exact\x18\x01\x20\x01(\tH\0R\x05exactB\x07\xfaB\
-    \x04r\x02\x10\x01\x12\x1f\n\x05regex\x18\x02\x20\x01(\tH\0R\x05regexB\
-    \x07\xfaB\x04r\x02\x10\x01B\x18\n\x11string_match_type\x12\x03\xf8B\x01\
-    \x1a|\n\x08TagMatch\x12\"\n\x08tag_name\x18\x01\x20\x01(\tR\x07tagNameB\
-    \x07\xfaB\x04r\x02\x10\x01\x12L\n\ttag_value\x18\x02\x20\x01(\x0b2/.puls\
-    e.config.processor.v1.DropRule.StringMatchR\x08tagValue\x1a~\n\x10Simple\
-    ValueMatch\x12\x16\n\x06target\x18\x01\x20\x01(\x01R\x06target\x12R\n\
-    \x08operator\x18\x02\x20\x01(\x0e26.pulse.config.processor.v1.DropRule.V\
-    alueMatchOperatorR\x08operator\x1a\x80\x01\n\nValueMatch\x12Y\n\x0csimpl\
-    e_value\x18\x01\x20\x01(\x0b24.pulse.config.processor.v1.DropRule.Simple\
-    ValueMatchH\0R\x0bsimpleValueB\x17\n\x10value_match_type\x12\x03\xf8B\
-    \x01\x1a\xb9\x03\n\rDropCondition\x12R\n\x0bmetric_name\x18\x01\x20\x01(\
-    \x0b2/.pulse.config.processor.v1.DropRule.StringMatchH\0R\nmetricName\
-    \x12K\n\ttag_match\x18\x02\x20\x01(\x0b2,.pulse.config.processor.v1.Drop\
-    Rule.TagMatchH\0R\x08tagMatch\x12Q\n\x0bvalue_match\x18\x03\x20\x01(\x0b\
-    2..pulse.config.processor.v1.DropRule.ValueMatchH\0R\nvalueMatch\x12K\n\
-    \tand_match\x18\x04\x20\x01(\x0b2,.pulse.config.processor.v1.DropRule.An\
-    dMatchH\0R\x08andMatch\x12P\n\tnot_match\x18\x05\x20\x01(\x0b21.pulse.co\
-    nfig.processor.v1.DropRule.DropConditionH\0R\x08notMatchB\x15\n\x0econdi\
-    tion_type\x12\x03\xf8B\x01\"n\n\x12ValueMatchOperator\x12\t\n\x05EQUAL\
-    \x10\0\x12\r\n\tNOT_EQUAL\x10\x01\x12\x0b\n\x07GREATER\x10\x02\x12\x08\n\
-    \x04LESS\x10\x03\x12\x14\n\x10GREATER_OR_EQUAL\x10\x04\x12\x11\n\rLESS_O\
-    R_EQUAL\x10\x05\"$\n\x08DropMode\x12\x0b\n\x07ENABLED\x10\0\x12\x0b\n\
-    \x07TESTING\x10\x01\"G\n\nDropConfig\x129\n\x05rules\x18\x01\x20\x03(\
-    \x0b2#.pulse.config.processor.v1.DropRuleR\x05rules\"\xb9\x01\n\x13DropP\
-    rocessorConfig\x12K\n\x0bfile_source\x18\x01\x20\x01(\x0b2(.pulse.config\
-    .common.v1.FileSourceConfigH\0R\nfileSource\x12?\n\x06inline\x18\x02\x20\
-    \x01(\x0b2%.pulse.config.processor.v1.DropConfigH\0R\x06inlineB\x14\n\rc\
-    onfig_source\x12\x03\xf8B\x01b\x06proto3\
+    onditions\x122\n\x15warn_interval_seconds\x18\x04\x20\x01(\x04R\x13warnI\
+    ntervalSeconds\x1a]\n\x08AndMatch\x12Q\n\nconditions\x18\x01\x20\x03(\
+    \x0b21.pulse.config.processor.v1.DropRule.DropConditionR\nconditions\x1a\
+    i\n\x0bStringMatch\x12\x1f\n\x05exact\x18\x01\x20\x01(\tH\0R\x05exactB\
+    \x07\xfaB\x04r\x02\x10\x01\x12\x1f\n\x05regex\x18\x02\x20\x01(\tH\0R\x05\
+    regexB\x07\xfaB\x04r\x02\x10\x01B\x18\n\x11string_match_type\x12\x03\xf8\
+    B\x01\x1a|\n\x08TagMatch\x12\"\n\x08tag_name\x18\x01\x20\x01(\tR\x07tagN\
+    ameB\x07\xfaB\x04r\x02\x10\x01\x12L\n\ttag_value\x18\x02\x20\x01(\x0b2/.\
+    pulse.config.processor.v1.DropRule.StringMatchR\x08tagValue\x1a~\n\x10Si\
+    mpleValueMatch\x12\x16\n\x06target\x18\x01\x20\x01(\x01R\x06target\x12R\
+    \n\x08operator\x18\x02\x20\x01(\x0e26.pulse.config.processor.v1.DropRule\
+    .ValueMatchOperatorR\x08operator\x1a\x80\x01\n\nValueMatch\x12Y\n\x0csim\
+    ple_value\x18\x01\x20\x01(\x0b24.pulse.config.processor.v1.DropRule.Simp\
+    leValueMatchH\0R\x0bsimpleValueB\x17\n\x10value_match_type\x12\x03\xf8B\
+    \x01\x1aD\n\x11TimestampAgeMatch\x12/\n\x0fmax_age_seconds\x18\x01\x20\
+    \x01(\x04R\rmaxAgeSecondsB\x07\xfaB\x042\x02\x20\0\x1a\xa2\x04\n\rDropCo\
+    ndition\x12R\n\x0bmetric_name\x18\x01\x20\x01(\x0b2/.pulse.config.proces\
+    sor.v1.DropRule.StringMatchH\0R\nmetricName\x12K\n\ttag_match\x18\x02\
+    \x20\x01(\x0b2,.pulse.config.processor.v1.DropRule.TagMatchH\0R\x08tagMa\
+    tch\x12Q\n\x0bvalue_match\x18\x03\x20\x01(\x0b2..pulse.config.processor.\
+    v1.DropRule.ValueMatchH\0R\nvalueMatch\x12K\n\tand_match\x18\x04\x20\x01\
+    (\x0b2,.pulse.config.processor.v1.DropRule.AndMatchH\0R\x08andMatch\x12P\
+    \n\tnot_match\x18\x05\x20\x01(\x0b21.pulse.config.processor.v1.DropRule.\
+    DropConditionH\0R\x08notMatch\x12g\n\x13timestamp_age_match\x18\x06\x20\
+    \x01(\x0b25.pulse.config.processor.v1.DropRule.TimestampAgeMatchH\0R\x11\
+    timestampAgeMatchB\x15\n\x0econdition_type\x12\x03\xf8B\x01\"n\n\x12Valu\
+    eMatchOperator\x12\t\n\x05EQUAL\x10\0\x12\r\n\tNOT_EQUAL\x10\x01\x12\x0b\
+    \n\x07GREATER\x10\x02\x12\x08\n\x04LESS\x10\x03\x12\x14\n\x10GREATER_OR_\
+    EQUAL\x10\x04\x12\x11\n\rLESS_OR_EQUAL\x10\x05\"$\n\x08DropMode\x12\x0b\
+    \n\x07ENABLED\x10\0\x12\x0b\n\x07TESTING\x10\x01\"G\n\nDropConfig\x129\n\
+    \x05rules\x18\x01\x20\x03(\x0b2#.pulse.config.processor.v1.DropRuleR\x05\
+    rules\"\xb9\x01\n\x13DropProcessorConfig\x12K\n\x0bfile_source\x18\x01\
+    \x20\x01(\x0b2(.pulse.config.common.v1.FileSourceConfigH\0R\nfileSource\
+    \x12?\n\x06inline\x18\x02\x20\x01(\x0b2%.pulse.config.processor.v1.DropC\
+    onfigH\0R\x06inlineB\x14\n\rconfig_source\x12\x03\xf8B\x01b\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
@@ -2167,7 +2380,7 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
             let mut deps = ::std::vec::Vec::with_capacity(2);
             deps.push(super::file_watcher::file_descriptor().clone());
             deps.push(super::validate::file_descriptor().clone());
-            let mut messages = ::std::vec::Vec::with_capacity(9);
+            let mut messages = ::std::vec::Vec::with_capacity(10);
             messages.push(DropRule::generated_message_descriptor_data());
             messages.push(DropConfig::generated_message_descriptor_data());
             messages.push(DropProcessorConfig::generated_message_descriptor_data());
@@ -2176,6 +2389,7 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
             messages.push(drop_rule::TagMatch::generated_message_descriptor_data());
             messages.push(drop_rule::SimpleValueMatch::generated_message_descriptor_data());
             messages.push(drop_rule::ValueMatch::generated_message_descriptor_data());
+            messages.push(drop_rule::TimestampAgeMatch::generated_message_descriptor_data());
             messages.push(drop_rule::DropCondition::generated_message_descriptor_data());
             let mut enums = ::std::vec::Vec::with_capacity(2);
             enums.push(drop_rule::ValueMatchOperator::generated_enum_descriptor_data());

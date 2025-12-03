@@ -74,6 +74,13 @@ message DropRule {
     }
   }
 
+  message TimestampAgeMatch {
+    // The maximum age in seconds for a metric timestamp. Metrics with timestamps older than
+    // this duration (relative to the current time) will be matched. For example, if set to 3600,
+    // metrics with timestamps more than 1 hour old will be matched.
+    uint64 max_age_seconds = 1 [(validate.rules).uint64 = {gt: 0}];
+  }
+
   message DropCondition {
     oneof condition_type {
       option (validate.required) = true;
@@ -93,6 +100,9 @@ message DropRule {
 
       // Matches if the condition does NOT match.
       DropCondition not_match = 5;
+
+      // Will match metrics with timestamps older than the specified age.
+      TimestampAgeMatch timestamp_age_match = 6;
     }
   }
 
@@ -112,6 +122,13 @@ message DropRule {
   // The set of conditions. If any condition matches, the metric will be dropped. This is an OR
   // set, grouped together so that rules can be tested and monitored as a block.
   repeated DropCondition conditions = 3;
+
+  // If set, a warning log will be emitted at most once per this duration (in seconds) when
+  // metrics are dropped by this rule. This is useful for debugging and monitoring that the rule
+  // is actively dropping metrics. If not set or set to 0, no warnings will be logged.
+  // Example: Setting this to 300 will log a warning at most once every 5 minutes when this rule
+  // drops a metric.
+  uint64 warn_interval_seconds = 4;
 }
 
 message DropConfig {
