@@ -20,6 +20,7 @@ use drop::drop_rule::{
   SimpleValueMatch,
   StringMatch,
   TagMatch,
+  TimestampAgeMatch,
   ValueMatch,
   ValueMatchOperator,
 };
@@ -99,6 +100,16 @@ fn make_and_match(conditions: Vec<DropCondition>) -> DropCondition {
   DropCondition {
     condition_type: Some(Condition_type::AndMatch(AndMatch {
       conditions,
+      ..Default::default()
+    })),
+    ..Default::default()
+  }
+}
+
+fn make_timestamp_age_match(max_age_seconds: u64) -> DropCondition {
+  DropCondition {
+    condition_type: Some(Condition_type::TimestampAgeMatch(TimestampAgeMatch {
+      max_age_seconds,
       ..Default::default()
     })),
     ..Default::default()
@@ -278,5 +289,241 @@ async fn all() {
     2,
     "processor:dropped",
     &labels! { "rule_name" => "rule2", "mode" => "testing" },
+  );
+}
+
+#[tokio::test]
+async fn timestamp_age_match() {
+  let (mut helper, context) = processor_factory_context_for_test();
+  let processor = Arc::new(
+    DropProcessor::new(
+      DropProcessorConfig {
+        config_source: Some(Config_source::Inline(DropConfig {
+          rules: vec![DropRule {
+            name: "rule1".into(),
+            mode: DropMode::ENABLED.into(),
+            conditions: vec![make_timestamp_age_match(3600)],
+            ..Default::default()
+          }],
+          ..Default::default()
+        })),
+        ..Default::default()
+      },
+      context,
+    )
+    .await
+    .unwrap(),
+  );
+
+  let current_time = crate::protos::metric::default_timestamp();
+  let old_timestamp = current_time - 7200; // 2 hours old
+  let recent_timestamp = current_time - 1800; // 30 minutes old
+  let future_timestamp = current_time + 3600; // 1 hour in the future
+
+  make_mut(&mut helper.dispatcher)
+    .expect_send()
+    .times(1)
+    .returning(|metrics| {
+      assert_eq!(metrics.len(), 2);
+    });
+  processor
+    .clone()
+    .recv_samples(vec![
+      make_metric("old_metric", &[], old_timestamp),
+      make_metric("recent_metric", &[], recent_timestamp),
+      make_metric("future_metric", &[], future_timestamp),
+    ])
+    .await;
+  helper.stats_helper.assert_counter_eq(
+    1,
+    "processor:dropped",
+    &labels! { "rule_name" => "rule1", "mode" => "enabled" },
+  );
+}
+
+#[tokio::test]
+async fn timestamp_age_match_with_and() {
+  let (mut helper, context) = processor_factory_context_for_test();
+  let processor = Arc::new(
+    DropProcessor::new(
+      DropProcessorConfig {
+        config_source: Some(Config_source::Inline(DropConfig {
+          rules: vec![DropRule {
+            name: "rule1".into(),
+            mode: DropMode::ENABLED.into(),
+            conditions: vec![make_and_match(vec![
+              make_exact_match("test_metric"),
+              make_timestamp_age_match(3600),
+            ])],
+            ..Default::default()
+          }],
+          ..Default::default()
+        })),
+        ..Default::default()
+      },
+      context,
+    )
+    .await
+    .unwrap(),
+  );
+
+  let current_time = crate::protos::metric::default_timestamp();
+  let old_timestamp = current_time - 7200; // 2 hours old
+  let recent_timestamp = current_time - 1800; // 30 minutes old
+
+  make_mut(&mut helper.dispatcher)
+    .expect_send()
+    .times(1)
+    .returning(|metrics| {
+      assert_eq!(metrics.len(), 3);
+    });
+  processor
+    .clone()
+    .recv_samples(vec![
+      make_metric("test_metric", &[], old_timestamp),
+      make_metric("test_metric", &[], recent_timestamp),
+      make_metric("other_metric", &[], old_timestamp),
+      make_metric("other_metric", &[], recent_timestamp),
+    ])
+    .await;
+  helper.stats_helper.assert_counter_eq(
+    1,
+    "processor:dropped",
+    &labels! { "rule_name" => "rule1", "mode" => "enabled" },
+  );
+}
+
+#[tokio::test]
+async fn timestamp_age_match_with_not() {
+  let (mut helper, context) = processor_factory_context_for_test();
+  let processor = Arc::new(
+    DropProcessor::new(
+      DropProcessorConfig {
+        config_source: Some(Config_source::Inline(DropConfig {
+          rules: vec![DropRule {
+            name: "rule1".into(),
+            mode: DropMode::ENABLED.into(),
+            conditions: vec![make_not_match(make_timestamp_age_match(3600))],
+            ..Default::default()
+          }],
+          ..Default::default()
+        })),
+        ..Default::default()
+      },
+      context,
+    )
+    .await
+    .unwrap(),
+  );
+
+  let current_time = crate::protos::metric::default_timestamp();
+  let old_timestamp = current_time - 7200; // 2 hours old
+  let recent_timestamp = current_time - 1800; // 30 minutes old
+
+  make_mut(&mut helper.dispatcher)
+    .expect_send()
+    .times(1)
+    .returning(|metrics| {
+      assert_eq!(metrics.len(), 1);
+    });
+  processor
+    .clone()
+    .recv_samples(vec![
+      make_metric("old_metric", &[], old_timestamp),
+      make_metric("recent_metric", &[], recent_timestamp),
+    ])
+    .await;
+  helper.stats_helper.assert_counter_eq(
+    1,
+    "processor:dropped",
+    &labels! { "rule_name" => "rule1", "mode" => "enabled" },
+  );
+}
+
+#[tokio::test]
+async fn timestamp_age_match_testing_mode() {
+  let (mut helper, context) = processor_factory_context_for_test();
+  let processor = Arc::new(
+    DropProcessor::new(
+      DropProcessorConfig {
+        config_source: Some(Config_source::Inline(DropConfig {
+          rules: vec![DropRule {
+            name: "rule1".into(),
+            mode: DropMode::TESTING.into(),
+            conditions: vec![make_timestamp_age_match(3600)],
+            ..Default::default()
+          }],
+          ..Default::default()
+        })),
+        ..Default::default()
+      },
+      context,
+    )
+    .await
+    .unwrap(),
+  );
+
+  let current_time = crate::protos::metric::default_timestamp();
+  let old_timestamp = current_time - 7200; // 2 hours old
+
+  make_mut(&mut helper.dispatcher)
+    .expect_send()
+    .times(1)
+    .returning(|metrics| {
+      // In testing mode, nothing should be dropped
+      assert_eq!(metrics.len(), 1);
+    });
+  processor
+    .clone()
+    .recv_samples(vec![make_metric("old_metric", &[], old_timestamp)])
+    .await;
+  helper.stats_helper.assert_counter_eq(
+    1,
+    "processor:dropped",
+    &labels! { "rule_name" => "rule1", "mode" => "testing" },
+  );
+}
+
+#[tokio::test]
+async fn warn_interval() {
+  let (mut helper, context) = processor_factory_context_for_test();
+  let processor = Arc::new(
+    DropProcessor::new(
+      DropProcessorConfig {
+        config_source: Some(Config_source::Inline(DropConfig {
+          rules: vec![DropRule {
+            name: "rule1".into(),
+            mode: DropMode::ENABLED.into(),
+            conditions: vec![make_exact_match("drop_this")],
+            warn_interval_seconds: 60,
+            ..Default::default()
+          }],
+          ..Default::default()
+        })),
+        ..Default::default()
+      },
+      context,
+    )
+    .await
+    .unwrap(),
+  );
+
+  make_mut(&mut helper.dispatcher)
+    .expect_send()
+    .times(1)
+    .returning(|metrics| {
+      assert_eq!(metrics.len(), 1);
+    });
+  processor
+    .clone()
+    .recv_samples(vec![
+      make_metric("drop_this", &[], 0),
+      make_metric("keep_this", &[], 0),
+    ])
+    .await;
+  helper.stats_helper.assert_counter_eq(
+    1,
+    "processor:dropped",
+    &labels! { "rule_name" => "rule1", "mode" => "enabled" },
   );
 }
