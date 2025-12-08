@@ -79,6 +79,7 @@ pub async fn make_otlp_outflow(
     &context.stats,
     context.shutdown_trigger_handle.make_shutdown(),
   );
+  let compression = config.compression.enum_value_or_default();
   HttpRemoteWriteOutflow::new(
     config.request_timeout,
     config.retry_policy.unwrap_or_default(),
@@ -90,6 +91,7 @@ pub async fn make_otlp_outflow(
     config.request_headers,
     context,
     None.into(),
+    Arc::new(move |bytes| deserialize_otlp_request(bytes, compression)),
   )
   .await
 }
@@ -320,4 +322,27 @@ pub fn finish_otlp_batch(
   };
 
   compressed_write_request.into()
+}
+
+fn deserialize_otlp_request(compressed_bytes: &[u8], compression: OtlpCompression) -> String {
+  // Decompress if needed
+  let decompressed = match compression {
+    OtlpCompression::NONE => compressed_bytes.to_vec(),
+    OtlpCompression::SNAPPY => {
+      let mut decompressed = Vec::new();
+      match std::io::copy(
+        &mut snap::read::FrameDecoder::new(compressed_bytes),
+        &mut decompressed,
+      ) {
+        Ok(_) => decompressed,
+        Err(e) => return format!("failed to decompress request: {e}"),
+      }
+    },
+  };
+
+  // Parse the protobuf
+  match ExportMetricsServiceRequest::parse_from_bytes(&decompressed) {
+    Ok(request) => format!("{request}"),
+    Err(e) => format!("failed to parse ExportMetricsServiceRequest: {e}"),
+  }
 }

@@ -11,7 +11,12 @@ mod remote_write_test;
 
 use super::retry_offload::{OffloadQueue, SerializedOffloadRequest, create_offload_queue};
 use crate::batch::{Batch, BatchBuilder};
-use crate::clients::http::{HttpRemoteWriteClient, HyperHttpRemoteWriteClient, should_retry};
+use crate::clients::http::{
+  HttpRemoteWriteClient,
+  HttpRemoteWriteError,
+  HyperHttpRemoteWriteClient,
+  should_retry,
+};
 use crate::clients::retry::Retry;
 use crate::pipeline::config::{DEFAULT_REQUEST_TIMEOUT, default_max_in_flight};
 use crate::pipeline::outflow::http::retry_offload::maybe_queue_for_retry;
@@ -44,6 +49,8 @@ use time::ext::NumericalDuration;
 use tokio::sync::Semaphore;
 
 const DEFAULT_BATCH_MAX_SAMPLES: u64 = 1000;
+
+type RequestDeserializer = Arc<dyn Fn(&[u8]) -> String + Send + Sync>;
 
 //
 // HttpRemoteWriteOutflowStats
@@ -129,6 +136,7 @@ pub struct HttpRemoteWriteOutflow {
   client: Arc<dyn HttpRemoteWriteClient>,
   max_in_flight: usize,
   retry_policy: RetryPolicy,
+  request_deserializer: RequestDeserializer,
 }
 
 impl HttpRemoteWriteOutflow {
@@ -143,6 +151,7 @@ impl HttpRemoteWriteOutflow {
     config_request_headers: Vec<RequestHeader>,
     context: OutflowFactoryContext,
     pool_idle_timeout: MessageField<Duration>,
+    request_deserializer: RequestDeserializer,
   ) -> anyhow::Result<Arc<Self>> {
     let request_timeout = request_timeout.unwrap_duration_or(DEFAULT_REQUEST_TIMEOUT);
     let client = Arc::new(
@@ -173,6 +182,7 @@ impl HttpRemoteWriteOutflow {
         )
       }),
       context.shutdown_trigger_handle.make_shutdown(),
+      request_deserializer,
     )
     .await
   }
@@ -186,6 +196,7 @@ impl HttpRemoteWriteOutflow {
     client: Arc<dyn HttpRemoteWriteClient>,
     backoff: Arc<dyn Fn() -> Box<dyn Backoff + Send> + Send + Sync>,
     shutdown: ComponentShutdown,
+    request_deserializer: RequestDeserializer,
   ) -> anyhow::Result<Arc<Self>> {
     let stats = HttpRemoteWriteOutflowStats::new(stats);
     let retry = Retry::new(&retry_policy)?;
@@ -216,6 +227,7 @@ impl HttpRemoteWriteOutflow {
       client,
       max_in_flight,
       retry_policy,
+      request_deserializer,
     });
 
     let cloned_outflow = outflow.clone();
@@ -350,6 +362,18 @@ impl HttpRemoteWriteOutflow {
               .outflow_stats
               .messages_outgoing_failed
               .inc_by(num_metrics);
+
+            // If this is a Response error, log the deserialized request at trace level
+            if let HttpRemoteWriteError::Response(..) = &e {
+              log::trace!(
+                "remote write request failed with Response error: size={}, outflow=\"{}\", \
+                 error=\"{e}\", request content: {}",
+                compressed_write_request.len(),
+                self.name,
+                (self.request_deserializer)(&compressed_write_request)
+              );
+            }
+
             warn_every!(
               15.seconds(),
               "remote write request failed: size={}, outflow=\"{}\": {}",

@@ -104,6 +104,17 @@ impl<I: Send + Sync + 'static, B: Batch<I> + Send + Sync + 'static> BatchBuilder
       timeout_batches: scope.counter("timeout_batches"),
     };
 
+    log::info!(
+      "creating batch builder with policy: lifo={}, batch_fill_wait={:?}, max_total_bytes={}, \
+       concurrent_batch_queues={}",
+      !policy.use_fifo,
+      policy
+        .batch_fill_wait
+        .unwrap_duration_or(DEFAULT_BATCH_FILL_WAIT),
+      policy.queue_max_bytes.unwrap_or(DEFAULT_QUEUE_MAX_BYTES),
+      policy.concurrent_batch_queues.unwrap_or(1),
+    );
+
     let batch_builder = Arc::new(Self {
       global_locked_data: Mutex::new(GlobalLockedData {
         batch_queue: VecDeque::new(),

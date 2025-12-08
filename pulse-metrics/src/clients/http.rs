@@ -65,8 +65,8 @@ pub enum HttpRemoteWriteError {
   HyperClient(#[from] hyper_util::client::legacy::Error),
   #[error("IO error: {0}")]
   Io(#[from] std::io::Error),
-  #[error("response error: {0}: {1}")]
-  Response(StatusCode, String),
+  #[error("response error: {0}: {1}, headers: {2:?}")]
+  Response(StatusCode, String, HeaderMap),
   #[error("request timeout")]
   Timeout,
 }
@@ -305,7 +305,11 @@ impl HttpRemoteWriteClient for HyperHttpRemoteWriteClient {
           .ok()
           .and_then(|body| String::from_utf8(body.to_bytes().to_vec()).ok())
           .unwrap_or_else(|| "unreadable body".to_string());
-        Err(HttpRemoteWriteError::Response(parts.status, body))
+        Err(HttpRemoteWriteError::Response(
+          parts.status,
+          body,
+          parts.headers,
+        ))
       },
       Err(e) => Err(HttpRemoteWriteError::HyperClient(e)),
     }
@@ -315,7 +319,7 @@ impl HttpRemoteWriteClient for HyperHttpRemoteWriteClient {
 #[must_use]
 pub fn should_retry(e: &HttpRemoteWriteError) -> bool {
   match e {
-    HttpRemoteWriteError::Response(status, _) => {
+    HttpRemoteWriteError::Response(status, ..) => {
       status.is_server_error() || *status == StatusCode::TOO_MANY_REQUESTS
     },
     // This is imperfect and will catch some Hyper errors that likely cannot ever succeed. Still,

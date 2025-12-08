@@ -44,6 +44,20 @@ pub fn compress_write_request(write_request: &WriteRequest) -> Vec<u8> {
   proto_compressed
 }
 
+fn deserialize_prom_request(compressed_bytes: &[u8]) -> String {
+  // Decompress the snappy-compressed data
+  let decompressed = match snap::raw::Decoder::new().decompress_vec(compressed_bytes) {
+    Ok(d) => d,
+    Err(e) => return format!("failed to decompress request: {e}"),
+  };
+
+  // Parse the protobuf
+  match WriteRequest::parse_from_bytes(&decompressed) {
+    Ok(write_request) => format!("{write_request}"),
+    Err(e) => format!("failed to parse WriteRequest: {e}"),
+  }
+}
+
 pub fn make_prom_batch_router(
   config: &PromRemoteWriteClientConfig,
   stats: &OutflowStats,
@@ -98,6 +112,7 @@ pub async fn make_prom_outflow(
     config.request_headers,
     context,
     config.pool_idle_timeout,
+    Arc::new(deserialize_prom_request),
   )
   .await
 }
