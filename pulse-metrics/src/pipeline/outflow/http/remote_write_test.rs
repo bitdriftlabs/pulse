@@ -60,6 +60,7 @@ async fn setup_test(
     Arc::new(client),
     Arc::new(|| Box::new(backoff::backoff::Zero {})),
     shutdown_trigger.make_shutdown(),
+    Arc::new(|_| "test request".to_string()),
   )
   .await
   .unwrap();
@@ -169,6 +170,7 @@ async fn prom_remote_write_outflow_retries() {
     Err(HttpRemoteWriteError::Response(
       StatusCode::BAD_REQUEST,
       String::new(),
+      axum::http::HeaderMap::new(),
     ))
   });
 
@@ -177,6 +179,7 @@ async fn prom_remote_write_outflow_retries() {
     Err(HttpRemoteWriteError::Response(
       StatusCode::INTERNAL_SERVER_ERROR,
       String::new(),
+      axum::http::HeaderMap::new(),
     ))
   });
 
@@ -206,6 +209,7 @@ async fn prom_remote_write_outflow_abort_retries() {
       Err(HttpRemoteWriteError::Response(
         StatusCode::INTERNAL_SERVER_ERROR,
         String::new(),
+        axum::http::HeaderMap::new(),
       ))
     });
 
