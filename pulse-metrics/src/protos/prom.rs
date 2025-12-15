@@ -599,6 +599,7 @@ fn in_progress_histogram_data_to_histogram_data(
 fn timeseries_to_metrics(
   time_series: TimeSeries,
   metric_type_map: &mut HashMap<Bytes, InProgressMetric>,
+  parse_config: &ParseConfig,
 ) -> Result<Vec<Metric>, ParseError> {
   let mut name = Bytes::default();
   let mut tags = Vec::<TagValue>::with_capacity(time_series.labels.len() - 1);
@@ -636,12 +637,18 @@ fn timeseries_to_metrics(
     None
   };
 
-  if let Some((family_name, data_type)) = maybe_histogram
+  let mut override_metric_type = if let Some((family_name, data_type)) = maybe_histogram
     && let Some(InProgressMetric::Histogram(histogram)) = metric_type_map.get_mut(family_name)
   {
-    process_in_progress_histogram(family_name, histogram, data_type, tags, time_series.samples)?;
-    return Ok(vec![]);
-  }
+    if parse_config.flatten_histogram_and_summary {
+      Some(None)
+    } else {
+      process_in_progress_histogram(family_name, histogram, data_type, tags, time_series.samples)?;
+      return Ok(vec![]);
+    }
+  } else {
+    None
+  };
 
   let maybe_summary = if tags.iter().any(|t| t.tag.as_ref() == b"quantile") {
     Some((&name[..], SummaryDataType::Quantile))
@@ -656,28 +663,38 @@ fn timeseries_to_metrics(
     None
   };
 
-  if let Some((family_name, data_type)) = maybe_summary
+  override_metric_type = if let Some((family_name, data_type)) = maybe_summary
     && let Some(InProgressMetric::Summary(summary)) = metric_type_map.get_mut(family_name)
   {
-    process_in_progress_summary(family_name, summary, data_type, tags, time_series.samples)?;
-    return Ok(vec![]);
-  }
+    if parse_config.flatten_histogram_and_summary {
+      Some(None)
+    } else {
+      process_in_progress_summary(family_name, summary, data_type, tags, time_series.samples)?;
+      return Ok(vec![]);
+    }
+  } else {
+    override_metric_type
+  };
 
-  let mtype = match metric_type_map.get(&name) {
-    None => {
-      log::trace!(
-        "prom metric name '{}' not found in metadata, defaulting type to None",
-        String::from_utf8_lossy(&name)
-      );
-      None
-    },
-    Some(InProgressMetric::Simple(mtype)) => *mtype,
-    Some(InProgressMetric::Histogram(_) | InProgressMetric::Summary(_)) => {
-      return Err(make_remote_write_error(
-        &name,
-        "invalid histogram or summary timeseries",
-      ));
-    },
+  let mtype = if let Some(override_metric_type) = override_metric_type {
+    override_metric_type
+  } else {
+    match metric_type_map.get(&name) {
+      None => {
+        log::trace!(
+          "prom metric name '{}' not found in metadata, defaulting type to None",
+          String::from_utf8_lossy(&name)
+        );
+        None
+      },
+      Some(InProgressMetric::Simple(mtype)) => *mtype,
+      Some(InProgressMetric::Histogram(_) | InProgressMetric::Summary(_)) => {
+        return Err(make_remote_write_error(
+          &name,
+          "invalid histogram or summary timeseries",
+        ));
+      },
+    }
   };
 
   let id = MetricId::new(name, mtype, tags, false)?;
@@ -807,15 +824,15 @@ pub fn from_write_request(
   let mut metrics: Vec<_> = write_request
     .timeseries
     .into_iter()
-    .flat_map(
-      |time_series| match timeseries_to_metrics(time_series, &mut metric_type_map) {
+    .flat_map(|time_series| {
+      match timeseries_to_metrics(time_series, &mut metric_type_map, parse_config) {
         Ok(metrics) => metrics,
         Err(e) => {
           errors.push(e);
           vec![]
         },
-      },
-    )
+      }
+    })
     .collect();
 
   // Now we have to finalize any histograms that have been built.

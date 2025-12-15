@@ -203,6 +203,8 @@ pub mod prom_remote_write_server_config {
         pub counter_as_delta: bool,
         // @@protoc_insertion_point(field:pulse.config.inflow.v1.PromRemoteWriteServerConfig.ParseConfig.ignore_duplicate_metadata)
         pub ignore_duplicate_metadata: bool,
+        // @@protoc_insertion_point(field:pulse.config.inflow.v1.PromRemoteWriteServerConfig.ParseConfig.flatten_histogram_and_summary)
+        pub flatten_histogram_and_summary: bool,
         // special fields
         // @@protoc_insertion_point(special_field:pulse.config.inflow.v1.PromRemoteWriteServerConfig.ParseConfig.special_fields)
         pub special_fields: ::protobuf::SpecialFields,
@@ -220,7 +222,7 @@ pub mod prom_remote_write_server_config {
         }
 
         pub(in super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-            let mut fields = ::std::vec::Vec::with_capacity(3);
+            let mut fields = ::std::vec::Vec::with_capacity(4);
             let mut oneofs = ::std::vec::Vec::with_capacity(0);
             fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
                 "summary_as_timer",
@@ -236,6 +238,11 @@ pub mod prom_remote_write_server_config {
                 "ignore_duplicate_metadata",
                 |m: &ParseConfig| { &m.ignore_duplicate_metadata },
                 |m: &mut ParseConfig| { &mut m.ignore_duplicate_metadata },
+            ));
+            fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+                "flatten_histogram_and_summary",
+                |m: &ParseConfig| { &m.flatten_histogram_and_summary },
+                |m: &mut ParseConfig| { &mut m.flatten_histogram_and_summary },
             ));
             ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<ParseConfig>(
                 "PromRemoteWriteServerConfig.ParseConfig",
@@ -264,6 +271,9 @@ pub mod prom_remote_write_server_config {
                     24 => {
                         self.ignore_duplicate_metadata = is.read_bool()?;
                     },
+                    32 => {
+                        self.flatten_histogram_and_summary = is.read_bool()?;
+                    },
                     tag => {
                         ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                     },
@@ -285,6 +295,9 @@ pub mod prom_remote_write_server_config {
             if self.ignore_duplicate_metadata != false {
                 my_size += 1 + 1;
             }
+            if self.flatten_histogram_and_summary != false {
+                my_size += 1 + 1;
+            }
             my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
             self.special_fields.cached_size().set(my_size as u32);
             my_size
@@ -299,6 +312,9 @@ pub mod prom_remote_write_server_config {
             }
             if self.ignore_duplicate_metadata != false {
                 os.write_bool(3, self.ignore_duplicate_metadata)?;
+            }
+            if self.flatten_histogram_and_summary != false {
+                os.write_bool(4, self.flatten_histogram_and_summary)?;
             }
             os.write_unknown_fields(self.special_fields.unknown_fields())?;
             ::std::result::Result::Ok(())
@@ -320,6 +336,7 @@ pub mod prom_remote_write_server_config {
             self.summary_as_timer = false;
             self.counter_as_delta = false;
             self.ignore_duplicate_metadata = false;
+            self.flatten_histogram_and_summary = false;
             self.special_fields.clear();
         }
 
@@ -328,6 +345,7 @@ pub mod prom_remote_write_server_config {
                 summary_as_timer: false,
                 counter_as_delta: false,
                 ignore_duplicate_metadata: false,
+                flatten_histogram_and_summary: false,
                 special_fields: ::protobuf::SpecialFields::new(),
             };
             &instance
@@ -355,15 +373,17 @@ pub mod prom_remote_write_server_config {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n.pulse/config/inflow/v1/prom_remote_write.proto\x12\x16pulse.config.in\
     flow.v1\x1a*pulse/config/inflow/v1/inflow_common.proto\x1a\x17validate/v\
-    alidate.proto\"\x9c\x03\n\x1bPromRemoteWriteServerConfig\x12\x1b\n\x04bi\
+    alidate.proto\"\xdf\x03\n\x1bPromRemoteWriteServerConfig\x12\x1b\n\x04bi\
     nd\x18\x01\x20\x01(\tR\x04bindB\x07\xfaB\x04r\x02\x10\x01\x12b\n\x0cpars\
     e_config\x18\x02\x20\x01(\x0b2?.pulse.config.inflow.v1.PromRemoteWriteSe\
     rverConfig.ParseConfigR\x0bparseConfig\x12\\\n\x14downstream_id_source\
     \x18\x03\x20\x01(\x0b2*.pulse.config.inflow.v1.DownstreamIdSourceR\x12do\
-    wnstreamIdSource\x1a\x9d\x01\n\x0bParseConfig\x12(\n\x10summary_as_timer\
+    wnstreamIdSource\x1a\xe0\x01\n\x0bParseConfig\x12(\n\x10summary_as_timer\
     \x18\x01\x20\x01(\x08R\x0esummaryAsTimer\x12(\n\x10counter_as_delta\x18\
     \x02\x20\x01(\x08R\x0ecounterAsDelta\x12:\n\x19ignore_duplicate_metadata\
-    \x18\x03\x20\x01(\x08R\x17ignoreDuplicateMetadatab\x06proto3\
+    \x18\x03\x20\x01(\x08R\x17ignoreDuplicateMetadata\x12A\n\x1dflatten_hist\
+    ogram_and_summary\x18\x04\x20\x01(\x08R\x1aflattenHistogramAndSummaryb\
+    \x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file

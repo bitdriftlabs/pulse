@@ -270,6 +270,7 @@ impl PipelineDispatch for PipelineDispatcher {
 //
 
 // Abstraction over creating pipeline components to allow for easier testing of dynamic config.
+#[allow(clippy::struct_field_names)]
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait ItemFactory: Send + Sync {
