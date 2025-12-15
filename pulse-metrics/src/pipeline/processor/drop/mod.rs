@@ -64,8 +64,8 @@ enum TranslatedDropCondition {
     value_match: Option<TranslatedStringMatchCondition>,
   },
   ValueMatch(ValueMatch),
-  AndMatch(Vec<TranslatedDropCondition>),
-  NotMatch(Box<TranslatedDropCondition>),
+  AndMatch(Vec<Self>),
+  NotMatch(Box<Self>),
   TimestampAgeMatch(Duration),
 }
 

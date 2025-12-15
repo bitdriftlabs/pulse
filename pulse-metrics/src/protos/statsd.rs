@@ -32,7 +32,7 @@ fn parse_tags(input: bytes::Bytes) -> Result<Vec<TagValue>, ParseError> {
   let mut tags: Vec<TagValue> = Vec::new();
   let mut scan = input;
   loop {
-    let tag_index_end = memchr(b',', scan.as_ref()).map_or_else(|| scan.len(), |i| i);
+    let tag_index_end = memchr(b',', scan.as_ref()).unwrap_or_else(|| scan.len());
     let tag_scan = scan.slice(0 .. tag_index_end);
     match memchr(b':', tag_scan.as_ref()) {
       // Value-less tag, consume the name and continue

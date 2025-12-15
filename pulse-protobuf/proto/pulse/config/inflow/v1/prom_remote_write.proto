@@ -26,6 +26,12 @@ message PromRemoteWriteServerConfig {
     // https://github.com/lyft/statsrelay/ does not dedup metric family metadata in the metadata
     // list. If set, ignore duplicate entries and do not warn about them.
     bool ignore_duplicate_metadata = 3;
+
+    // If set, metadata for histogram and summary metrics will be ignored, and those metrics will be
+    // flattened with an unknown metric type. This is useful if the sender is splitting histograms
+    // and summaries across different requests. Note that this means that these metrics cannot be
+    // aggregated or have any other operations performed on them that depend on their type.
+    bool flatten_histogram_and_summary = 4;
   }
 
   // Which address to bind to.

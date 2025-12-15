@@ -318,3 +318,86 @@ fn histogram_round_trip() {
     )]
   );
 }
+
+#[test]
+fn flatten_histogram_and_summary() {
+  let write_request = WriteRequest {
+    timeseries: vec![
+      make_timeseries(
+        "foo_bucket".into(),
+        vec![],
+        23.0,
+        1000,
+        vec![make_label("le".into(), "0.05".into())],
+      ),
+      make_timeseries(
+        "foo_bucket".into(),
+        vec![],
+        25.0,
+        1000,
+        vec![make_label("le".into(), "0.1".into())],
+      ),
+      make_timeseries(
+        "foo_bucket".into(),
+        vec![],
+        30.0,
+        1000,
+        vec![make_label("le".into(), "+Inf".into())],
+      ),
+      make_timeseries("foo_count".into(), vec![], 30.0, 1000, vec![]),
+      make_timeseries("foo_sum".into(), vec![], 10.0, 1000, vec![]),
+      make_timeseries(
+        "bar".into(),
+        vec![],
+        23.0,
+        1000,
+        vec![make_label("quantile".into(), "0.5".into())],
+      ),
+      make_timeseries(
+        "bar".into(),
+        vec![],
+        25.0,
+        1000,
+        vec![make_label("quantile".into(), "0.9".into())],
+      ),
+      make_timeseries(
+        "bar".into(),
+        vec![],
+        30.0,
+        1000,
+        vec![make_label("quantile".into(), "0.99".into())],
+      ),
+      make_timeseries("bar_count".into(), vec![], 30.0, 1000, vec![]),
+      make_timeseries("bar_sum".into(), vec![], 10.0, 1000, vec![]),
+    ],
+    metadata: vec![
+      MetricMetadata {
+        type_: PromMetricType::HISTOGRAM.into(),
+        metric_family_name: "foo".into(),
+        ..Default::default()
+      },
+      MetricMetadata {
+        type_: PromMetricType::SUMMARY.into(),
+        metric_family_name: "bar".into(),
+        ..Default::default()
+      },
+    ],
+    ..Default::default()
+  };
+
+  let (metrics, errors) = from_write_request(
+    write_request,
+    &ParseConfig {
+      flatten_histogram_and_summary: true,
+      ..Default::default()
+    },
+  );
+  assert!(errors.is_empty());
+  assert_eq!(metrics.len(), 10);
+
+  // Verify all metrics are simple and have no type.
+  for metric in metrics {
+    assert_eq!(metric.get_id().mtype(), None);
+    assert_matches!(metric.value, MetricValue::Simple(_));
+  }
+}
