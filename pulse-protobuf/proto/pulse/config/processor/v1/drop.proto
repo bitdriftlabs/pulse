@@ -71,6 +71,9 @@ message DropRule {
       // Matches against "simple" metrics that have a single value. I.e., not histograms or
       // summaries.
       SimpleValueMatch simple_value = 1;
+
+      // Match against NaN values.
+      bool is_nan = 2;
     }
   }
 
