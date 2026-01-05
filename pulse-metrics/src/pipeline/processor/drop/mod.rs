@@ -117,18 +117,21 @@ impl TranslatedDropCondition {
       return false;
     };
 
-    let Some(Value_match_type::SimpleValue(simple_value_match)) = &value_match.value_match_type
-    else {
-      return false;
-    };
-
-    match simple_value_match.operator.enum_value_or_default() {
-      ValueMatchOperator::EQUAL => (value - simple_value_match.target).abs() < f64::EPSILON,
-      ValueMatchOperator::NOT_EQUAL => (value - simple_value_match.target).abs() >= f64::EPSILON,
-      ValueMatchOperator::GREATER => value > simple_value_match.target,
-      ValueMatchOperator::GREATER_OR_EQUAL => value >= simple_value_match.target,
-      ValueMatchOperator::LESS => value < simple_value_match.target,
-      ValueMatchOperator::LESS_OR_EQUAL => value <= simple_value_match.target,
+    match value_match.value_match_type.as_ref() {
+      Some(Value_match_type::SimpleValue(simple_value_match)) => {
+        match simple_value_match.operator.enum_value_or_default() {
+          ValueMatchOperator::EQUAL => (value - simple_value_match.target).abs() < f64::EPSILON,
+          ValueMatchOperator::NOT_EQUAL => {
+            (value - simple_value_match.target).abs() >= f64::EPSILON
+          },
+          ValueMatchOperator::GREATER => value > simple_value_match.target,
+          ValueMatchOperator::GREATER_OR_EQUAL => value >= simple_value_match.target,
+          ValueMatchOperator::LESS => value < simple_value_match.target,
+          ValueMatchOperator::LESS_OR_EQUAL => value <= simple_value_match.target,
+        }
+      },
+      Some(Value_match_type::IsNan(is_nan)) => value.is_nan() == *is_nan,
+      None => false,
     }
   }
 

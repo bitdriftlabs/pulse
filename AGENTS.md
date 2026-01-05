@@ -6,6 +6,7 @@
 - Test (single): `cargo test test_name` or `cargo nextest run test_name`
 - Test (specific crate): `cargo test -p crate-name`
 - Clippy: `cargo clippy --workspace --bins --examples --tests -- --no-deps`
+- Format: `cargo +nightly fmt`
 
 ## Important Notes
 - Do NOT prefix cargo commands with `SKIP_PROTO_GEN=1` unless specifically needed

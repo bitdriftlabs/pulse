@@ -7,7 +7,8 @@
 
 use crate::pipeline::processor::PipelineProcessor;
 use crate::pipeline::processor::drop::DropProcessor;
-use crate::test::{make_metric, processor_factory_context_for_test};
+use crate::protos::metric::{DownstreamId, MetricSource, MetricValue};
+use crate::test::{make_metric, make_metric_ex, processor_factory_context_for_test};
 use bd_test_helpers::make_mut;
 use drop::drop_processor_config::Config_source;
 use drop::drop_rule::drop_condition::Condition_type;
@@ -520,6 +521,65 @@ async fn warn_interval() {
       make_metric("drop_this", &[], 0),
       make_metric("keep_this", &[], 0),
     ])
+    .await;
+  helper.stats_helper.assert_counter_eq(
+    1,
+    "processor:dropped",
+    &labels! { "rule_name" => "rule1", "mode" => "enabled" },
+  );
+}
+
+#[tokio::test]
+async fn nan_match() {
+  let (mut helper, context) = processor_factory_context_for_test();
+  let processor = Arc::new(
+    DropProcessor::new(
+      DropProcessorConfig {
+        config_source: Some(Config_source::Inline(DropConfig {
+          rules: vec![DropRule {
+            name: "rule1".into(),
+            mode: DropMode::ENABLED.into(),
+            conditions: vec![DropCondition {
+              condition_type: Some(Condition_type::ValueMatch(ValueMatch {
+                value_match_type: Some(Value_match_type::IsNan(true)),
+                ..Default::default()
+              })),
+              ..Default::default()
+            }],
+            ..Default::default()
+          }],
+          ..Default::default()
+        })),
+        ..Default::default()
+      },
+      context,
+    )
+    .await
+    .unwrap(),
+  );
+
+  make_mut(&mut helper.dispatcher)
+    .expect_send()
+    .times(1)
+    .returning(|metrics| {
+      assert_eq!(metrics, vec![make_metric("not_nan", &[], 100)]);
+    });
+
+  let nan_metric = make_metric_ex(
+    "nan_metric",
+    &[],
+    0,
+    None,
+    None,
+    MetricValue::Simple(f64::NAN),
+    MetricSource::PromRemoteWrite,
+    DownstreamId::LocalOrigin,
+    None,
+  );
+
+  processor
+    .clone()
+    .recv_samples(vec![make_metric("not_nan", &[], 100), nan_metric])
     .await;
   helper.stats_helper.assert_counter_eq(
     1,
