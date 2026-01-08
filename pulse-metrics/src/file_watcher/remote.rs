@@ -18,6 +18,7 @@ use async_trait::async_trait;
 use bd_shutdown::ComponentShutdown;
 use bd_time::TimeDurationExt;
 use bytes::Bytes;
+use http::header::USER_AGENT;
 use http::{Method, Request, StatusCode};
 use http_body_util::{BodyExt, Empty};
 use hyper_rustls::HttpsConnector;
@@ -296,7 +297,8 @@ impl RemoteFileWatcherClient for HttpRemoteFileWatcherClient {
   async fn get_file(&self, etag: Option<String>) -> Result<(Bytes, String), WatchError> {
     let mut request = Request::builder()
       .method(Method::GET)
-      .uri(self.source.url.as_str());
+      .uri(self.source.url.as_str())
+      .header(USER_AGENT, "pulse");
 
     if let Some(etag) = etag {
       request = request.header("If-None-Match", etag);

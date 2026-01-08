@@ -500,6 +500,7 @@ impl<Jitter: DurationJitter + 'static> Scraper<Jitter> {
       })
       .or_else(|_| Ok::<_, anyhow::Error>(reqwest::Client::builder()))?
       .timeout(timeout.unsigned_abs())
+      .user_agent("pulse")
       .build()?;
 
     Ok(Arc::new(Self {

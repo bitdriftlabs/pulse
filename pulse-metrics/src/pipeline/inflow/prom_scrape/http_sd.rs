@@ -27,7 +27,9 @@ async fn do_fetch(config: &HttpServiceDiscovery) -> anyhow::Result<Vec<TargetBlo
     "Fetching HTTP service discovery targets from {}",
     env_or_inline_to_string(&config.url).unwrap_or_default()
   );
-  let response = reqwest::Client::new()
+  let response = reqwest::Client::builder()
+    .user_agent("pulse")
+    .build()?
     .get(env_or_inline_to_string(&config.url).ok_or_else(|| anyhow!("HTTP SD URL is not set"))?)
     .timeout(15.std_seconds())
     .send()
