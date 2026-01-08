@@ -75,7 +75,7 @@ mod adapter {
   use super::Sample;
   use intrusive_collections::{LinkedListLink, intrusive_adapter};
 
-  intrusive_adapter!(pub(super) SampleAdapter = Box<Sample>: Sample { link: LinkedListLink });
+  intrusive_adapter!(pub(super) SampleAdapter = Box<Sample>: Sample { link => LinkedListLink });
 }
 
 //

@@ -58,7 +58,7 @@ impl<K: Hash> Hash for MapKey<K> {
 // Safety: The link is only manipulated under a full mutex so this structure is Sync.
 unsafe impl<K: Sync> Sync for MapKey<K> {}
 
-intrusive_adapter!(LruAdapter<K> = UnsafeRef<MapKey<K>>: MapKey<K> { link: LinkedListLink });
+intrusive_adapter!(LruAdapter<K> = UnsafeRef<MapKey<K>>: MapKey<K> { link => LinkedListLink });
 
 //
 // LruShard

@@ -36,6 +36,7 @@ use axum::http::{HeaderMap, Request, StatusCode};
 use bd_time::TimeDurationExt;
 use bytes::Bytes;
 use http::Method;
+use http::header::USER_AGENT;
 use http_body_util::BodyExt;
 use hyper_rustls::HttpsConnector;
 use hyper_util::client::legacy::Client;
@@ -215,7 +216,10 @@ impl HttpRemoteWriteClient for HyperHttpRemoteWriteClient {
     compressed_write_request: Bytes,
     extra_headers: Option<&'a HeaderMap>,
   ) -> Result<()> {
-    let mut request = Request::builder().method(Method::POST).uri(&self.endpoint);
+    let mut request = Request::builder()
+      .method(Method::POST)
+      .uri(&self.endpoint)
+      .header(USER_AGENT, "pulse");
     if let Some(Auth::Bearer(bearer_token)) = &self.auth {
       request = request.header("x-bitdrift-api-key", bearer_token);
     }
