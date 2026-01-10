@@ -76,11 +76,11 @@ message VrlTestCase {
   map<string, string> environment = 5;
 
   // 1 or more test transforms that will be tested against the above parameters.
-  repeated Transform transforms = 6 [(validate.rules).repeated .min_items = 1];
+  repeated Transform transforms = 6 [(validate.rules).repeated.min_items = 1];
 }
 
 // Root configuration for a test run. Each test run is composed of 1 or more test cases.
 message VrlTesterConfig {
   // The test cases in the test run.
-  repeated VrlTestCase test_cases = 1 [(validate.rules).repeated .min_items = 1];
+  repeated VrlTestCase test_cases = 1 [(validate.rules).repeated.min_items = 1];
 }

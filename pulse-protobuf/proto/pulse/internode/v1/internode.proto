@@ -32,8 +32,15 @@ message InternodeMetricsRequest {
 message InternodeMetricsResponse {
 }
 
+message ReadyRequest {
+}
+message ReadyResponse {
+  bool ready = 1;
+}
+
 service Internode {
   rpc InternodeMetrics(InternodeMetricsRequest) returns (InternodeMetricsResponse);
   rpc GetPeersComparison(PeersComparisonRequest) returns (PeersComparisonResponse);
   rpc LastElidedTimestamp(LastElidedTimestampRequest) returns (LastElidedTimestampResponse);
+  rpc Ready(ReadyRequest) returns (ReadyResponse);
 }

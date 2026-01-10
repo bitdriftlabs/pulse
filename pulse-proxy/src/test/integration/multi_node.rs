@@ -18,6 +18,7 @@ use prometheus::labels;
 use pulse_metrics::test::parse_carbon_metrics;
 use reusable_fmt::{fmt, fmt_reuse};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::net::TcpStream;
 
 fmt_reuse! {
@@ -301,6 +302,208 @@ async fn mixed_points() {
   metrics.extend(upstream2.wait_for_metrics().await);
   // TODO(mattklein123): Actually compare the metrics above.
   assert_eq!(lines.len(), metrics.len());
+
+  helper1.shutdown().await;
+  helper2.shutdown().await;
+}
+
+fmt_reuse! {
+HEALTH_CHECK = r#"
+admin:
+  bind: "{admin_bind}"
+
+pipeline:
+  inflows:
+    tcp:
+      routes: ["processor:internode"]
+      tcp:
+        bind: "{inflow_bind}"
+        protocol:
+          carbon: {{}}
+
+  processors:
+    internode:
+      routes: ["outflow:tcp"]
+      internode:
+        listen: "{internode_bind}"
+        total_nodes: 2
+        this_node_id: "{internode_name}"
+        nodes:
+          - {{ node_id: "{other_internode_name}", address: "{other_internode_addr}" }}
+        health_check:
+          interval: "0.01s"
+          failure_threshold: 2
+          success_threshold: 2
+        request_policy:
+          timeout: "0.05s"
+
+  outflows:
+    tcp:
+      tcp:
+        common:
+          send_to: "{outflow_addr}"
+          protocol:
+            carbon: {{}}
+"#;
+}
+
+async fn start_multi_node_with_health_check() -> (Arc<HelperBindResolver>, Helper, Helper) {
+  let bind_resolver = HelperBindResolver::new(
+    &[
+      "admin1",
+      "admin2",
+      "fake_upstream1",
+      "fake_upstream2",
+      "inflow:tcp_1",
+      "inflow:tcp_2",
+      "processor:internode_1",
+      "processor:internode_2",
+    ],
+    &[],
+  )
+  .await;
+
+  let helper1 = Helper::new(
+    &fmt!(
+      HEALTH_CHECK,
+      admin_bind = "admin1",
+      inflow_bind = "inflow:tcp_1",
+      internode_bind = "processor:internode_1",
+      internode_name = "node-1",
+      other_internode_name = "node-2",
+      other_internode_addr = bind_resolver.local_tcp_addr("processor:internode_2"),
+      outflow_addr = bind_resolver.local_tcp_addr("fake_upstream1")
+    ),
+    bind_resolver.clone(),
+  )
+  .await;
+  let helper2 = Helper::new(
+    &fmt!(
+      HEALTH_CHECK,
+      admin_bind = "admin2",
+      inflow_bind = "inflow:tcp_2",
+      internode_bind = "processor:internode_2",
+      internode_name = "node-2",
+      other_internode_name = "node-1",
+      other_internode_addr = bind_resolver.local_tcp_addr("processor:internode_1"),
+      outflow_addr = bind_resolver.local_tcp_addr("fake_upstream2")
+    ),
+    bind_resolver.clone(),
+  )
+  .await;
+
+  (bind_resolver, helper1, helper2)
+}
+
+/// Wait for a gauge to reach an expected value with timeout.
+#[allow(clippy::cast_possible_truncation)]
+async fn wait_for_gauge(helper: &Helper, expected: i64, name: &str, timeout_secs: u64, msg: &str) {
+  let start = std::time::Instant::now();
+  loop {
+    if helper
+      .stats_helper()
+      .find_gauge(name, &labels! {})
+      .is_some_and(|gauge| gauge.value() as i64 == expected)
+    {
+      return;
+    }
+    assert!(
+      start.elapsed() <= Duration::from_secs(timeout_secs),
+      "{msg}"
+    );
+    tokio::time::sleep(Duration::from_millis(10)).await;
+  }
+}
+
+#[tokio::test]
+async fn health_check_failover_and_recovery() {
+  let (bind_resolver, helper1, helper2) = start_multi_node_with_health_check().await;
+  let mut _upstream1 = FakeWireUpstream::new("fake_upstream1", bind_resolver.clone()).await;
+  let mut _upstream2 = FakeWireUpstream::new("fake_upstream2", bind_resolver.clone()).await;
+
+  // Wait for both nodes to see each other as healthy. Each node monitors one peer.
+  wait_for_gauge(
+    &helper1,
+    1,
+    "pulse_proxy:pipeline:processor:internode:health_check_nodes_healthy",
+    5,
+    "helper1: timed out waiting for initial healthy state",
+  )
+  .await;
+  wait_for_gauge(
+    &helper2,
+    1,
+    "pulse_proxy:pipeline:processor:internode:health_check_nodes_healthy",
+    5,
+    "helper2: timed out waiting for initial healthy state",
+  )
+  .await;
+
+  // Verify initial shardmap update happened at startup (all nodes healthy).
+  helper1.stats_helper().assert_counter_eq(
+    1,
+    "pulse_proxy:pipeline:processor:internode:shardmap_updates",
+    &labels! {},
+  );
+
+  // Shut down node 2 to simulate failure.
+  helper2.shutdown().await;
+
+  // Wait for node 1 to detect node 2 as unhealthy (requires 2 consecutive failures).
+  wait_for_gauge(
+    &helper1,
+    0,
+    "pulse_proxy:pipeline:processor:internode:health_check_nodes_healthy",
+    5,
+    "timed out waiting for node to be marked unhealthy",
+  )
+  .await;
+
+  // Verify shardmap was updated (node removed from active shardmap).
+  helper1
+    .stats_helper()
+    .wait_for_counter_eq(
+      2,
+      "pulse_proxy:pipeline:processor:internode:shardmap_updates",
+      &labels! {},
+    )
+    .await;
+
+  // Restart node 2 to test recovery.
+  let helper2 = Helper::new(
+    &fmt!(
+      HEALTH_CHECK,
+      admin_bind = "admin2",
+      inflow_bind = "inflow:tcp_2",
+      internode_bind = "processor:internode_2",
+      internode_name = "node-2",
+      other_internode_name = "node-1",
+      other_internode_addr = bind_resolver.local_tcp_addr("processor:internode_1"),
+      outflow_addr = bind_resolver.local_tcp_addr("fake_upstream2")
+    ),
+    bind_resolver.clone(),
+  )
+  .await;
+
+  // Wait for node 1 to detect node 2 as healthy again (requires 2 consecutive successes).
+  wait_for_gauge(
+    &helper1,
+    1,
+    "pulse_proxy:pipeline:processor:internode:health_check_nodes_healthy",
+    5,
+    "timed out waiting for node to recover",
+  )
+  .await;
+
+  // Verify shardmap was updated again (node added back to active shardmap).
+  helper1
+    .stats_helper()
+    .wait_for_counter_eq(
+      3,
+      "pulse_proxy:pipeline:processor:internode:shardmap_updates",
+      &labels! {},
+    )
+    .await;
 
   helper1.shutdown().await;
   helper2.shutdown().await;

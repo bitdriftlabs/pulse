@@ -35,11 +35,11 @@ message DropTestCase {
   }
 
   // 1 or more metrics that will be tested against the above parameters.
-  repeated MetricDropTest metrics = 3 [(validate.rules).repeated .min_items = 1];
+  repeated MetricDropTest metrics = 3 [(validate.rules).repeated.min_items = 1];
 }
 
 // Root configuration for a test run. Each test run is composed of 1 or more test cases.
 message DropTesterConfig {
   // The test cases in the test run.
-  repeated DropTestCase test_cases = 1 [(validate.rules).repeated .min_items = 1];
+  repeated DropTestCase test_cases = 1 [(validate.rules).repeated.min_items = 1];
 }

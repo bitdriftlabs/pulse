@@ -30,12 +30,13 @@ use bd_grpc::{Handler, make_unary_router};
 use bd_log::warn_every;
 use bd_server_stats::stats::{AutoGauge, Scope};
 use bd_shutdown::{ComponentShutdown, ComponentShutdownTriggerHandle};
+use bd_time::ProtoDurationExt;
 use futures::StreamExt;
 use futures::stream::FuturesUnordered;
 use http::HeaderMap;
 use hyper_util::client::legacy::connect::HttpConnector;
 use log::{debug, error, info, trace, warn};
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 use prometheus::{Histogram, IntCounter, IntGauge};
 use protobuf::Chars;
 use pulse_common::bind_resolver::BoundTcpSocket;
@@ -50,8 +51,10 @@ use pulse_protobuf::protos::pulse::internode::v1::internode::{
   LastElidedTimestampResponse,
   PeersComparisonRequest,
   PeersComparisonResponse,
+  ReadyRequest,
+  ReadyResponse,
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use time::Duration;
@@ -59,6 +62,7 @@ use time::ext::NumericalDuration;
 use tokio::sync::Semaphore;
 
 mod convert;
+mod health_check;
 mod shard_map;
 
 const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::milliseconds(100);
@@ -80,6 +84,9 @@ struct Stats {
   internode_overflow: IntCounter,
   internode_time: Histogram,
   internode_convert_failure: IntCounter,
+  health_check_nodes_healthy: IntGauge,
+  health_check_nodes_total: IntGauge,
+  shardmap_updates: IntCounter,
 }
 
 impl Stats {
@@ -96,6 +103,9 @@ impl Stats {
       internode_overflow: scope.counter("internode_overflow"),
       internode_time: scope.histogram("internode_time"),
       internode_convert_failure: scope.scope("server").counter("internode_convert_failure"),
+      health_check_nodes_healthy: scope.gauge("health_check_nodes_healthy"),
+      health_check_nodes_total: scope.gauge("health_check_nodes_total"),
+      shardmap_updates: scope.counter("shardmap_updates"),
     }
   }
 }
@@ -108,6 +118,24 @@ impl Stats {
 struct Client {
   client: bd_grpc::client::Client<HttpConnector>,
   request_timeout: Duration,
+}
+
+#[async_trait]
+impl health_check::HealthCheckClient for Client {
+  async fn check(&self) -> anyhow::Result<()> {
+    self
+      .client
+      .unary(
+        &ServiceMethod::<ReadyRequest, ReadyResponse>::new("Internode", "Ready"),
+        None,
+        ReadyRequest::default(),
+        self.request_timeout,
+        Compression::None,
+      )
+      .await
+      .map(|_| ())
+      .map_err(|e| anyhow::anyhow!(e))
+  }
 }
 
 impl Client {
@@ -127,7 +155,8 @@ impl Client {
 type OutboundMap = HashMap<usize, (Arc<Client>, Vec<ParsedMetric>)>;
 
 pub struct InternodeProcessor {
-  shardmap: ShardMap<Arc<Client>>,
+  active_shardmap: Arc<RwLock<Arc<ShardMap<Arc<Client>>>>>,
+  full_shardmap: Arc<ShardMap<Arc<Client>>>,
   config: InternodeConfig,
   dispatcher: Arc<dyn PipelineDispatch>,
   shutdown_trigger_handle: ComponentShutdownTriggerHandle,
@@ -146,6 +175,46 @@ pub struct InternodeProcessor {
   socket: Mutex<Option<BoundTcpSocket>>,
   max_pending_requests: u32,
   current_pending_requests: AtomicU32,
+}
+
+//
+// Health Check
+//
+
+struct HealthCheckObserverImpl {
+  internode_processor: Arc<InternodeProcessor>,
+}
+
+impl health_check::HealthCheckObserver for HealthCheckObserverImpl {
+  fn on_healthy_nodes_change(&self, healthy_nodes: &HashSet<String>) {
+    let mut new_nodes = Vec::with_capacity(self.internode_processor.full_shardmap.nodes.len());
+    for node in &self.internode_processor.full_shardmap.nodes {
+      if node.is_self || healthy_nodes.contains(&node.id) {
+        new_nodes.push(node.clone());
+      }
+    }
+
+    info!(
+      "updating active shardmap with {} healthy nodes",
+      new_nodes.len()
+    );
+    let new_shardmap = Arc::new(ShardMap::new(new_nodes));
+    *self.internode_processor.active_shardmap.write() = new_shardmap;
+    self.internode_processor.stats.shardmap_updates.inc();
+  }
+
+  fn update_stats(&self, healthy_count: u32, total_count: u32) {
+    self
+      .internode_processor
+      .stats
+      .health_check_nodes_healthy
+      .set(healthy_count.into());
+    self
+      .internode_processor
+      .stats
+      .health_check_nodes_total
+      .set(total_count.into());
+  }
 }
 
 impl InternodeProcessor {
@@ -172,11 +241,14 @@ impl InternodeProcessor {
       },
     }?;
 
+    let full_shardmap = Arc::new(shardmap);
+    let active_shardmap = Arc::new(RwLock::new(full_shardmap.clone()));
+
     let max_concurrent_requests = config
       .request_policy
       .get_or_default()
       .max_concurrent_requests
-      .unwrap_or_else(|| (4 * shardmap.nodes.len()).try_into().unwrap())
+      .unwrap_or_else(|| (4 * active_shardmap.read().nodes.len()).try_into().unwrap())
       .try_into()
       .unwrap();
     log::info!("internode max concurrent requests: {max_concurrent_requests}");
@@ -191,7 +263,8 @@ impl InternodeProcessor {
     info!("starting internode server on {}", socket.local_addr());
 
     Ok(Arc::new(Self {
-      shardmap,
+      active_shardmap,
+      full_shardmap,
       config,
       dispatcher: context.dispatcher,
       shutdown_trigger_handle: context.shutdown_trigger_handle,
@@ -221,10 +294,11 @@ impl InternodeProcessor {
 
   fn group_lines_by_shard(&self, lines: Vec<ParsedMetric>) -> (Vec<ParsedMetric>, OutboundMap) {
     let outbound_map = OutboundMap::default();
+    let shardmap = self.active_shardmap.read();
     lines.into_iter().fold(
       (Vec::<ParsedMetric>::default(), outbound_map),
       |(mut local_lines, mut outbound_map), parsed_metric| {
-        if let (index, Some(client)) = self.shardmap.pick_node(parsed_metric.metric().get_id()) {
+        if let (index, Some(client)) = shardmap.pick_node(parsed_metric.metric().get_id()) {
           trace!("determined client {index:?}");
           let (_, entry) = outbound_map
             .entry(index)
@@ -372,7 +446,7 @@ impl InternodeProcessor {
 
   async fn validate_internode_with_peers(&self) -> bool {
     let mut requests: FuturesUnordered<_> = self
-      .shardmap
+      .full_shardmap
       .nodes
       .clone()
       .into_iter()
@@ -407,7 +481,7 @@ impl InternodeProcessor {
       })
       .collect();
 
-    let peer_list = self.shardmap.peer_list();
+    let peer_list = self.full_shardmap.peer_list();
     let mut invalid_matches: u32 = 0;
     while let Some(async_result) = requests.next().await {
       match async_result {
@@ -435,8 +509,8 @@ impl InternodeProcessor {
   }
 
   pub async fn get_last_elided(&self, name: &str) -> anyhow::Result<Option<u64>> {
-    let mut requests: FuturesUnordered<_> = self
-      .shardmap
+    let shardmap = self.active_shardmap.read().clone();
+    let mut requests: FuturesUnordered<_> = shardmap
       .nodes
       .iter()
       .filter_map(|node| {
@@ -493,6 +567,38 @@ impl InternodeProcessor {
 
     Ok(Some(last_elided))
   }
+
+  async fn run_health_check(self: Arc<Self>) {
+    let health_check_config = self.config.health_check.as_ref().unwrap();
+    let interval = health_check_config.interval.to_time_duration();
+    let failure_threshold = health_check_config.failure_threshold;
+    let success_threshold = health_check_config.success_threshold;
+
+    // Filter out node IDs that are not self.
+    let mut clients: HashMap<String, Arc<dyn health_check::HealthCheckClient>> = HashMap::new();
+    for node in self.full_shardmap.nodes.iter().filter(|n| !n.is_self) {
+      if let Some(client) = &node.inner {
+        clients.insert(node.id.clone(), client.clone());
+      }
+    }
+
+    let observer = Arc::new(HealthCheckObserverImpl {
+      internode_processor: self.clone(),
+    });
+
+    let shutdown = self.shutdown_trigger_handle.make_shutdown();
+    health_check::run_health_check_loop(
+      health_check::HealthCheckConfig {
+        interval,
+        failure_threshold,
+        success_threshold,
+      },
+      clients,
+      observer,
+      shutdown,
+    )
+    .await;
+  }
 }
 
 #[async_trait]
@@ -512,11 +618,18 @@ impl PipelineProcessor for InternodeProcessor {
       warn!("Server configuration does not match a peer's");
     }
 
+    if self.config.health_check.is_some() {
+      let this = self.clone();
+      tokio::spawn(async move {
+        this.run_health_check().await;
+      });
+    }
+
     let handler = InternodeHandler::new(
       self.dispatcher.clone(),
       self.stats.clone(),
       self.endpoint_stats.clone(),
-      self.shardmap.peer_list(),
+      self.full_shardmap.peer_list(),
       GetLastElided::register_internode(self.clone(), &self.singleton_manager, self.admin.as_ref())
         .await,
     );
@@ -627,6 +740,21 @@ impl Handler<LastElidedTimestampRequest, LastElidedTimestampResponse> for Intern
   }
 }
 
+#[async_trait]
+impl Handler<ReadyRequest, ReadyResponse> for InternodeHandler {
+  async fn handle(
+    &self,
+    _headers: HeaderMap,
+    _extensions: Extensions,
+    _request: ReadyRequest,
+  ) -> bd_grpc::error::Result<ReadyResponse> {
+    Ok(ReadyResponse {
+      ready: true,
+      ..Default::default()
+    })
+  }
+}
+
 fn make_router(handler: &Arc<InternodeHandler>) -> Router {
   make_unary_router(
     &ServiceMethod::<InternodeMetricsRequest, InternodeMetricsResponse>::new(
@@ -653,6 +781,13 @@ fn make_router(handler: &Arc<InternodeHandler>) -> Router {
       "Internode",
       "LastElidedTimestamp",
     ),
+    handler.clone(),
+    |_| {},
+    None,
+    false,
+  ))
+  .merge(make_unary_router(
+    &ServiceMethod::<ReadyRequest, ReadyResponse>::new("Internode", "Ready"),
     handler.clone(),
     |_| {},
     None,
