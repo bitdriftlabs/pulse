@@ -28,7 +28,6 @@ jobs:
           components: clippy
 
       - uses: bufbuild/buf-setup-action@v1
-      - uses: bufbuild/buf-lint-action@v1
 
       - name: Clippy
         # Typically: cargo clippy --workspace --bins --examples --tests -- --no-deps

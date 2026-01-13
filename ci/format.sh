@@ -2,6 +2,7 @@
 
 set -euo pipefail
 
+buf lint
 buf format -w pulse-protobuf/proto/
 
 # Check if git repository is dirty
