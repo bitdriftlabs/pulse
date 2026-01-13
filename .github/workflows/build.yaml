@@ -27,6 +27,8 @@ jobs:
           profile: minimal
           components: clippy
 
+      - uses: bufbuild/buf-setup-action@v1
+
       - name: Clippy
         # Typically: cargo clippy --workspace --bins --examples --tests -- --no-deps
         run: make clippy

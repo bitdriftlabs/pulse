@@ -8,8 +8,8 @@
 syntax = "proto3";
 package pulse.config.outflow.v1;
 
-import "pulse/config/outflow/v1/prom_remote_write.proto";
 import "pulse/config/outflow/v1/otlp.proto";
+import "pulse/config/outflow/v1/prom_remote_write.proto";
 import "pulse/config/outflow/v1/wire.proto";
 import "validate/validate.proto";
 

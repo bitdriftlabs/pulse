@@ -2,7 +2,8 @@
 
 set -euo pipefail
 
-find pulse-protobuf/proto/ -name '*.proto'|xargs -n1 clang-format -i
+buf lint
+buf format -w pulse-protobuf/proto/
 
 # Check if git repository is dirty
 if [[ -n $(git status --porcelain) ]]; then

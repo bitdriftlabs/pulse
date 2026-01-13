@@ -45,6 +45,8 @@ pub struct InternodeConfig {
     pub nodes: ::std::vec::Vec<internode_config::NodeConfig>,
     // @@protoc_insertion_point(field:pulse.config.processor.v1.InternodeConfig.request_policy)
     pub request_policy: ::protobuf::MessageField<internode_config::RequestPolicy>,
+    // @@protoc_insertion_point(field:pulse.config.processor.v1.InternodeConfig.health_check)
+    pub health_check: ::protobuf::MessageField<internode_config::HealthCheckConfig>,
     // special fields
     // @@protoc_insertion_point(special_field:pulse.config.processor.v1.InternodeConfig.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -62,7 +64,7 @@ impl InternodeConfig {
     }
 
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(5);
+        let mut fields = ::std::vec::Vec::with_capacity(6);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "listen",
@@ -88,6 +90,11 @@ impl InternodeConfig {
             "request_policy",
             |m: &InternodeConfig| { &m.request_policy },
             |m: &mut InternodeConfig| { &mut m.request_policy },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, internode_config::HealthCheckConfig>(
+            "health_check",
+            |m: &InternodeConfig| { &m.health_check },
+            |m: &mut InternodeConfig| { &mut m.health_check },
         ));
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<InternodeConfig>(
             "InternodeConfig",
@@ -122,6 +129,9 @@ impl ::protobuf::Message for InternodeConfig {
                 42 => {
                     ::protobuf::rt::read_singular_message_into_field(is, &mut self.request_policy)?;
                 },
+                50 => {
+                    ::protobuf::rt::read_singular_message_into_field(is, &mut self.health_check)?;
+                },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                 },
@@ -151,6 +161,10 @@ impl ::protobuf::Message for InternodeConfig {
             let len = v.compute_size();
             my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
         }
+        if let Some(v) = self.health_check.as_ref() {
+            let len = v.compute_size();
+            my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
         my_size
@@ -171,6 +185,9 @@ impl ::protobuf::Message for InternodeConfig {
         };
         if let Some(v) = self.request_policy.as_ref() {
             ::protobuf::rt::write_message_field_with_cached_size(5, v, os)?;
+        }
+        if let Some(v) = self.health_check.as_ref() {
+            ::protobuf::rt::write_message_field_with_cached_size(6, v, os)?;
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -194,6 +211,7 @@ impl ::protobuf::Message for InternodeConfig {
         self.this_node_id.clear();
         self.nodes.clear();
         self.request_policy.clear();
+        self.health_check.clear();
         self.special_fields.clear();
     }
 
@@ -204,6 +222,7 @@ impl ::protobuf::Message for InternodeConfig {
             this_node_id: ::protobuf::Chars::new(),
             nodes: ::std::vec::Vec::new(),
             request_policy: ::protobuf::MessageField::none(),
+            health_check: ::protobuf::MessageField::none(),
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -366,6 +385,165 @@ pub mod internode_config {
     }
 
     impl ::protobuf::reflect::ProtobufValue for NodeConfig {
+        type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
+    }
+
+    // @@protoc_insertion_point(message:pulse.config.processor.v1.InternodeConfig.HealthCheckConfig)
+    #[derive(PartialEq,Clone,Default,Debug)]
+    pub struct HealthCheckConfig {
+        // message fields
+        // @@protoc_insertion_point(field:pulse.config.processor.v1.InternodeConfig.HealthCheckConfig.interval)
+        pub interval: ::protobuf::MessageField<::protobuf::well_known_types::duration::Duration>,
+        // @@protoc_insertion_point(field:pulse.config.processor.v1.InternodeConfig.HealthCheckConfig.failure_threshold)
+        pub failure_threshold: u32,
+        // @@protoc_insertion_point(field:pulse.config.processor.v1.InternodeConfig.HealthCheckConfig.success_threshold)
+        pub success_threshold: u32,
+        // special fields
+        // @@protoc_insertion_point(special_field:pulse.config.processor.v1.InternodeConfig.HealthCheckConfig.special_fields)
+        pub special_fields: ::protobuf::SpecialFields,
+    }
+
+    impl<'a> ::std::default::Default for &'a HealthCheckConfig {
+        fn default() -> &'a HealthCheckConfig {
+            <HealthCheckConfig as ::protobuf::Message>::default_instance()
+        }
+    }
+
+    impl HealthCheckConfig {
+        pub fn new() -> HealthCheckConfig {
+            ::std::default::Default::default()
+        }
+
+        pub(in super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
+            let mut fields = ::std::vec::Vec::with_capacity(3);
+            let mut oneofs = ::std::vec::Vec::with_capacity(0);
+            fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, ::protobuf::well_known_types::duration::Duration>(
+                "interval",
+                |m: &HealthCheckConfig| { &m.interval },
+                |m: &mut HealthCheckConfig| { &mut m.interval },
+            ));
+            fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+                "failure_threshold",
+                |m: &HealthCheckConfig| { &m.failure_threshold },
+                |m: &mut HealthCheckConfig| { &mut m.failure_threshold },
+            ));
+            fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+                "success_threshold",
+                |m: &HealthCheckConfig| { &m.success_threshold },
+                |m: &mut HealthCheckConfig| { &mut m.success_threshold },
+            ));
+            ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<HealthCheckConfig>(
+                "InternodeConfig.HealthCheckConfig",
+                fields,
+                oneofs,
+            )
+        }
+    }
+
+    impl ::protobuf::Message for HealthCheckConfig {
+        const NAME: &'static str = "HealthCheckConfig";
+
+        fn is_initialized(&self) -> bool {
+            true
+        }
+
+        fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
+            while let Some(tag) = is.read_raw_tag_or_eof()? {
+                match tag {
+                    10 => {
+                        ::protobuf::rt::read_singular_message_into_field(is, &mut self.interval)?;
+                    },
+                    16 => {
+                        self.failure_threshold = is.read_uint32()?;
+                    },
+                    24 => {
+                        self.success_threshold = is.read_uint32()?;
+                    },
+                    tag => {
+                        ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
+                    },
+                };
+            }
+            ::std::result::Result::Ok(())
+        }
+
+        // Compute sizes of nested messages
+        #[allow(unused_variables)]
+        fn compute_size(&self) -> u64 {
+            let mut my_size = 0;
+            if let Some(v) = self.interval.as_ref() {
+                let len = v.compute_size();
+                my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+            }
+            if self.failure_threshold != 0 {
+                my_size += ::protobuf::rt::uint32_size(2, self.failure_threshold);
+            }
+            if self.success_threshold != 0 {
+                my_size += ::protobuf::rt::uint32_size(3, self.success_threshold);
+            }
+            my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
+            self.special_fields.cached_size().set(my_size as u32);
+            my_size
+        }
+
+        fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
+            if let Some(v) = self.interval.as_ref() {
+                ::protobuf::rt::write_message_field_with_cached_size(1, v, os)?;
+            }
+            if self.failure_threshold != 0 {
+                os.write_uint32(2, self.failure_threshold)?;
+            }
+            if self.success_threshold != 0 {
+                os.write_uint32(3, self.success_threshold)?;
+            }
+            os.write_unknown_fields(self.special_fields.unknown_fields())?;
+            ::std::result::Result::Ok(())
+        }
+
+        fn special_fields(&self) -> &::protobuf::SpecialFields {
+            &self.special_fields
+        }
+
+        fn mut_special_fields(&mut self) -> &mut ::protobuf::SpecialFields {
+            &mut self.special_fields
+        }
+
+        fn new() -> HealthCheckConfig {
+            HealthCheckConfig::new()
+        }
+
+        fn clear(&mut self) {
+            self.interval.clear();
+            self.failure_threshold = 0;
+            self.success_threshold = 0;
+            self.special_fields.clear();
+        }
+
+        fn default_instance() -> &'static HealthCheckConfig {
+            static instance: HealthCheckConfig = HealthCheckConfig {
+                interval: ::protobuf::MessageField::none(),
+                failure_threshold: 0,
+                success_threshold: 0,
+                special_fields: ::protobuf::SpecialFields::new(),
+            };
+            &instance
+        }
+    }
+
+    impl ::protobuf::MessageFull for HealthCheckConfig {
+        fn descriptor() -> ::protobuf::reflect::MessageDescriptor {
+            static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::Lazy::new();
+            descriptor.get(|| super::file_descriptor().message_by_package_relative_name("InternodeConfig.HealthCheckConfig").unwrap()).clone()
+        }
+    }
+
+    impl ::std::fmt::Display for HealthCheckConfig {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            ::protobuf::text_format::fmt(self, f)
+        }
+    }
+
+    impl ::protobuf::reflect::ProtobufValue for HealthCheckConfig {
         type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
     }
 
@@ -551,7 +729,7 @@ pub mod internode_config {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n)pulse/config/processor/v1/internode.proto\x12\x19pulse.config.process\
     or.v1\x1a\"pulse/config/common/v1/retry.proto\x1a\x1egoogle/protobuf/dur\
-    ation.proto\x1a\x17validate/validate.proto\"\xea\x05\n\x0fInternodeConfi\
+    ation.proto\x1a\x17validate/validate.proto\"\x8e\x08\n\x0fInternodeConfi\
     g\x12\x1f\n\x06listen\x18\x01\x20\x01(\tR\x06listenB\x07\xfaB\x04r\x02\
     \x10\x01\x12$\n\x0btotal_nodes\x18\x02\x20\x01(\rH\0R\ntotalNodes\x88\
     \x01\x01\x12)\n\x0cthis_node_id\x18\x03\x20\x01(\tR\nthisNodeIdB\x07\xfa\
@@ -559,16 +737,23 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     rocessor.v1.InternodeConfig.NodeConfigR\x05nodesB\x08\xfaB\x05\x92\x01\
     \x02\x08\x01\x12i\n\x0erequest_policy\x18\x05\x20\x01(\x0b28.pulse.confi\
     g.processor.v1.InternodeConfig.RequestPolicyR\rrequestPolicyB\x08\xfaB\
-    \x05\xaa\x01\x02*\0\x1aQ\n\nNodeConfig\x12\x20\n\x07node_id\x18\x01\x20\
-    \x01(\tR\x06nodeIdB\x07\xfaB\x04r\x02\x10\x01\x12!\n\x07address\x18\x02\
-    \x20\x01(\tR\x07addressB\x07\xfaB\x04r\x02\x10\x01\x1a\xbf\x02\n\rReques\
-    tPolicy\x12=\n\x07timeout\x18\x01\x20\x01(\x0b2\x19.google.protobuf.Dura\
-    tionR\x07timeoutB\x08\xfaB\x05\xaa\x01\x02*\0\x12F\n\x0cretry_policy\x18\
-    \x02\x20\x01(\x0b2#.pulse.config.common.v1.RetryPolicyR\x0bretryPolicy\
-    \x12;\n\x17max_concurrent_requests\x18\x03\x20\x01(\rH\0R\x15maxConcurre\
-    ntRequests\x88\x01\x01\x125\n\x14max_pending_requests\x18\x04\x20\x01(\r\
-    H\x01R\x12maxPendingRequests\x88\x01\x01B\x1a\n\x18_max_concurrent_reque\
-    stsB\x17\n\x15_max_pending_requestsB\x0e\n\x0c_total_nodesb\x06proto3\
+    \x05\xaa\x01\x02*\0\x12_\n\x0chealth_check\x18\x06\x20\x01(\x0b2<.pulse.\
+    config.processor.v1.InternodeConfig.HealthCheckConfigR\x0bhealthCheck\
+    \x1aQ\n\nNodeConfig\x12\x20\n\x07node_id\x18\x01\x20\x01(\tR\x06nodeIdB\
+    \x07\xfaB\x04r\x02\x10\x01\x12!\n\x07address\x18\x02\x20\x01(\tR\x07addr\
+    essB\x07\xfaB\x04r\x02\x10\x01\x1a\xc0\x01\n\x11HealthCheckConfig\x12?\n\
+    \x08interval\x18\x01\x20\x01(\x0b2\x19.google.protobuf.DurationR\x08inte\
+    rvalB\x08\xfaB\x05\xaa\x01\x02*\0\x124\n\x11failure_threshold\x18\x02\
+    \x20\x01(\rR\x10failureThresholdB\x07\xfaB\x04*\x02\x20\0\x124\n\x11succ\
+    ess_threshold\x18\x03\x20\x01(\rR\x10successThresholdB\x07\xfaB\x04*\x02\
+    \x20\0\x1a\xbf\x02\n\rRequestPolicy\x12=\n\x07timeout\x18\x01\x20\x01(\
+    \x0b2\x19.google.protobuf.DurationR\x07timeoutB\x08\xfaB\x05\xaa\x01\x02\
+    *\0\x12F\n\x0cretry_policy\x18\x02\x20\x01(\x0b2#.pulse.config.common.v1\
+    .RetryPolicyR\x0bretryPolicy\x12;\n\x17max_concurrent_requests\x18\x03\
+    \x20\x01(\rH\0R\x15maxConcurrentRequests\x88\x01\x01\x125\n\x14max_pendi\
+    ng_requests\x18\x04\x20\x01(\rH\x01R\x12maxPendingRequests\x88\x01\x01B\
+    \x1a\n\x18_max_concurrent_requestsB\x17\n\x15_max_pending_requestsB\x0e\
+    \n\x0c_total_nodesb\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
@@ -589,9 +774,10 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
             deps.push(super::retry::file_descriptor().clone());
             deps.push(::protobuf::well_known_types::duration::file_descriptor().clone());
             deps.push(super::validate::file_descriptor().clone());
-            let mut messages = ::std::vec::Vec::with_capacity(3);
+            let mut messages = ::std::vec::Vec::with_capacity(4);
             messages.push(InternodeConfig::generated_message_descriptor_data());
             messages.push(internode_config::NodeConfig::generated_message_descriptor_data());
+            messages.push(internode_config::HealthCheckConfig::generated_message_descriptor_data());
             messages.push(internode_config::RequestPolicy::generated_message_descriptor_data());
             let mut enums = ::std::vec::Vec::with_capacity(0);
             ::protobuf::reflect::GeneratedFileDescriptor::new_generated(

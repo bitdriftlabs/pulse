@@ -12,8 +12,7 @@ import "validate/validate.proto";
 
 // Wire protocol type.
 message WireProtocol {
-  message Carbon {
-  }
+  message Carbon {}
 
   message StatsD {
     // Whether to attempt parsing lyft/statsrelay style tags of the form:

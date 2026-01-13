@@ -60,6 +60,13 @@ impl<T: fmt::Debug> fmt::Debug for ShardMap<T> {
 }
 
 impl<T> ShardMap<T> {
+  pub fn new(nodes: Vec<Node<T>>) -> Self {
+    Self {
+      nodes,
+      hash_builder: Xxh64Builder::new(0),
+    }
+  }
+
   // Pick node for the given hashable (metric).
   // If the option is empty the node is you!
   pub fn pick_node<H: Hash + ?Sized>(&self, metric: &H) -> (usize, Option<&T>) {

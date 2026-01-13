@@ -8,14 +8,14 @@
 syntax = "proto3";
 package pulse.config.processor.v1;
 
-import "pulse/config/common/v1/retry.proto";
 import "google/protobuf/duration.proto";
+import "pulse/config/common/v1/retry.proto";
 import "validate/validate.proto";
 
 // Configuration for the internode processor. Internode performs consistent hashing of metrics
 // and sends them to other nodes in the cluster as necessary. This insures that processors that
 // depend on seeing the same metric consistently will see it. Currently the internode cluster
-// configuration is hard coded and not dynamically discovered. This can be accompished using
+// configuration is hard coded and not dynamically discovered. This can be accomplished using
 // Kubernetes stateful sets or some other similar mechanism that provides stable DNS for cluster
 // members.
 message InternodeConfig {
@@ -28,9 +28,23 @@ message InternodeConfig {
     string address = 2 [(validate.rules).string = {min_len: 1}];
   }
 
+  message HealthCheckConfig {
+    // Interval between health checks. There is no default and must be configured. The timeout is
+    // specified in the RequestPolicy.
+    google.protobuf.Duration interval = 1 [(validate.rules).duration.gt = {}];
+
+    // Number of consecutive failures before marking a node unhealthy. There is no default and must
+    // be configured.
+    uint32 failure_threshold = 2 [(validate.rules).uint32 = {gt: 0}];
+
+    // Number of consecutive successes before marking a node healthy. There is no default and must
+    // be configured.
+    uint32 success_threshold = 3 [(validate.rules).uint32 = {gt: 0}];
+  }
+
   // Configuration for internode requests.
   message RequestPolicy {
-    // Interode request timeout. Default is 100ms.
+    // Internode request timeout. Default is 100ms. This timeout is used for health checks as well.
     google.protobuf.Duration timeout = 1 [(validate.rules).duration.gt = {}];
 
     // Retry policy. If not specified default values are used.
@@ -58,8 +72,15 @@ message InternodeConfig {
   string this_node_id = 3 [(validate.rules).string = {min_len: 1}];
 
   // The set of nodes the processor should internode with.
-  repeated NodeConfig nodes = 4 [(validate.rules).repeated .min_items = 1];
+  repeated NodeConfig nodes = 4 [(validate.rules).repeated.min_items = 1];
 
   // Configuration for internode requests. If not specified, default values are used.
   RequestPolicy request_policy = 5 [(validate.rules).duration.gt = {}];
+
+  // Configuration for health checks. If not specified, health checks are disabled. Take great
+  // care in configuring health checks as settings that are too aggressive can cause flapping
+  // which is likely to be worse than having no health checks at all. During startup, nodes are
+  // assumed to be healthy until proven otherwise given the configured settings. This is to avoid
+  // heavy churn during a mass restart event.
+  HealthCheckConfig health_check = 6;
 }

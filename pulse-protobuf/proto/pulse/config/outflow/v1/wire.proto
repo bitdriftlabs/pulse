@@ -8,9 +8,9 @@
 syntax = "proto3";
 package pulse.config.outflow.v1;
 
+import "google/protobuf/duration.proto";
 import "pulse/config/common/v1/common.proto";
 import "pulse/config/outflow/v1/queue_policy.proto";
-import "google/protobuf/duration.proto";
 import "validate/validate.proto";
 
 // Common configuration for wire clients.

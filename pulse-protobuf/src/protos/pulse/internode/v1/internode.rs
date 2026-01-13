@@ -726,6 +726,231 @@ impl ::protobuf::reflect::ProtobufValue for InternodeMetricsResponse {
     type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
 }
 
+// @@protoc_insertion_point(message:pulse.internode.v1.ReadyRequest)
+#[derive(PartialEq,Clone,Default,Debug)]
+pub struct ReadyRequest {
+    // special fields
+    // @@protoc_insertion_point(special_field:pulse.internode.v1.ReadyRequest.special_fields)
+    pub special_fields: ::protobuf::SpecialFields,
+}
+
+impl<'a> ::std::default::Default for &'a ReadyRequest {
+    fn default() -> &'a ReadyRequest {
+        <ReadyRequest as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl ReadyRequest {
+    pub fn new() -> ReadyRequest {
+        ::std::default::Default::default()
+    }
+
+    fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
+        let mut fields = ::std::vec::Vec::with_capacity(0);
+        let mut oneofs = ::std::vec::Vec::with_capacity(0);
+        ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<ReadyRequest>(
+            "ReadyRequest",
+            fields,
+            oneofs,
+        )
+    }
+}
+
+impl ::protobuf::Message for ReadyRequest {
+    const NAME: &'static str = "ReadyRequest";
+
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
+        while let Some(tag) = is.read_raw_tag_or_eof()? {
+            match tag {
+                tag => {
+                    ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u64 {
+        let mut my_size = 0;
+        my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
+        self.special_fields.cached_size().set(my_size as u32);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
+        os.write_unknown_fields(self.special_fields.unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn special_fields(&self) -> &::protobuf::SpecialFields {
+        &self.special_fields
+    }
+
+    fn mut_special_fields(&mut self) -> &mut ::protobuf::SpecialFields {
+        &mut self.special_fields
+    }
+
+    fn new() -> ReadyRequest {
+        ReadyRequest::new()
+    }
+
+    fn clear(&mut self) {
+        self.special_fields.clear();
+    }
+
+    fn default_instance() -> &'static ReadyRequest {
+        static instance: ReadyRequest = ReadyRequest {
+            special_fields: ::protobuf::SpecialFields::new(),
+        };
+        &instance
+    }
+}
+
+impl ::protobuf::MessageFull for ReadyRequest {
+    fn descriptor() -> ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::Lazy::new();
+        descriptor.get(|| file_descriptor().message_by_package_relative_name("ReadyRequest").unwrap()).clone()
+    }
+}
+
+impl ::std::fmt::Display for ReadyRequest {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for ReadyRequest {
+    type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
+}
+
+// @@protoc_insertion_point(message:pulse.internode.v1.ReadyResponse)
+#[derive(PartialEq,Clone,Default,Debug)]
+pub struct ReadyResponse {
+    // message fields
+    // @@protoc_insertion_point(field:pulse.internode.v1.ReadyResponse.ready)
+    pub ready: bool,
+    // special fields
+    // @@protoc_insertion_point(special_field:pulse.internode.v1.ReadyResponse.special_fields)
+    pub special_fields: ::protobuf::SpecialFields,
+}
+
+impl<'a> ::std::default::Default for &'a ReadyResponse {
+    fn default() -> &'a ReadyResponse {
+        <ReadyResponse as ::protobuf::Message>::default_instance()
+    }
+}
+
+impl ReadyResponse {
+    pub fn new() -> ReadyResponse {
+        ::std::default::Default::default()
+    }
+
+    fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
+        let mut fields = ::std::vec::Vec::with_capacity(1);
+        let mut oneofs = ::std::vec::Vec::with_capacity(0);
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+            "ready",
+            |m: &ReadyResponse| { &m.ready },
+            |m: &mut ReadyResponse| { &mut m.ready },
+        ));
+        ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<ReadyResponse>(
+            "ReadyResponse",
+            fields,
+            oneofs,
+        )
+    }
+}
+
+impl ::protobuf::Message for ReadyResponse {
+    const NAME: &'static str = "ReadyResponse";
+
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::Result<()> {
+        while let Some(tag) = is.read_raw_tag_or_eof()? {
+            match tag {
+                8 => {
+                    self.ready = is.read_bool()?;
+                },
+                tag => {
+                    ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u64 {
+        let mut my_size = 0;
+        if self.ready != false {
+            my_size += 1 + 1;
+        }
+        my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
+        self.special_fields.cached_size().set(my_size as u32);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
+        if self.ready != false {
+            os.write_bool(1, self.ready)?;
+        }
+        os.write_unknown_fields(self.special_fields.unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn special_fields(&self) -> &::protobuf::SpecialFields {
+        &self.special_fields
+    }
+
+    fn mut_special_fields(&mut self) -> &mut ::protobuf::SpecialFields {
+        &mut self.special_fields
+    }
+
+    fn new() -> ReadyResponse {
+        ReadyResponse::new()
+    }
+
+    fn clear(&mut self) {
+        self.ready = false;
+        self.special_fields.clear();
+    }
+
+    fn default_instance() -> &'static ReadyResponse {
+        static instance: ReadyResponse = ReadyResponse {
+            ready: false,
+            special_fields: ::protobuf::SpecialFields::new(),
+        };
+        &instance
+    }
+}
+
+impl ::protobuf::MessageFull for ReadyResponse {
+    fn descriptor() -> ::protobuf::reflect::MessageDescriptor {
+        static descriptor: ::protobuf::rt::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::Lazy::new();
+        descriptor.get(|| file_descriptor().message_by_package_relative_name("ReadyResponse").unwrap()).clone()
+    }
+}
+
+impl ::std::fmt::Display for ReadyResponse {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for ReadyResponse {
+    type RuntimeType = ::protobuf::reflect::rt::RuntimeTypeMessage<Self>;
+}
+
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\"pulse/internode/v1/internode.proto\x12\x12pulse.internode.v1\x1a\x1f\
     pulse/internode/v1/metric.proto\"\x18\n\x16PeersComparisonRequest\"-\n\
@@ -734,13 +959,15 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     (\tR\x06metric\";\n\x1bLastElidedTimestampResponse\x12\x1c\n\ttimestamp\
     \x18\x01\x20\x01(\x04R\ttimestamp\"O\n\x17InternodeMetricsRequest\x124\n\
     \x07metrics\x18\x01\x20\x03(\x0b2\x1a.pulse.internode.v1.MetricR\x07metr\
-    ics\"\x1a\n\x18InternodeMetricsResponse2\xe1\x02\n\tInternode\x12m\n\x10\
-    InternodeMetrics\x12+.pulse.internode.v1.InternodeMetricsRequest\x1a,.pu\
-    lse.internode.v1.InternodeMetricsResponse\x12m\n\x12GetPeersComparison\
-    \x12*.pulse.internode.v1.PeersComparisonRequest\x1a+.pulse.internode.v1.\
-    PeersComparisonResponse\x12v\n\x13LastElidedTimestamp\x12..pulse.interno\
-    de.v1.LastElidedTimestampRequest\x1a/.pulse.internode.v1.LastElidedTimes\
-    tampResponseb\x06proto3\
+    ics\"\x1a\n\x18InternodeMetricsResponse\"\x0e\n\x0cReadyRequest\"%\n\rRe\
+    adyResponse\x12\x14\n\x05ready\x18\x01\x20\x01(\x08R\x05ready2\xaf\x03\n\
+    \tInternode\x12m\n\x10InternodeMetrics\x12+.pulse.internode.v1.Internode\
+    MetricsRequest\x1a,.pulse.internode.v1.InternodeMetricsResponse\x12m\n\
+    \x12GetPeersComparison\x12*.pulse.internode.v1.PeersComparisonRequest\
+    \x1a+.pulse.internode.v1.PeersComparisonResponse\x12v\n\x13LastElidedTim\
+    estamp\x12..pulse.internode.v1.LastElidedTimestampRequest\x1a/.pulse.int\
+    ernode.v1.LastElidedTimestampResponse\x12L\n\x05Ready\x12\x20.pulse.inte\
+    rnode.v1.ReadyRequest\x1a!.pulse.internode.v1.ReadyResponseb\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file
@@ -759,13 +986,15 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
         let generated_file_descriptor = generated_file_descriptor_lazy.get(|| {
             let mut deps = ::std::vec::Vec::with_capacity(1);
             deps.push(super::metric::file_descriptor().clone());
-            let mut messages = ::std::vec::Vec::with_capacity(6);
+            let mut messages = ::std::vec::Vec::with_capacity(8);
             messages.push(PeersComparisonRequest::generated_message_descriptor_data());
             messages.push(PeersComparisonResponse::generated_message_descriptor_data());
             messages.push(LastElidedTimestampRequest::generated_message_descriptor_data());
             messages.push(LastElidedTimestampResponse::generated_message_descriptor_data());
             messages.push(InternodeMetricsRequest::generated_message_descriptor_data());
             messages.push(InternodeMetricsResponse::generated_message_descriptor_data());
+            messages.push(ReadyRequest::generated_message_descriptor_data());
+            messages.push(ReadyResponse::generated_message_descriptor_data());
             let mut enums = ::std::vec::Vec::with_capacity(0);
             ::protobuf::reflect::GeneratedFileDescriptor::new_generated(
                 file_descriptor_proto(),

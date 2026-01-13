@@ -8,13 +8,13 @@
 syntax = "proto3";
 package pulse.config.bootstrap.v1;
 
+import "google/protobuf/duration.proto";
 import "pulse/config/common/v1/common.proto";
 import "pulse/config/inflow/v1/inflow.proto";
-import "pulse/config/processor/v1/processor.proto";
 import "pulse/config/outflow/v1/outflow.proto";
 import "pulse/config/outflow/v1/prom_remote_write.proto";
 import "pulse/config/outflow/v1/wire.proto";
-import "google/protobuf/duration.proto";
+import "pulse/config/processor/v1/processor.proto";
 import "validate/validate.proto";
 
 // Advanced pipeline configuration.
@@ -68,7 +68,7 @@ message MetaStats {
 
   // Which protocol to use for sending meta stats. Multiple protocols can be configured to send data
   // to multiple targets.
-  repeated MetaProtocol meta_protocol = 1 [(validate.rules).repeated .min_items = 1];
+  repeated MetaProtocol meta_protocol = 1 [(validate.rules).repeated.min_items = 1];
 
   // An optional prefix to use on each meta stat name. Defaults to pulse_proxy if not set.
   optional string meta_prefix = 2;
