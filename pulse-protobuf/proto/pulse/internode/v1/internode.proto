@@ -10,8 +10,7 @@ package pulse.internode.v1;
 
 import "pulse/internode/v1/metric.proto";
 
-message PeersComparisonRequest {
-}
+message PeersComparisonRequest {}
 message PeersComparisonResponse {
   // Ordered list of a peer addresses
   // Servers will include themselves in the list with "self" as the peer
@@ -29,11 +28,9 @@ message LastElidedTimestampResponse {
 message InternodeMetricsRequest {
   repeated Metric metrics = 1;
 }
-message InternodeMetricsResponse {
-}
+message InternodeMetricsResponse {}
 
-message ReadyRequest {
-}
+message ReadyRequest {}
 message ReadyResponse {
   bool ready = 1;
 }

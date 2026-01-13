@@ -8,8 +8,8 @@
 syntax = "proto3";
 package pulse.config.processor.v1;
 
-import "pulse/config/common/v1/retry.proto";
 import "google/protobuf/duration.proto";
+import "pulse/config/common/v1/retry.proto";
 import "validate/validate.proto";
 
 // Configuration for the internode processor. Internode performs consistent hashing of metrics

@@ -8,11 +8,11 @@
 syntax = "proto3";
 package pulse.config.outflow.v1;
 
+import "google/protobuf/duration.proto";
 import "pulse/config/common/v1/common.proto";
 import "pulse/config/common/v1/retry.proto";
-import "pulse/config/outflow/v1/queue_policy.proto";
 import "pulse/config/outflow/v1/outflow_common.proto";
-import "google/protobuf/duration.proto";
+import "pulse/config/outflow/v1/queue_policy.proto";
 import "validate/validate.proto";
 
 message OtlpClientConfig {

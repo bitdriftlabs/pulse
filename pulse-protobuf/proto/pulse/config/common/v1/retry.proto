@@ -18,8 +18,7 @@ message AwsSqsRetryOffloadQueue {
 }
 
 // Offload queue for local integration testing only.
-message LoopbackForTestOffloadQueue {
-}
+message LoopbackForTestOffloadQueue {}
 
 // Configuration for the retry offload queue: the ability to offload metrics to durable storage
 // to be retried later.

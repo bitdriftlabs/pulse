@@ -8,8 +8,8 @@
 syntax = "proto3";
 package pulse.config.processor.v1;
 
-import "pulse/config/common/v1/file_watcher.proto";
 import "google/protobuf/duration.proto";
+import "pulse/config/common/v1/file_watcher.proto";
 import "validate/validate.proto";
 
 // Configuration for the elision processor.

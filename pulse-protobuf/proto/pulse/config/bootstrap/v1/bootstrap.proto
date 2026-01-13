@@ -8,13 +8,13 @@
 syntax = "proto3";
 package pulse.config.bootstrap.v1;
 
+import "google/protobuf/duration.proto";
 import "pulse/config/common/v1/common.proto";
 import "pulse/config/inflow/v1/inflow.proto";
-import "pulse/config/processor/v1/processor.proto";
 import "pulse/config/outflow/v1/outflow.proto";
 import "pulse/config/outflow/v1/prom_remote_write.proto";
 import "pulse/config/outflow/v1/wire.proto";
-import "google/protobuf/duration.proto";
+import "pulse/config/processor/v1/processor.proto";
 import "validate/validate.proto";
 
 // Advanced pipeline configuration.
