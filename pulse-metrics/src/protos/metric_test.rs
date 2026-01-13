@@ -249,3 +249,131 @@ fn metrics_to_write_request_metadata_only(input: ParsedMetric) {
   assert_eq!(write_request.timeseries.len(), 1);
   assert!(write_request.timeseries[0].samples.is_empty());
 }
+
+fn make_parsed_metric(downstream_id: DownstreamId) -> ParsedMetric {
+  ParsedMetric::new(
+    Metric::new(
+      MetricId::new("test.metric".into(), None, vec![], false).unwrap(),
+      None,
+      1_660_557_239,
+      MetricValue::Simple(42.0),
+    ),
+    MetricSource::Aggregation { prom_source: false },
+    Instant::now(),
+    downstream_id,
+  )
+}
+
+#[test]
+fn append_to_downstream_id_local_origin() {
+  let mut metric = make_parsed_metric(DownstreamId::LocalOrigin);
+  metric.append_to_downstream_id(b"suffix");
+
+  assert_eq!(
+    metric.downstream_id(),
+    &DownstreamId::InflowProvided("local:suffix".into())
+  );
+}
+
+#[test]
+fn append_to_downstream_id_ipv4() {
+  let addr: IpAddr = "192.168.1.1".parse().unwrap();
+  let mut metric = make_parsed_metric(DownstreamId::IpAddress(addr));
+  metric.append_to_downstream_id(b"my-service");
+
+  assert_eq!(
+    metric.downstream_id(),
+    &DownstreamId::InflowProvided("ip:192.168.1.1:my-service".into())
+  );
+}
+
+#[test]
+fn append_to_downstream_id_ipv6() {
+  let addr: IpAddr = "::1".parse().unwrap();
+  let mut metric = make_parsed_metric(DownstreamId::IpAddress(addr));
+  metric.append_to_downstream_id(b"service");
+
+  assert_eq!(
+    metric.downstream_id(),
+    &DownstreamId::InflowProvided("ip:::1:service".into())
+  );
+}
+
+#[test]
+fn append_to_downstream_id_ipv6_full() {
+  let addr: IpAddr = "2001:0db8:85a3:0000:0000:8a2e:0370:7334".parse().unwrap();
+  let mut metric = make_parsed_metric(DownstreamId::IpAddress(addr));
+  metric.append_to_downstream_id(b"svc");
+
+  assert_eq!(
+    metric.downstream_id(),
+    &DownstreamId::InflowProvided("ip:2001:db8:85a3::8a2e:370:7334:svc".into())
+  );
+}
+
+#[test]
+fn append_to_downstream_id_unix_socket() {
+  let mut metric = make_parsed_metric(DownstreamId::UnixDomainSocket("/var/run/app.sock".into()));
+  metric.append_to_downstream_id(b"instance-1");
+
+  assert_eq!(
+    metric.downstream_id(),
+    &DownstreamId::InflowProvided("uds:/var/run/app.sock:instance-1".into())
+  );
+}
+
+#[test]
+fn append_to_downstream_id_inflow_provided() {
+  let mut metric = make_parsed_metric(DownstreamId::InflowProvided("existing-id".into()));
+  metric.append_to_downstream_id(b"extra");
+
+  assert_eq!(
+    metric.downstream_id(),
+    &DownstreamId::InflowProvided("existing-id:extra".into())
+  );
+}
+
+#[test]
+fn append_to_downstream_id_empty_suffix() {
+  let mut metric = make_parsed_metric(DownstreamId::LocalOrigin);
+  metric.append_to_downstream_id(b"");
+
+  assert_eq!(
+    metric.downstream_id(),
+    &DownstreamId::InflowProvided("local:".into())
+  );
+}
+
+#[test]
+fn append_to_downstream_id_multiple_appends() {
+  let mut metric = make_parsed_metric(DownstreamId::LocalOrigin);
+  metric.append_to_downstream_id(b"first");
+  metric.append_to_downstream_id(b"second");
+
+  assert_eq!(
+    metric.downstream_id(),
+    &DownstreamId::InflowProvided("local:first:second".into())
+  );
+}
+
+#[test]
+fn append_to_downstream_id_special_characters() {
+  let mut metric = make_parsed_metric(DownstreamId::LocalOrigin);
+  metric.append_to_downstream_id(b"service/path?query=1&foo=bar");
+
+  assert_eq!(
+    metric.downstream_id(),
+    &DownstreamId::InflowProvided("local:service/path?query=1&foo=bar".into())
+  );
+}
+
+#[test]
+fn append_to_downstream_id_unicode() {
+  let mut metric = make_parsed_metric(DownstreamId::LocalOrigin);
+  metric.append_to_downstream_id("日本語".as_bytes());
+
+  assert_eq!(
+    metric.downstream_id(),
+    &DownstreamId::InflowProvided(Bytes::from(format!("local:{}", "日本語")))
+  );
+}

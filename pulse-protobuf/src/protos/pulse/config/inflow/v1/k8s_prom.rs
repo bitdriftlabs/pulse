@@ -2495,7 +2495,7 @@ pub mod kubernetes_prometheus_config {
 
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n%pulse/config/inflow/v1/k8s_prom.proto\x12\x16pulse.config.inflow.v1\
-    \x1a#pulse/config/common/v1/common.proto\x1a\x1egoogle/protobuf/duration\
+    \x1a\x1egoogle/protobuf/duration.proto\x1a#pulse/config/common/v1/common\
     .proto\x1a\x17validate/validate.proto\"\x8a\x18\n\x1aKubernetesPrometheu\
     sConfig\x12L\n\x0fscrape_interval\x18\x01\x20\x01(\x0b2\x19.google.proto\
     buf.DurationR\x0escrapeIntervalB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12Y\n\
@@ -2578,8 +2578,8 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
     file_descriptor.get(|| {
         let generated_file_descriptor = generated_file_descriptor_lazy.get(|| {
             let mut deps = ::std::vec::Vec::with_capacity(3);
-            deps.push(super::common::file_descriptor().clone());
             deps.push(::protobuf::well_known_types::duration::file_descriptor().clone());
+            deps.push(super::common::file_descriptor().clone());
             deps.push(super::validate::file_descriptor().clone());
             let mut messages = ::std::vec::Vec::with_capacity(12);
             messages.push(KubernetesPrometheusConfig::generated_message_descriptor_data());

@@ -211,8 +211,8 @@ impl ::protobuf::reflect::ProtobufValue for MetricGeneratorConfig {
 
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n-pulse/config/inflow/v1/metric_generator.proto\x12\x16pulse.config.inf\
-    low.v1\x1a#pulse/config/common/v1/common.proto\x1a\x1egoogle/protobuf/du\
-    ration.proto\x1a\x17validate/validate.proto\"\x8c\x02\n\x15MetricGenerat\
+    low.v1\x1a\x1egoogle/protobuf/duration.proto\x1a#pulse/config/common/v1/\
+    common.proto\x1a\x17validate/validate.proto\"\x8c\x02\n\x15MetricGenerat\
     orConfig\x12J\n\x08protocol\x18\x01\x20\x01(\x0b2$.pulse.config.common.v\
     1.WireProtocolR\x08protocolB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12\x1c\n\
     \x07n_tasks\x18\x02\x20\x01(\x04H\0R\x06nTasks\x88\x01\x01\x12\"\n\nbatc\
@@ -237,8 +237,8 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
     file_descriptor.get(|| {
         let generated_file_descriptor = generated_file_descriptor_lazy.get(|| {
             let mut deps = ::std::vec::Vec::with_capacity(3);
-            deps.push(super::common::file_descriptor().clone());
             deps.push(::protobuf::well_known_types::duration::file_descriptor().clone());
+            deps.push(super::common::file_descriptor().clone());
             deps.push(super::validate::file_descriptor().clone());
             let mut messages = ::std::vec::Vec::with_capacity(1);
             messages.push(MetricGeneratorConfig::generated_message_descriptor_data());

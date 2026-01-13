@@ -2301,11 +2301,11 @@ pub mod config {
 
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n)pulse/config/bootstrap/v1/bootstrap.proto\x12\x19pulse.config.bootstr\
-    ap.v1\x1a#pulse/config/common/v1/common.proto\x1a#pulse/config/inflow/v1\
-    /inflow.proto\x1a)pulse/config/processor/v1/processor.proto\x1a%pulse/co\
-    nfig/outflow/v1/outflow.proto\x1a/pulse/config/outflow/v1/prom_remote_wr\
-    ite.proto\x1a\"pulse/config/outflow/v1/wire.proto\x1a\x1egoogle/protobuf\
-    /duration.proto\x1a\x17validate/validate.proto\"b\n\x16AdvancedPipelineC\
+    ap.v1\x1a\x1egoogle/protobuf/duration.proto\x1a#pulse/config/common/v1/c\
+    ommon.proto\x1a#pulse/config/inflow/v1/inflow.proto\x1a%pulse/config/out\
+    flow/v1/outflow.proto\x1a/pulse/config/outflow/v1/prom_remote_write.prot\
+    o\x1a\"pulse/config/outflow/v1/wire.proto\x1a)pulse/config/processor/v1/\
+    processor.proto\x1a\x17validate/validate.proto\"b\n\x16AdvancedPipelineC\
     onfig\x121\n\x12max_cached_metrics\x18\x01\x20\x01(\x04H\0R\x10maxCached\
     Metrics\x88\x01\x01B\x15\n\x13_max_cached_metrics\"\x93\x05\n\x0ePipelin\
     eConfig\x12P\n\x07inflows\x18\x01\x20\x03(\x0b26.pulse.config.bootstrap.\
@@ -2383,13 +2383,13 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
     file_descriptor.get(|| {
         let generated_file_descriptor = generated_file_descriptor_lazy.get(|| {
             let mut deps = ::std::vec::Vec::with_capacity(8);
+            deps.push(::protobuf::well_known_types::duration::file_descriptor().clone());
             deps.push(super::common::file_descriptor().clone());
             deps.push(super::inflow::file_descriptor().clone());
-            deps.push(super::processor::file_descriptor().clone());
             deps.push(super::outflow::file_descriptor().clone());
             deps.push(super::prom_remote_write::file_descriptor().clone());
             deps.push(super::wire::file_descriptor().clone());
-            deps.push(::protobuf::well_known_types::duration::file_descriptor().clone());
+            deps.push(super::processor::file_descriptor().clone());
             deps.push(super::validate::file_descriptor().clone());
             let mut messages = ::std::vec::Vec::with_capacity(11);
             messages.push(AdvancedPipelineConfig::generated_message_descriptor_data());

@@ -944,11 +944,11 @@ impl ::protobuf::reflect::ProtobufValue for UnixServerConfig {
 }
 
 static file_descriptor_proto_data: &'static [u8] = b"\
-    \n!pulse/config/inflow/v1/wire.proto\x12\x16pulse.config.inflow.v1\x1a#p\
-    ulse/config/common/v1/common.proto\x1a\x1egoogle/protobuf/duration.proto\
-    \x1a\x17validate/validate.proto\"\xf7\x01\n\x1aAdvancedSocketServerConfi\
-    g\x12F\n\x0cidle_timeout\x18\x01\x20\x01(\x0b2\x19.google.protobuf.Durat\
-    ionR\x0bidleTimeoutB\x08\xfaB\x05\xaa\x01\x02*\0\x12$\n\x0bbuffer_size\
+    \n!pulse/config/inflow/v1/wire.proto\x12\x16pulse.config.inflow.v1\x1a\
+    \x1egoogle/protobuf/duration.proto\x1a#pulse/config/common/v1/common.pro\
+    to\x1a\x17validate/validate.proto\"\xf7\x01\n\x1aAdvancedSocketServerCon\
+    fig\x12F\n\x0cidle_timeout\x18\x01\x20\x01(\x0b2\x19.google.protobuf.Dur\
+    ationR\x0bidleTimeoutB\x08\xfaB\x05\xaa\x01\x02*\0\x12$\n\x0bbuffer_size\
     \x18\x02\x20\x01(\x04H\0R\nbufferSize\x88\x01\x01\x12[\n\x17max_connecti\
     on_duration\x18\x03\x20\x01(\x0b2\x19.google.protobuf.DurationR\x15maxCo\
     nnectionDurationB\x08\xfaB\x05\xaa\x01\x02*\0B\x0e\n\x0c_buffer_size\"\
@@ -997,8 +997,8 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
     file_descriptor.get(|| {
         let generated_file_descriptor = generated_file_descriptor_lazy.get(|| {
             let mut deps = ::std::vec::Vec::with_capacity(3);
-            deps.push(super::common::file_descriptor().clone());
             deps.push(::protobuf::well_known_types::duration::file_descriptor().clone());
+            deps.push(super::common::file_descriptor().clone());
             deps.push(super::validate::file_descriptor().clone());
             let mut messages = ::std::vec::Vec::with_capacity(5);
             messages.push(AdvancedSocketServerConfig::generated_message_descriptor_data());

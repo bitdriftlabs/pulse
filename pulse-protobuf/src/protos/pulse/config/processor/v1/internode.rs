@@ -728,8 +728,8 @@ pub mod internode_config {
 
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n)pulse/config/processor/v1/internode.proto\x12\x19pulse.config.process\
-    or.v1\x1a\"pulse/config/common/v1/retry.proto\x1a\x1egoogle/protobuf/dur\
-    ation.proto\x1a\x17validate/validate.proto\"\x8e\x08\n\x0fInternodeConfi\
+    or.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\"pulse/config/common/v1/\
+    retry.proto\x1a\x17validate/validate.proto\"\x8e\x08\n\x0fInternodeConfi\
     g\x12\x1f\n\x06listen\x18\x01\x20\x01(\tR\x06listenB\x07\xfaB\x04r\x02\
     \x10\x01\x12$\n\x0btotal_nodes\x18\x02\x20\x01(\rH\0R\ntotalNodes\x88\
     \x01\x01\x12)\n\x0cthis_node_id\x18\x03\x20\x01(\tR\nthisNodeIdB\x07\xfa\
@@ -771,8 +771,8 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
     file_descriptor.get(|| {
         let generated_file_descriptor = generated_file_descriptor_lazy.get(|| {
             let mut deps = ::std::vec::Vec::with_capacity(3);
-            deps.push(super::retry::file_descriptor().clone());
             deps.push(::protobuf::well_known_types::duration::file_descriptor().clone());
+            deps.push(super::retry::file_descriptor().clone());
             deps.push(super::validate::file_descriptor().clone());
             let mut messages = ::std::vec::Vec::with_capacity(4);
             messages.push(InternodeConfig::generated_message_descriptor_data());

@@ -1677,8 +1677,8 @@ pub mod elision_config {
 
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n'pulse/config/processor/v1/elision.proto\x12\x19pulse.config.processor\
-    .v1\x1a)pulse/config/common/v1/file_watcher.proto\x1a\x1egoogle/protobuf\
-    /duration.proto\x1a\x17validate/validate.proto\"\xa8\x0e\n\rElisionConfi\
+    .v1\x1a\x1egoogle/protobuf/duration.proto\x1a)pulse/config/common/v1/fil\
+    e_watcher.proto\x1a\x17validate/validate.proto\"\xa8\x0e\n\rElisionConfi\
     g\x12Q\n\x04emit\x18\x01\x20\x01(\x0b23.pulse.config.processor.v1.Elisio\
     nConfig.EmitConfigR\x04emitB\x08\xfaB\x05\x8a\x01\x02\x10\x01\x12!\n\x0c\
     analyze_mode\x18\x02\x20\x01(\x08R\x0banalyzeMode\x12e\n\x0fregex_overri\
@@ -1734,8 +1734,8 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
     file_descriptor.get(|| {
         let generated_file_descriptor = generated_file_descriptor_lazy.get(|| {
             let mut deps = ::std::vec::Vec::with_capacity(3);
-            deps.push(super::file_watcher::file_descriptor().clone());
             deps.push(::protobuf::well_known_types::duration::file_descriptor().clone());
+            deps.push(super::file_watcher::file_descriptor().clone());
             deps.push(super::validate::file_descriptor().clone());
             let mut messages = ::std::vec::Vec::with_capacity(9);
             messages.push(ElisionConfig::generated_message_descriptor_data());
