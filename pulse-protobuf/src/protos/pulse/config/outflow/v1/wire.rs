@@ -740,8 +740,8 @@ impl ::protobuf::reflect::ProtobufValue for TcpClientConfig {
 
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\"pulse/config/outflow/v1/wire.proto\x12\x17pulse.config.outflow.v1\
-    \x1a#pulse/config/common/v1/common.proto\x1a*pulse/config/outflow/v1/que\
-    ue_policy.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x17validate/va\
+    \x1a\x1egoogle/protobuf/duration.proto\x1a#pulse/config/common/v1/common\
+    .proto\x1a*pulse/config/outflow/v1/queue_policy.proto\x1a\x17validate/va\
     lidate.proto\"\x8c\x03\n\x16CommonWireClientConfig\x12\x17\n\x07send_to\
     \x18\x01\x20\x01(\tR\x06sendTo\x12J\n\x08protocol\x18\x02\x20\x01(\x0b2$\
     .pulse.config.common.v1.WireProtocolR\x08protocolB\x08\xfaB\x05\x8a\x01\
@@ -777,9 +777,9 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
     file_descriptor.get(|| {
         let generated_file_descriptor = generated_file_descriptor_lazy.get(|| {
             let mut deps = ::std::vec::Vec::with_capacity(4);
+            deps.push(::protobuf::well_known_types::duration::file_descriptor().clone());
             deps.push(super::common::file_descriptor().clone());
             deps.push(super::queue_policy::file_descriptor().clone());
-            deps.push(::protobuf::well_known_types::duration::file_descriptor().clone());
             deps.push(super::validate::file_descriptor().clone());
             let mut messages = ::std::vec::Vec::with_capacity(5);
             messages.push(CommonWireClientConfig::generated_message_descriptor_data());

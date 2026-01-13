@@ -587,8 +587,8 @@ pub mod outflow_config {
 
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n%pulse/config/outflow/v1/outflow.proto\x12\x17pulse.config.outflow.v1\
-    \x1a/pulse/config/outflow/v1/prom_remote_write.proto\x1a\"pulse/config/o\
-    utflow/v1/otlp.proto\x1a\"pulse/config/outflow/v1/wire.proto\x1a\x17vali\
+    \x1a\"pulse/config/outflow/v1/otlp.proto\x1a/pulse/config/outflow/v1/pro\
+    m_remote_write.proto\x1a\"pulse/config/outflow/v1/wire.proto\x1a\x17vali\
     date/validate.proto\"\xd5\x03\n\rOutflowConfig\x12N\n\x0cnull_outflow\
     \x18\x01\x20\x01(\x0b2).pulse.config.outflow.v1.NullClientConfigH\0R\x0b\
     nullOutflow\x12?\n\x04unix\x18\x02\x20\x01(\x0b2).pulse.config.outflow.v\
@@ -616,8 +616,8 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
     file_descriptor.get(|| {
         let generated_file_descriptor = generated_file_descriptor_lazy.get(|| {
             let mut deps = ::std::vec::Vec::with_capacity(4);
-            deps.push(super::prom_remote_write::file_descriptor().clone());
             deps.push(super::otlp::file_descriptor().clone());
+            deps.push(super::prom_remote_write::file_descriptor().clone());
             deps.push(super::wire::file_descriptor().clone());
             deps.push(super::validate::file_descriptor().clone());
             let mut messages = ::std::vec::Vec::with_capacity(1);

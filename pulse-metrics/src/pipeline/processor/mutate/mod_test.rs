@@ -72,6 +72,26 @@ impl Helper {
       });
     self.processor.clone().recv_samples(vec![send]).await;
   }
+
+  async fn expect_send_and_receive_with_downstream_id(
+    &mut self,
+    send: ParsedMetric,
+    receive: Vec<ParsedMetric>,
+    expected_downstream_ids: Vec<DownstreamId>,
+  ) {
+    make_mut(&mut self.helper.dispatcher)
+      .expect_send()
+      .times(1)
+      .return_once(move |samples| {
+        assert_eq!(receive.len(), samples.len());
+        assert_eq!(expected_downstream_ids.len(), samples.len());
+        for (i, sample) in samples.iter().enumerate() {
+          assert_eq!(&receive[i], sample);
+          assert_eq!(&expected_downstream_ids[i], sample.downstream_id());
+        }
+      });
+    self.processor.clone().recv_samples(vec![send]).await;
+  }
 }
 
 #[tokio::test]
@@ -906,4 +926,88 @@ fn test_mutate_metrics_deletion() {
       )
     );
   }
+}
+
+#[tokio::test]
+async fn pulse_add_to_downstream_id() {
+  use std::net::IpAddr;
+
+  let mut helper = Helper::new(
+    r#"
+if .name == "test_metric" {
+  pulse_add_to_downstream_id!("suffix123")
+}
+    "#,
+  );
+
+  let input = make_metric_ex(
+    "test_metric",
+    &[],
+    0,
+    Some(MetricType::Counter(
+      crate::protos::metric::CounterType::Absolute,
+    )),
+    None,
+    MetricValue::Simple(1.0),
+    MetricSource::PromRemoteWrite,
+    DownstreamId::IpAddress("192.168.1.1".parse::<IpAddr>().unwrap()),
+    None,
+  );
+  let expected = make_metric_ex(
+    "test_metric",
+    &[],
+    0,
+    Some(MetricType::Counter(
+      crate::protos::metric::CounterType::Absolute,
+    )),
+    None,
+    MetricValue::Simple(1.0),
+    MetricSource::PromRemoteWrite,
+    DownstreamId::IpAddress("192.168.1.1".parse::<IpAddr>().unwrap()),
+    None,
+  );
+  helper
+    .expect_send_and_receive_with_downstream_id(
+      input,
+      vec![expected],
+      vec![DownstreamId::InflowProvided(
+        "ip:192.168.1.1:suffix123".into(),
+      )],
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn pulse_add_to_downstream_id_local_origin() {
+  let mut helper = Helper::new(
+    r#"
+pulse_add_to_downstream_id!("mysuffix")
+    "#,
+  );
+
+  helper
+    .expect_send_and_receive_with_downstream_id(
+      make_abs_counter("test", &[], 0, 1.0),
+      vec![make_abs_counter("test", &[], 0, 1.0)],
+      vec![DownstreamId::InflowProvided("local:mysuffix".into())],
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn pulse_add_to_downstream_id_empty_noop() {
+  let mut helper = Helper::new(
+    r#"
+pulse_add_to_downstream_id!("")
+    "#,
+  );
+
+  // Empty suffix is a no-op, so downstream_id should remain LocalOrigin.
+  helper
+    .expect_send_and_receive_with_downstream_id(
+      make_abs_counter("test", &[], 0, 1.0),
+      vec![make_abs_counter("test", &[], 0, 1.0)],
+      vec![DownstreamId::LocalOrigin],
+    )
+    .await;
 }

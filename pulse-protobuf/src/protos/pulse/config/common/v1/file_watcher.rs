@@ -631,7 +631,7 @@ pub mod file_source_config {
 
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n)pulse/config/common/v1/file_watcher.proto\x12\x16pulse.config.common.\
-    v1\x1a#pulse/config/common/v1/common.proto\x1a\x1egoogle/protobuf/durati\
+    v1\x1a\x1egoogle/protobuf/duration.proto\x1a#pulse/config/common/v1/comm\
     on.proto\x1a\x17validate/validate.proto\"o\n\x15LocalFileSourceConfig\
     \x12V\n\x0eruntime_config\x18\x01\x20\x01(\x0b2%.pulse.config.common.v1.\
     RuntimeConfigR\rruntimeConfigB\x08\xfaB\x05\x8a\x01\x02\x10\x01\"\xee\
@@ -665,8 +665,8 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
     file_descriptor.get(|| {
         let generated_file_descriptor = generated_file_descriptor_lazy.get(|| {
             let mut deps = ::std::vec::Vec::with_capacity(3);
-            deps.push(super::common::file_descriptor().clone());
             deps.push(::protobuf::well_known_types::duration::file_descriptor().clone());
+            deps.push(super::common::file_descriptor().clone());
             deps.push(super::validate::file_descriptor().clone());
             let mut messages = ::std::vec::Vec::with_capacity(3);
             messages.push(LocalFileSourceConfig::generated_message_descriptor_data());

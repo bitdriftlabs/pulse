@@ -131,7 +131,7 @@ unwrap-infallible          = "1.0.0"
 url                        = "2.5.8"
 uuid                       = { version = "1.19.0", features = ["v4"] }
 
-vrl = { git = "https://github.com/mattklein123/vrl.git", branch = "performance-20250625", default-features = false, features = [
+vrl = { git = "https://github.com/mattklein123/vrl.git", branch = "performance-20260113", default-features = false, features = [
   "compiler",
   "value",
   "diagnostic",

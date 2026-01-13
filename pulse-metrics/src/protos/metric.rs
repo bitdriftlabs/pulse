@@ -546,6 +546,56 @@ impl DownstreamId {
       },
     }
   }
+
+  /// Returns the length of the prefix representation without allocating.
+  fn prefix_len(&self) -> usize {
+    match self {
+      Self::LocalOrigin => 5, // "local"
+      Self::IpAddress(addr) => {
+        // "ip:" + address string length
+        3 + match addr {
+          std::net::IpAddr::V4(_) => {
+            // Max IPv4: "255.255.255.255" = 15 chars
+            15
+          },
+          std::net::IpAddr::V6(_) => {
+            // Max IPv6: 39 chars (8 groups of 4 hex digits + 7 colons)
+            39
+          },
+        }
+      },
+      Self::UnixDomainSocket(name) => 4 + name.len(), // "uds:" + name
+      Self::InflowProvided(data) => data.len(),
+    }
+  }
+
+  /// Writes the prefix representation to the given buffer. Returns the number of bytes written.
+  fn write_prefix_to(&self, buf: &mut [u8]) -> usize {
+    match self {
+      Self::LocalOrigin => {
+        buf[.. 5].copy_from_slice(b"local");
+        5
+      },
+      Self::IpAddress(addr) => {
+        buf[.. 3].copy_from_slice(b"ip:");
+        // Use itoa-style writing for the IP address to avoid allocation
+        let addr_str = addr.to_string();
+        let addr_bytes = addr_str.as_bytes();
+        buf[3 .. 3 + addr_bytes.len()].copy_from_slice(addr_bytes);
+        3 + addr_bytes.len()
+      },
+      Self::UnixDomainSocket(name) => {
+        buf[.. 4].copy_from_slice(b"uds:");
+        let name_bytes = name.as_bytes();
+        buf[4 .. 4 + name_bytes.len()].copy_from_slice(name_bytes);
+        4 + name_bytes.len()
+      },
+      Self::InflowProvided(data) => {
+        buf[.. data.len()].copy_from_slice(data);
+        data.len()
+      },
+    }
+  }
 }
 
 //
@@ -774,6 +824,32 @@ impl ParsedMetric {
 
   pub fn set_metadata(&mut self, metadata: Option<Arc<Metadata>>) {
     self.metadata = metadata;
+  }
+
+  /// Appends a suffix to the downstream ID, converting to InflowProvided if necessary.
+  pub fn append_to_downstream_id(&mut self, suffix: &[u8]) {
+    // Calculate total size: prefix + ':' + suffix
+    let prefix_max_len = self.downstream_id.prefix_len();
+    let total_capacity = prefix_max_len + 1 + suffix.len();
+
+    // Allocate once with exact capacity
+    let mut buf = bytes::BytesMut::with_capacity(total_capacity);
+
+    // SAFETY: We've allocated enough capacity, and we'll set the length after writing
+    // Use the spare capacity to write prefix directly
+    unsafe {
+      let spare = buf.spare_capacity_mut();
+      let spare_ptr = spare.as_mut_ptr().cast::<u8>();
+      let spare_slice = std::slice::from_raw_parts_mut(spare_ptr, total_capacity);
+
+      let prefix_len = self.downstream_id.write_prefix_to(spare_slice);
+      spare_slice[prefix_len] = b':';
+      spare_slice[prefix_len + 1 .. prefix_len + 1 + suffix.len()].copy_from_slice(suffix);
+
+      buf.set_len(prefix_len + 1 + suffix.len());
+    }
+
+    self.downstream_id = DownstreamId::InflowProvided(buf.freeze());
   }
 
   pub const fn new(

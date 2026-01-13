@@ -64,6 +64,15 @@ import "validate/validate.proto";
 //     level: (optional) The log level to use. Must be one of "trace", "debug", "info", "warn",
 //       "error". Defaults to "info".
 //     rate_limit_secs: (optional) The rate limit in seconds for the message. Defaults to 1 second.
+//
+// - pulse_add_to_downstream_id(suffix: bytes): Adds the given suffix to the metric's downstream ID.
+//   This can be used to create different downstream IDs based on metadata. The suffix is added after
+//   a colon (:) separator. If the downstream ID is not InflowProvided, it will be converted to
+//   InflowProvided first. This useful for aggregating metrics based on a particular metadata value
+//   before stripping it. For example, using the pod name before stripping it will allow proper
+//   gauge/counter aggregations for difference downstream ID sources while still producing a single
+//   output aggregated metric.
+//
 message MutateConfig {
   string vrl_program = 1 [(validate.rules).string = {min_len: 1}];
 }

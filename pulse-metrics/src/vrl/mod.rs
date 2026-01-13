@@ -6,10 +6,12 @@
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
 use crate::protos::metric::{EditableParsedMetric, MetricType, ParsedMetric, TagValue};
+use crate::vrl::pulse_add_to_downstream_id::PulseAddToDownstreamId;
 use crate::vrl::pulse_inc_counter::PulseIncCounter;
 use crate::vrl::pulse_log::PulseLog;
 use anyhow::{anyhow, bail};
 use bd_server_stats::stats::Scope;
+use bytes::Bytes;
 use itertools::Itertools;
 use pulse_common::metadata::Metadata;
 use vrl::compiler::state::{ExternalEnv, RuntimeState};
@@ -29,6 +31,7 @@ use vrl::path::{OwnedTargetPath, PathPrefix};
 use vrl::value::kind::Collection;
 use vrl::value::{Kind, Value};
 
+mod pulse_add_to_downstream_id;
 mod pulse_inc_counter;
 mod pulse_log;
 
@@ -300,6 +303,17 @@ impl PulseDynamicState {
 }
 
 //
+// RuntimeDynamicData
+//
+
+/// Runtime data passed to VRL functions via the Context's dynamic data mechanism.
+#[derive(Default)]
+pub struct RuntimeDynamicData {
+  /// If set, a suffix to add to the metric's downstream ID.
+  pub downstream_id_suffix: Option<Bytes>,
+}
+
+//
 // ProgramWrapper
 //
 
@@ -325,6 +339,7 @@ impl ProgramWrapper {
     let mut functions = vrl::stdlib::all();
     functions.push(Box::new(PulseLog));
     functions.push(Box::new(PulseIncCounter));
+    functions.push(Box::new(PulseAddToDownstreamId));
 
     let mut compile_config = CompileConfig::default();
     compile_config.set_custom(dynamic_state);
@@ -348,10 +363,23 @@ impl ProgramWrapper {
     let mut state = RuntimeState::default();
     let timezone = TimeZone::default();
     let mut target = EditableMetricVrlTarget::new(EditableParsedMetric::new(sample));
-    let mut ctx = Context::new(&mut target, &mut state, &timezone);
+    let mut dynamic_data = RuntimeDynamicData::default();
+    let mut ctx =
+      Context::new(&mut target, &mut state, &timezone).with_dynamic_state(&mut dynamic_data);
+    let resolved = self.program.resolve(&mut ctx);
+    let flatten_prom_histogram_and_summary = target.flatten_prom_histogram_and_summary;
+
+    // Drop target to release mutable borrow of sample before applying downstream ID suffix.
+    drop(target);
+
+    // Apply downstream ID suffix if set by VRL program.
+    if let Some(suffix) = dynamic_data.downstream_id_suffix {
+      sample.append_to_downstream_id(&suffix);
+    }
+
     RunWithMetricResult {
-      resolved: self.program.resolve(&mut ctx),
-      flatten_prom_histogram_and_summary: target.flatten_prom_histogram_and_summary,
+      resolved,
+      flatten_prom_histogram_and_summary,
     }
   }
 

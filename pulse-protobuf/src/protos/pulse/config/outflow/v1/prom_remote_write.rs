@@ -539,10 +539,10 @@ pub mod prom_remote_write_client_config {
 
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n/pulse/config/outflow/v1/prom_remote_write.proto\x12\x17pulse.config.o\
-    utflow.v1\x1a#pulse/config/common/v1/common.proto\x1a\"pulse/config/comm\
-    on/v1/retry.proto\x1a*pulse/config/outflow/v1/queue_policy.proto\x1a,pul\
-    se/config/outflow/v1/outflow_common.proto\x1a\x1egoogle/protobuf/duratio\
-    n.proto\x1a\x17validate/validate.proto\"\xe7\t\n\x1bPromRemoteWriteClien\
+    utflow.v1\x1a\x1egoogle/protobuf/duration.proto\x1a#pulse/config/common/\
+    v1/common.proto\x1a\"pulse/config/common/v1/retry.proto\x1a,pulse/config\
+    /outflow/v1/outflow_common.proto\x1a*pulse/config/outflow/v1/queue_polic\
+    y.proto\x1a\x17validate/validate.proto\"\xe7\t\n\x1bPromRemoteWriteClien\
     tConfig\x12\x20\n\x07send_to\x18\x01\x20\x01(\tR\x06sendToB\x07\xfaB\x04\
     r\x02\x10\x01\x12L\n\x0frequest_timeout\x18\x02\x20\x01(\x0b2\x19.google\
     .protobuf.DurationR\x0erequestTimeoutB\x08\xfaB\x05\xaa\x01\x02*\0\x12'\
@@ -586,11 +586,11 @@ pub fn file_descriptor() -> &'static ::protobuf::reflect::FileDescriptor {
     file_descriptor.get(|| {
         let generated_file_descriptor = generated_file_descriptor_lazy.get(|| {
             let mut deps = ::std::vec::Vec::with_capacity(6);
+            deps.push(::protobuf::well_known_types::duration::file_descriptor().clone());
             deps.push(super::common::file_descriptor().clone());
             deps.push(super::retry::file_descriptor().clone());
-            deps.push(super::queue_policy::file_descriptor().clone());
             deps.push(super::outflow_common::file_descriptor().clone());
-            deps.push(::protobuf::well_known_types::duration::file_descriptor().clone());
+            deps.push(super::queue_policy::file_descriptor().clone());
             deps.push(super::validate::file_descriptor().clone());
             let mut messages = ::std::vec::Vec::with_capacity(2);
             messages.push(PromRemoteWriteClientConfig::generated_message_descriptor_data());
