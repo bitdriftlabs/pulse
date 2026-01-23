@@ -104,6 +104,7 @@ async fn main() -> anyhow::Result<()> {
   let client = HyperHttpRemoteWriteClient::new(
     options.endpoint,
     10.seconds(),
+    250.milliseconds(),
     None,
     PROM_REMOTE_WRITE_HEADERS,
     vec![],

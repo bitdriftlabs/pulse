@@ -95,6 +95,7 @@ impl fmt::Display for PipelineRouteType {
 }
 
 pub const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::seconds(10);
+pub const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::milliseconds(250);
 
 #[must_use]
 pub const fn default_max_in_flight() -> u64 {

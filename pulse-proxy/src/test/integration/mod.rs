@@ -576,6 +576,7 @@ impl PromClient {
       client: HyperHttpRemoteWriteClient::new(
         format!("http://{addr}/api/v1/prom/write"),
         1.seconds(),
+        250.milliseconds(),
         None,
         PROM_REMOTE_WRITE_HEADERS,
         vec![],
@@ -618,6 +619,7 @@ impl OtlpClient {
       client: HyperHttpRemoteWriteClient::new(
         format!("http://{addr}/v1/metrics"),
         1.seconds(),
+        250.milliseconds(),
         None,
         &[],
         vec![],

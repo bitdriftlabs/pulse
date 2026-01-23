@@ -18,7 +18,11 @@ use crate::clients::http::{
   should_retry,
 };
 use crate::clients::retry::Retry;
-use crate::pipeline::config::{DEFAULT_REQUEST_TIMEOUT, default_max_in_flight};
+use crate::pipeline::config::{
+  DEFAULT_CONNECT_TIMEOUT,
+  DEFAULT_REQUEST_TIMEOUT,
+  default_max_in_flight,
+};
 use crate::pipeline::outflow::http::retry_offload::maybe_queue_for_retry;
 use crate::pipeline::outflow::{OutflowFactoryContext, OutflowStats, PipelineOutflow};
 use crate::pipeline::time::RealTimeProvider;
@@ -142,6 +146,7 @@ pub struct HttpRemoteWriteOutflow {
 impl HttpRemoteWriteOutflow {
   pub(crate) async fn new(
     request_timeout: MessageField<Duration>,
+    connect_timeout: MessageField<Duration>,
     retry_policy: RetryPolicy,
     max_in_flight: Option<u64>,
     batch_router: Arc<dyn BatchRouter>,
@@ -154,10 +159,12 @@ impl HttpRemoteWriteOutflow {
     request_deserializer: RequestDeserializer,
   ) -> anyhow::Result<Arc<Self>> {
     let request_timeout = request_timeout.unwrap_duration_or(DEFAULT_REQUEST_TIMEOUT);
+    let connect_timeout = connect_timeout.unwrap_duration_or(DEFAULT_CONNECT_TIMEOUT);
     let client = Arc::new(
       HyperHttpRemoteWriteClient::new(
         send_to,
         request_timeout,
+        connect_timeout,
         auth_config,
         core_request_headers,
         config_request_headers,
