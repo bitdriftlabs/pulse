@@ -520,6 +520,8 @@ pub mod http_remote_write_auth_config {
             // message fields
             // @@protoc_insertion_point(field:pulse.config.outflow.v1.HttpRemoteWriteAuthConfig.AwsAuthConfig.Default.assume_role)
             pub assume_role: ::std::option::Option<::protobuf::Chars>,
+            // @@protoc_insertion_point(field:pulse.config.outflow.v1.HttpRemoteWriteAuthConfig.AwsAuthConfig.Default.signing_region)
+            pub signing_region: ::std::option::Option<::protobuf::Chars>,
             // special fields
             // @@protoc_insertion_point(special_field:pulse.config.outflow.v1.HttpRemoteWriteAuthConfig.AwsAuthConfig.Default.special_fields)
             pub special_fields: ::protobuf::SpecialFields,
@@ -537,12 +539,17 @@ pub mod http_remote_write_auth_config {
             }
 
             pub(in super::super) fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-                let mut fields = ::std::vec::Vec::with_capacity(1);
+                let mut fields = ::std::vec::Vec::with_capacity(2);
                 let mut oneofs = ::std::vec::Vec::with_capacity(0);
                 fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
                     "assume_role",
                     |m: &Default| { &m.assume_role },
                     |m: &mut Default| { &mut m.assume_role },
+                ));
+                fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
+                    "signing_region",
+                    |m: &Default| { &m.signing_region },
+                    |m: &mut Default| { &mut m.signing_region },
                 ));
                 ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<Default>(
                     "HttpRemoteWriteAuthConfig.AwsAuthConfig.Default",
@@ -565,6 +572,9 @@ pub mod http_remote_write_auth_config {
                         10 => {
                             self.assume_role = ::std::option::Option::Some(is.read_tokio_chars()?);
                         },
+                        18 => {
+                            self.signing_region = ::std::option::Option::Some(is.read_tokio_chars()?);
+                        },
                         tag => {
                             ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                         },
@@ -580,6 +590,9 @@ pub mod http_remote_write_auth_config {
                 if let Some(v) = self.assume_role.as_ref() {
                     my_size += ::protobuf::rt::string_size(1, &v);
                 }
+                if let Some(v) = self.signing_region.as_ref() {
+                    my_size += ::protobuf::rt::string_size(2, &v);
+                }
                 my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
                 self.special_fields.cached_size().set(my_size as u32);
                 my_size
@@ -588,6 +601,9 @@ pub mod http_remote_write_auth_config {
             fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::Result<()> {
                 if let Some(v) = self.assume_role.as_ref() {
                     os.write_string(1, v)?;
+                }
+                if let Some(v) = self.signing_region.as_ref() {
+                    os.write_string(2, v)?;
                 }
                 os.write_unknown_fields(self.special_fields.unknown_fields())?;
                 ::std::result::Result::Ok(())
@@ -607,12 +623,14 @@ pub mod http_remote_write_auth_config {
 
             fn clear(&mut self) {
                 self.assume_role = ::std::option::Option::None;
+                self.signing_region = ::std::option::Option::None;
                 self.special_fields.clear();
             }
 
             fn default_instance() -> &'static Default {
                 static instance: Default = Default {
                     assume_role: ::std::option::Option::None,
+                    signing_region: ::std::option::Option::None,
                     special_fields: ::protobuf::SpecialFields::new(),
                 };
                 &instance
@@ -912,20 +930,21 @@ pub mod request_header {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n,pulse/config/outflow/v1/outflow_common.proto\x12\x17pulse.config.outf\
     low.v1\x1a#pulse/config/common/v1/common.proto\x1a\x17validate/validate.\
-    proto\"\xa7\x03\n\x19HttpRemoteWriteAuthConfig\x12N\n\x0cbearer_token\
+    proto\"\xe7\x03\n\x19HttpRemoteWriteAuthConfig\x12N\n\x0cbearer_token\
     \x18\x02\x20\x01(\x0b2).pulse.config.common.v1.BearerTokenConfigH\0R\x0b\
     bearerToken\x12T\n\x03aws\x18\x03\x20\x01(\x0b2@.pulse.config.outflow.v1\
-    .HttpRemoteWriteAuthConfig.AwsAuthConfigH\0R\x03aws\x1a\xd1\x01\n\rAwsAu\
+    .HttpRemoteWriteAuthConfig.AwsAuthConfigH\0R\x03aws\x1a\x91\x02\n\rAwsAu\
     thConfig\x12d\n\x07default\x18\x01\x20\x01(\x0b2H.pulse.config.outflow.v\
-    1.HttpRemoteWriteAuthConfig.AwsAuthConfig.DefaultH\0R\x07default\x1aH\n\
-    \x07Default\x12-\n\x0bassume_role\x18\x01\x20\x01(\tH\0R\nassumeRoleB\
-    \x07\xfaB\x04r\x02\x10\x01\x88\x01\x01B\x0e\n\x0c_assume_roleB\x10\n\tau\
-    th_type\x12\x03\xf8B\x01B\x10\n\tauth_type\x12\x03\xf8B\x01\"\xa5\x01\n\
-    \rRequestHeader\x12\x1b\n\x04name\x18\x01\x20\x01(\tR\x04nameB\x07\xfaB\
-    \x04r\x02\x10\x01\x12;\n\x05value\x18\x02\x20\x01(\x0b2#.pulse.config.co\
-    mmon.v1.EnvOrInlineH\0R\x05value\x12'\n\ttimestamp\x18\x03\x20\x01(\x08H\
-    \0R\ttimestampB\x07\xfaB\x04j\x02\x08\x01B\x11\n\nvalue_type\x12\x03\xf8\
-    B\x01b\x06proto3\
+    1.HttpRemoteWriteAuthConfig.AwsAuthConfig.DefaultH\0R\x07default\x1a\x87\
+    \x01\n\x07Default\x12-\n\x0bassume_role\x18\x01\x20\x01(\tH\0R\nassumeRo\
+    leB\x07\xfaB\x04r\x02\x10\x01\x88\x01\x01\x12*\n\x0esigning_region\x18\
+    \x02\x20\x01(\tH\x01R\rsigningRegion\x88\x01\x01B\x0e\n\x0c_assume_roleB\
+    \x11\n\x0f_signing_regionB\x10\n\tauth_type\x12\x03\xf8B\x01B\x10\n\taut\
+    h_type\x12\x03\xf8B\x01\"\xa5\x01\n\rRequestHeader\x12\x1b\n\x04name\x18\
+    \x01\x20\x01(\tR\x04nameB\x07\xfaB\x04r\x02\x10\x01\x12;\n\x05value\x18\
+    \x02\x20\x01(\x0b2#.pulse.config.common.v1.EnvOrInlineH\0R\x05value\x12'\
+    \n\ttimestamp\x18\x03\x20\x01(\x08H\0R\ttimestampB\x07\xfaB\x04j\x02\x08\
+    \x01B\x11\n\nvalue_type\x12\x03\xf8B\x01b\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file

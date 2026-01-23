@@ -19,6 +19,10 @@ message HttpRemoteWriteAuthConfig {
     // environment.
     message Default {
       optional string assume_role = 1 [(validate.rules).string = {min_len: 1}];
+
+      // Optional signing region override. Otherwise, the region will be determined by the default
+      // region provider chain.
+      optional string signing_region = 2;
     }
 
     oneof auth_type {

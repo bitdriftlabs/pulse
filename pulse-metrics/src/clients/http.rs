@@ -76,6 +76,7 @@ pub type Result<T> = std::result::Result<T, HttpRemoteWriteError>;
 
 struct AwsAuthInner {
   sdk_config: SdkConfig,
+  signing_region: Option<String>,
   identity_resolver: SharedIdentityResolver,
   identity_cache: SharedIdentityCache,
   runtime_components: RuntimeComponents,
@@ -123,7 +124,7 @@ impl HyperHttpRemoteWriteClient {
       },
       Auth_type::Aws(aws_auth_type) => match aws_auth_type.auth_type.expect("pgv") {
         aws_auth_config::Auth_type::Default(config) => {
-          let sdk_config = aws_config::load_defaults(BehaviorVersion::v2025_08_07()).await;
+          let sdk_config = aws_config::load_defaults(BehaviorVersion::v2026_01_12()).await;
           let credentials_provider =
             sdk_config
               .credentials_provider()
@@ -153,6 +154,7 @@ impl HyperHttpRemoteWriteClient {
 
           Auth::Aws(Box::new(AwsAuthInner {
             sdk_config,
+            signing_region: config.signing_region.map(|value| value.to_string()),
             identity_resolver: SharedIdentityResolver::new(credentials_provider),
             identity_cache,
             runtime_components,
@@ -259,17 +261,21 @@ impl HttpRemoteWriteClient for HyperHttpRemoteWriteClient {
         )
         .await
         .map_err(|e| HttpRemoteWriteError::Aws(format!("cannot fetch credentials: {e}")))?;
-      let signing_params = SigningParams::builder()
-        .identity(&credentials)
-        .region(
+      let signing_region = aws_auth
+        .signing_region
+        .as_deref()
+        .or_else(|| {
           aws_auth
             .sdk_config
             .region()
-            .ok_or(HttpRemoteWriteError::Aws(
-              "no configured region".to_string(),
-            ))?
-            .as_ref(),
-        )
+            .map(std::convert::AsRef::as_ref)
+        })
+        .ok_or(HttpRemoteWriteError::Aws(
+          "no configured region".to_string(),
+        ))?;
+      let signing_params = SigningParams::builder()
+        .identity(&credentials)
+        .region(signing_region)
         .name("aps")
         .time(SystemTime::now())
         .settings(signing_settings)
