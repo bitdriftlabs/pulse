@@ -82,6 +82,7 @@ pub async fn make_otlp_outflow(
   let compression = config.compression.enum_value_or_default();
   HttpRemoteWriteOutflow::new(
     config.request_timeout,
+    config.connect_timeout,
     config.retry_policy.unwrap_or_default(),
     config.max_in_flight,
     batch_router,

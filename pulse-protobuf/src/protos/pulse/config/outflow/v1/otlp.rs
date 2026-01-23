@@ -39,6 +39,8 @@ pub struct OtlpClientConfig {
     pub send_to: ::protobuf::Chars,
     // @@protoc_insertion_point(field:pulse.config.outflow.v1.OtlpClientConfig.request_timeout)
     pub request_timeout: ::protobuf::MessageField<::protobuf::well_known_types::duration::Duration>,
+    // @@protoc_insertion_point(field:pulse.config.outflow.v1.OtlpClientConfig.connect_timeout)
+    pub connect_timeout: ::protobuf::MessageField<::protobuf::well_known_types::duration::Duration>,
     // @@protoc_insertion_point(field:pulse.config.outflow.v1.OtlpClientConfig.max_in_flight)
     pub max_in_flight: ::std::option::Option<u64>,
     // @@protoc_insertion_point(field:pulse.config.outflow.v1.OtlpClientConfig.queue_policy)
@@ -72,7 +74,7 @@ impl OtlpClientConfig {
     }
 
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(10);
+        let mut fields = ::std::vec::Vec::with_capacity(11);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
             "send_to",
@@ -83,6 +85,11 @@ impl OtlpClientConfig {
             "request_timeout",
             |m: &OtlpClientConfig| { &m.request_timeout },
             |m: &mut OtlpClientConfig| { &mut m.request_timeout },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_message_field_accessor::<_, ::protobuf::well_known_types::duration::Duration>(
+            "connect_timeout",
+            |m: &OtlpClientConfig| { &m.connect_timeout },
+            |m: &mut OtlpClientConfig| { &mut m.connect_timeout },
         ));
         fields.push(::protobuf::reflect::rt::v2::make_option_accessor::<_, _>(
             "max_in_flight",
@@ -148,6 +155,9 @@ impl ::protobuf::Message for OtlpClientConfig {
                 18 => {
                     ::protobuf::rt::read_singular_message_into_field(is, &mut self.request_timeout)?;
                 },
+                90 => {
+                    ::protobuf::rt::read_singular_message_into_field(is, &mut self.connect_timeout)?;
+                },
                 24 => {
                     self.max_in_flight = ::std::option::Option::Some(is.read_uint64()?);
                 },
@@ -191,6 +201,10 @@ impl ::protobuf::Message for OtlpClientConfig {
             let len = v.compute_size();
             my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
         }
+        if let Some(v) = self.connect_timeout.as_ref() {
+            let len = v.compute_size();
+            my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
+        }
         if let Some(v) = self.max_in_flight {
             my_size += ::protobuf::rt::uint64_size(3, v);
         }
@@ -230,6 +244,9 @@ impl ::protobuf::Message for OtlpClientConfig {
         }
         if let Some(v) = self.request_timeout.as_ref() {
             ::protobuf::rt::write_message_field_with_cached_size(2, v, os)?;
+        }
+        if let Some(v) = self.connect_timeout.as_ref() {
+            ::protobuf::rt::write_message_field_with_cached_size(11, v, os)?;
         }
         if let Some(v) = self.max_in_flight {
             os.write_uint64(3, v)?;
@@ -274,6 +291,7 @@ impl ::protobuf::Message for OtlpClientConfig {
     fn clear(&mut self) {
         self.send_to.clear();
         self.request_timeout.clear();
+        self.connect_timeout.clear();
         self.max_in_flight = ::std::option::Option::None;
         self.queue_policy.clear();
         self.batch_max_samples = ::std::option::Option::None;
@@ -289,6 +307,7 @@ impl ::protobuf::Message for OtlpClientConfig {
         static instance: OtlpClientConfig = OtlpClientConfig {
             send_to: ::protobuf::Chars::new(),
             request_timeout: ::protobuf::MessageField::none(),
+            connect_timeout: ::protobuf::MessageField::none(),
             max_in_flight: ::std::option::Option::None,
             queue_policy: ::protobuf::MessageField::none(),
             batch_max_samples: ::std::option::Option::None,
@@ -390,23 +409,25 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \x1a\x1egoogle/protobuf/duration.proto\x1a#pulse/config/common/v1/common\
     .proto\x1a\"pulse/config/common/v1/retry.proto\x1a,pulse/config/outflow/\
     v1/outflow_common.proto\x1a*pulse/config/outflow/v1/queue_policy.proto\
-    \x1a\x17validate/validate.proto\"\xf3\x05\n\x10OtlpClientConfig\x12\x20\
+    \x1a\x17validate/validate.proto\"\xc1\x06\n\x10OtlpClientConfig\x12\x20\
     \n\x07send_to\x18\x01\x20\x01(\tR\x06sendToB\x07\xfaB\x04r\x02\x10\x01\
     \x12L\n\x0frequest_timeout\x18\x02\x20\x01(\x0b2\x19.google.protobuf.Dur\
-    ationR\x0erequestTimeoutB\x08\xfaB\x05\xaa\x01\x02*\0\x12'\n\rmax_in_fli\
-    ght\x18\x03\x20\x01(\x04H\0R\x0bmaxInFlight\x88\x01\x01\x12G\n\x0cqueue_\
-    policy\x18\x04\x20\x01(\x0b2$.pulse.config.outflow.v1.QueuePolicyR\x0bqu\
-    euePolicy\x12/\n\x11batch_max_samples\x18\x05\x20\x01(\x04H\x01R\x0fbatc\
-    hMaxSamples\x88\x01\x01\x12F\n\x04auth\x18\x06\x20\x01(\x0b22.pulse.conf\
-    ig.outflow.v1.HttpRemoteWriteAuthConfigR\x04auth\x12O\n\x0frequest_heade\
-    rs\x18\x07\x20\x03(\x0b2&.pulse.config.outflow.v1.RequestHeaderR\x0erequ\
-    estHeaders\x12F\n\x0cretry_policy\x18\x08\x20\x01(\x0b2#.pulse.config.co\
-    mmon.v1.RetryPolicyR\x0bretryPolicy\x12[\n\x0bcompression\x18\t\x20\x01(\
-    \x0e29.pulse.config.outflow.v1.OtlpClientConfig.OtlpCompressionR\x0bcomp\
-    ression\x12=\n\x1bconvert_names_to_prometheus\x18\n\x20\x01(\x08R\x18con\
-    vertNamesToPrometheus\"'\n\x0fOtlpCompression\x12\n\n\x06SNAPPY\x10\0\
-    \x12\x08\n\x04NONE\x10\x01B\x10\n\x0e_max_in_flightB\x14\n\x12_batch_max\
-    _samplesb\x06proto3\
+    ationR\x0erequestTimeoutB\x08\xfaB\x05\xaa\x01\x02*\0\x12L\n\x0fconnect_\
+    timeout\x18\x0b\x20\x01(\x0b2\x19.google.protobuf.DurationR\x0econnectTi\
+    meoutB\x08\xfaB\x05\xaa\x01\x02*\0\x12'\n\rmax_in_flight\x18\x03\x20\x01\
+    (\x04H\0R\x0bmaxInFlight\x88\x01\x01\x12G\n\x0cqueue_policy\x18\x04\x20\
+    \x01(\x0b2$.pulse.config.outflow.v1.QueuePolicyR\x0bqueuePolicy\x12/\n\
+    \x11batch_max_samples\x18\x05\x20\x01(\x04H\x01R\x0fbatchMaxSamples\x88\
+    \x01\x01\x12F\n\x04auth\x18\x06\x20\x01(\x0b22.pulse.config.outflow.v1.H\
+    ttpRemoteWriteAuthConfigR\x04auth\x12O\n\x0frequest_headers\x18\x07\x20\
+    \x03(\x0b2&.pulse.config.outflow.v1.RequestHeaderR\x0erequestHeaders\x12\
+    F\n\x0cretry_policy\x18\x08\x20\x01(\x0b2#.pulse.config.common.v1.RetryP\
+    olicyR\x0bretryPolicy\x12[\n\x0bcompression\x18\t\x20\x01(\x0e29.pulse.c\
+    onfig.outflow.v1.OtlpClientConfig.OtlpCompressionR\x0bcompression\x12=\n\
+    \x1bconvert_names_to_prometheus\x18\n\x20\x01(\x08R\x18convertNamesToPro\
+    metheus\"'\n\x0fOtlpCompression\x12\n\n\x06SNAPPY\x10\0\x12\x08\n\x04NON\
+    E\x10\x01B\x10\n\x0e_max_in_flightB\x14\n\x12_batch_max_samplesb\x06prot\
+    o3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file

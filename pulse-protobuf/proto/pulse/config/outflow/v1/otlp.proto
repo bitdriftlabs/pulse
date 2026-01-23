@@ -27,6 +27,9 @@ message OtlpClientConfig {
   // The request timeout. Defaults to 10s.
   google.protobuf.Duration request_timeout = 2 [(validate.rules).duration.gt = {}];
 
+  // The connection timeout for establishing a new upstream connection. Defaults to 250ms.
+  google.protobuf.Duration connect_timeout = 11 [(validate.rules).duration.gt = {}];
+
   // The maximum number of inflight requests. Defaults to 16.
   optional uint64 max_in_flight = 3;
 

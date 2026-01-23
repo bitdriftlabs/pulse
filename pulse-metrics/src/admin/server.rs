@@ -15,7 +15,7 @@ use crate::clients::http::{
   PROM_REMOTE_WRITE_HEADERS,
   should_retry,
 };
-use crate::pipeline::config::DEFAULT_REQUEST_TIMEOUT;
+use crate::pipeline::config::{DEFAULT_CONNECT_TIMEOUT, DEFAULT_REQUEST_TIMEOUT};
 use crate::pipeline::outflow::prom::compress_write_request;
 use crate::pipeline::time::{RealTimeProvider, next_flush_interval};
 use anyhow::bail;
@@ -341,6 +341,9 @@ impl MetaStatsEmitter {
             prom_remote_write
               .request_timeout
               .unwrap_duration_or(DEFAULT_REQUEST_TIMEOUT),
+            prom_remote_write
+              .connect_timeout
+              .unwrap_duration_or(DEFAULT_CONNECT_TIMEOUT),
             prom_remote_write.auth.into_option(),
             PROM_REMOTE_WRITE_HEADERS,
             prom_remote_write.request_headers,
