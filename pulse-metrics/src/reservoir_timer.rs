@@ -5,8 +5,8 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
-use rand::{RngCore, SeedableRng};
-use rand_xoshiro::Xoshiro128StarStar;
+use rand::Rng;
+use rand::rngs::SmallRng;
 use std::cell::RefCell;
 
 // This is a basic reservoir sampling implementation adapted from statsrelay. A reservoir is kept
@@ -33,7 +33,7 @@ impl ReservoirTimer {
   pub fn aggregate(&mut self, value: f64, sample_rate: f64) {
     thread_local! {
       // Fast non crypto rng.
-      static RANDOM: RefCell<Xoshiro128StarStar> = RefCell::new(Xoshiro128StarStar::from_os_rng());
+      static RANDOM: RefCell<SmallRng> = RefCell::new(rand::make_rng());
     }
 
     // Do an initial fill if we haven't filled the full reservoir.

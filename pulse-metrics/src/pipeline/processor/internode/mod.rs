@@ -766,33 +766,43 @@ fn make_router(handler: &Arc<InternodeHandler>) -> Router {
     Some(&handler.endpoint_stats),
     false,
   )
-  .merge(make_unary_router(
-    &ServiceMethod::<PeersComparisonRequest, PeersComparisonResponse>::new(
-      "Internode",
-      "GetPeersComparison",
-    ),
-    handler.clone(),
-    |_| {},
-    None,
-    false,
-  ))
-  .merge(make_unary_router(
-    &ServiceMethod::<LastElidedTimestampRequest, LastElidedTimestampResponse>::new(
-      "Internode",
-      "LastElidedTimestamp",
-    ),
-    handler.clone(),
-    |_| {},
-    None,
-    false,
-  ))
-  .merge(make_unary_router(
-    &ServiceMethod::<ReadyRequest, ReadyResponse>::new("Internode", "Ready"),
-    handler.clone(),
-    |_| {},
-    None,
-    false,
-  ))
+  .unwrap()
+  .merge(
+    make_unary_router(
+      &ServiceMethod::<PeersComparisonRequest, PeersComparisonResponse>::new(
+        "Internode",
+        "GetPeersComparison",
+      ),
+      handler.clone(),
+      |_| {},
+      None,
+      false,
+    )
+    .unwrap(),
+  )
+  .merge(
+    make_unary_router(
+      &ServiceMethod::<LastElidedTimestampRequest, LastElidedTimestampResponse>::new(
+        "Internode",
+        "LastElidedTimestamp",
+      ),
+      handler.clone(),
+      |_| {},
+      None,
+      false,
+    )
+    .unwrap(),
+  )
+  .merge(
+    make_unary_router(
+      &ServiceMethod::<ReadyRequest, ReadyResponse>::new("Internode", "Ready"),
+      handler.clone(),
+      |_| {},
+      None,
+      false,
+    )
+    .unwrap(),
+  )
 }
 
 /// Generate a server for inbound grpc requests

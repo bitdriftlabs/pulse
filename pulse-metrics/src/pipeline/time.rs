@@ -5,8 +5,8 @@
 // LICENSE file or at:
 // https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
 
+use rand::RngExt;
 use rand::rngs::SmallRng;
-use rand::{Rng, SeedableRng};
 use std::cell::RefCell;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicI64, Ordering};
@@ -84,7 +84,7 @@ pub struct RealDurationJitter {}
 impl RealDurationJitter {
   fn jitter_worker(min_millis: u64, max_millis: u64) -> Duration {
     thread_local! {
-      static RANDOM: RefCell<SmallRng> = RefCell::new(SmallRng::from_os_rng());
+      static RANDOM: RefCell<SmallRng> = RefCell::new(rand::make_rng());
     }
 
     let jittered_as_millis =

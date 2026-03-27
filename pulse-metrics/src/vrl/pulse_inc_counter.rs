@@ -91,6 +91,7 @@ impl Function for PulseIncCounter {
         )));
       };
 
+      #[allow(clippy::result_large_err)]
       let tag_names: Vec<String> = tag_names
         .into_iter()
         .map(|tag_name| Ok::<_, ValueError>(tag_name.try_bytes_utf8_lossy()?.to_string()))
