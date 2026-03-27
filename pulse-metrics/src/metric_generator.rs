@@ -16,7 +16,7 @@ use crate::protos::metric::{
 };
 use pulse_protobuf::protos::pulse::config::common::v1::common::WireProtocol;
 use pulse_protobuf::protos::pulse::config::common::v1::common::wire_protocol::Protocol_type;
-use rand::Rng;
+use rand::RngExt;
 use rand::seq::IndexedRandom;
 use rand_xoshiro::Xoroshiro128StarStar;
 use rand_xoshiro::rand_core::SeedableRng;
@@ -102,10 +102,7 @@ impl MetricGenerator {
   }
 
   pub fn name_terms(&mut self, terms: usize) -> String {
-    let terms: Vec<_> = WORDS
-      .choose_multiple(&mut self.rng, terms)
-      .copied()
-      .collect();
+    let terms: Vec<_> = WORDS.sample(&mut self.rng, terms).copied().collect();
     terms.join(self.sep)
   }
 

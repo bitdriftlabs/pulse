@@ -75,7 +75,7 @@ message InternodeConfig {
   repeated NodeConfig nodes = 4 [(validate.rules).repeated.min_items = 1];
 
   // Configuration for internode requests. If not specified, default values are used.
-  RequestPolicy request_policy = 5 [(validate.rules).duration.gt = {}];
+  RequestPolicy request_policy = 5;
 
   // Configuration for health checks. If not specified, health checks are disabled. Take great
   // care in configuring health checks as settings that are too aggressive can cause flapping
