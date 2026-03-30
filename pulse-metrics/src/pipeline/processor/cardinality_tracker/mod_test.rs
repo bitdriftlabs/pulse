@@ -17,7 +17,10 @@ use cardinality_tracker::cardinality_tracker_config::{Count, TopK, TrackingType}
 use http_body_util::BodyExt;
 use pretty_assertions::assert_eq;
 use pulse_protobuf::protos::pulse::config::processor::v1::cardinality_tracker;
+use std::collections::HashMap;
 use std::time::Duration;
+
+const CARDINALITY_GAUGE_METRIC_NAME: &str = "processor:cardinality_tracker";
 
 async fn assert_admin(admin: &MockAdmin, expected: &str) {
   let response = std::string::String::from_utf8(
@@ -33,6 +36,39 @@ async fn assert_admin(admin: &MockAdmin, expected: &str) {
   )
   .unwrap();
   assert_eq!(expected.trim(), response);
+}
+
+fn assert_cardinality_gauge(
+  helper: &crate::test::ProcessorFactoryContextHelper,
+  value: i64,
+  labels: &[(&str, &str)],
+) {
+  let labels = labels.iter().copied().collect::<HashMap<_, _>>();
+  helper
+    .stats_helper
+    .find_gauge(CARDINALITY_GAUGE_METRIC_NAME, &labels)
+    .unwrap_or_else(|| {
+      panic!(
+        "gauge not found for labels {labels:?}. {:?}",
+        helper.stats_helper.collector().debug_output()
+      )
+    });
+  helper
+    .stats_helper
+    .assert_gauge_eq(value, CARDINALITY_GAUGE_METRIC_NAME, &labels);
+}
+
+fn assert_cardinality_gauge_absent(
+  helper: &crate::test::ProcessorFactoryContextHelper,
+  labels: &[(&str, &str)],
+) {
+  let labels = labels.iter().copied().collect::<HashMap<_, _>>();
+  assert!(
+    helper
+      .stats_helper
+      .find_gauge(CARDINALITY_GAUGE_METRIC_NAME, &labels)
+      .is_none()
+  );
 }
 
 #[tokio::test(start_paused = true)]
@@ -202,4 +238,158 @@ top metrics by project (approximate cardinality):
     ",
   )
   .await;
+}
+
+#[tokio::test(start_paused = true)]
+async fn emit_cardinality_gauges() {
+  let (mut helper, context) = processor_factory_context_for_test();
+  let processor = CardinalityTrackerProcessor::new(
+    CardinalityTrackerConfig {
+      tracking_types: vec![
+        TrackingType {
+          type_: Some(Type::Count(Count {
+            name_regex: ".*:rate$".into(),
+            ..Default::default()
+          })),
+          name: "rate".into(),
+          ..Default::default()
+        },
+        TrackingType {
+          type_: Some(Type::TopK(TopK {
+            group_by: Some(Group_by::NameRegex("".into())),
+            top_k: 1,
+            ..Default::default()
+          })),
+          name: "top metric by name".into(),
+          ..Default::default()
+        },
+      ],
+      emit_cardinality_gauges: true,
+      ..Default::default()
+    },
+    context,
+  )
+  .unwrap();
+
+  assert_cardinality_gauge_absent(&helper, &[("tracker_name", "rate"), ("value", "")]);
+  assert_cardinality_gauge_absent(
+    &helper,
+    &[
+      ("tracker_name", "top metric by name"),
+      ("value", "old:metric"),
+    ],
+  );
+
+  make_mut(&mut helper.dispatcher)
+    .expect_send()
+    .once()
+    .returning(|_| ());
+  processor
+    .clone()
+    .recv_samples(vec![
+      make_metric("old:metric", &[("a", "1")], 0),
+      make_metric("old:metric", &[("a", "2")], 0),
+      make_metric("old:metric", &[("a", "3")], 0),
+      make_metric("old:rate", &[("a", "1")], 0),
+      make_metric("old:rate", &[("a", "2")], 0),
+    ])
+    .await;
+
+  assert_cardinality_gauge_absent(&helper, &[("tracker_name", "rate"), ("value", "")]);
+
+  tokio::time::sleep(Duration::from_secs(301)).await;
+
+  assert_cardinality_gauge(&helper, 2, &[("tracker_name", "rate"), ("value", "")]);
+  assert_cardinality_gauge_absent(
+    &helper,
+    &[
+      ("tracker_name", "top metric by name"),
+      ("value", "old:metric"),
+    ],
+  );
+
+  make_mut(&mut helper.dispatcher)
+    .expect_send()
+    .once()
+    .returning(|_| ());
+  processor
+    .clone()
+    .recv_samples(vec![
+      make_metric("old:metric", &[("a", "1")], 0),
+      make_metric("old:metric", &[("a", "2")], 0),
+      make_metric("old:rate", &[("a", "3")], 0),
+      make_metric("new:rate", &[("a", "1")], 0),
+    ])
+    .await;
+
+  tokio::time::sleep(Duration::from_secs(301)).await;
+
+  assert_cardinality_gauge(&helper, 2, &[("tracker_name", "rate"), ("value", "")]);
+  assert_cardinality_gauge(
+    &helper,
+    2,
+    &[
+      ("tracker_name", "top metric by name"),
+      ("value", "old:metric"),
+    ],
+  );
+
+  make_mut(&mut helper.dispatcher)
+    .expect_send()
+    .once()
+    .returning(|_| ());
+  processor
+    .clone()
+    .recv_samples(vec![
+      make_metric("new:metric", &[("a", "1")], 0),
+      make_metric("new:metric", &[("a", "2")], 0),
+      make_metric("new:metric", &[("a", "3")], 0),
+      make_metric("new:metric", &[("a", "4")], 0),
+      make_metric("later:rate", &[("a", "1")], 0),
+    ])
+    .await;
+
+  tokio::time::sleep(Duration::from_secs(301)).await;
+
+  assert_cardinality_gauge(
+    &helper,
+    2,
+    &[
+      ("tracker_name", "top metric by name"),
+      ("value", "old:metric"),
+    ],
+  );
+
+  make_mut(&mut helper.dispatcher)
+    .expect_send()
+    .once()
+    .returning(|_| ());
+  processor
+    .recv_samples(vec![
+      make_metric("new:metric", &[("a", "1")], 0),
+      make_metric("new:metric", &[("a", "2")], 0),
+      make_metric("new:metric", &[("a", "3")], 0),
+      make_metric("final:rate", &[("a", "1")], 0),
+    ])
+    .await;
+
+  tokio::time::sleep(Duration::from_secs(301)).await;
+
+  assert_cardinality_gauge(&helper, 1, &[("tracker_name", "rate"), ("value", "")]);
+  assert_cardinality_gauge(
+    &helper,
+    3,
+    &[
+      ("tracker_name", "top metric by name"),
+      ("value", "new:metric"),
+    ],
+  );
+  assert_cardinality_gauge(
+    &helper,
+    0,
+    &[
+      ("tracker_name", "top metric by name"),
+      ("value", "old:metric"),
+    ],
+  );
 }
