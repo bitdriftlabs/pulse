@@ -39,6 +39,8 @@ pub struct CardinalityTrackerConfig {
     pub tracking_types: ::std::vec::Vec<cardinality_tracker_config::TrackingType>,
     // @@protoc_insertion_point(field:pulse.config.processor.v1.CardinalityTrackerConfig.rotate_after)
     pub rotate_after: ::protobuf::MessageField<::protobuf::well_known_types::duration::Duration>,
+    // @@protoc_insertion_point(field:pulse.config.processor.v1.CardinalityTrackerConfig.emit_cardinality_gauges)
+    pub emit_cardinality_gauges: bool,
     // special fields
     // @@protoc_insertion_point(special_field:pulse.config.processor.v1.CardinalityTrackerConfig.special_fields)
     pub special_fields: ::protobuf::SpecialFields,
@@ -56,7 +58,7 @@ impl CardinalityTrackerConfig {
     }
 
     fn generated_message_descriptor_data() -> ::protobuf::reflect::GeneratedMessageDescriptorData {
-        let mut fields = ::std::vec::Vec::with_capacity(2);
+        let mut fields = ::std::vec::Vec::with_capacity(3);
         let mut oneofs = ::std::vec::Vec::with_capacity(0);
         fields.push(::protobuf::reflect::rt::v2::make_vec_simpler_accessor::<_, _>(
             "tracking_types",
@@ -67,6 +69,11 @@ impl CardinalityTrackerConfig {
             "rotate_after",
             |m: &CardinalityTrackerConfig| { &m.rotate_after },
             |m: &mut CardinalityTrackerConfig| { &mut m.rotate_after },
+        ));
+        fields.push(::protobuf::reflect::rt::v2::make_simpler_field_accessor::<_, _>(
+            "emit_cardinality_gauges",
+            |m: &CardinalityTrackerConfig| { &m.emit_cardinality_gauges },
+            |m: &mut CardinalityTrackerConfig| { &mut m.emit_cardinality_gauges },
         ));
         ::protobuf::reflect::GeneratedMessageDescriptorData::new_2::<CardinalityTrackerConfig>(
             "CardinalityTrackerConfig",
@@ -92,6 +99,9 @@ impl ::protobuf::Message for CardinalityTrackerConfig {
                 18 => {
                     ::protobuf::rt::read_singular_message_into_field(is, &mut self.rotate_after)?;
                 },
+                24 => {
+                    self.emit_cardinality_gauges = is.read_bool()?;
+                },
                 tag => {
                     ::protobuf::rt::read_unknown_or_skip_group(tag, is, self.special_fields.mut_unknown_fields())?;
                 },
@@ -112,6 +122,9 @@ impl ::protobuf::Message for CardinalityTrackerConfig {
             let len = v.compute_size();
             my_size += 1 + ::protobuf::rt::compute_raw_varint64_size(len) + len;
         }
+        if self.emit_cardinality_gauges != false {
+            my_size += 1 + 1;
+        }
         my_size += ::protobuf::rt::unknown_fields_size(self.special_fields.unknown_fields());
         self.special_fields.cached_size().set(my_size as u32);
         my_size
@@ -123,6 +136,9 @@ impl ::protobuf::Message for CardinalityTrackerConfig {
         };
         if let Some(v) = self.rotate_after.as_ref() {
             ::protobuf::rt::write_message_field_with_cached_size(2, v, os)?;
+        }
+        if self.emit_cardinality_gauges != false {
+            os.write_bool(3, self.emit_cardinality_gauges)?;
         }
         os.write_unknown_fields(self.special_fields.unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -143,6 +159,7 @@ impl ::protobuf::Message for CardinalityTrackerConfig {
     fn clear(&mut self) {
         self.tracking_types.clear();
         self.rotate_after.clear();
+        self.emit_cardinality_gauges = false;
         self.special_fields.clear();
     }
 
@@ -150,6 +167,7 @@ impl ::protobuf::Message for CardinalityTrackerConfig {
         static instance: CardinalityTrackerConfig = CardinalityTrackerConfig {
             tracking_types: ::std::vec::Vec::new(),
             rotate_after: ::protobuf::MessageField::none(),
+            emit_cardinality_gauges: false,
             special_fields: ::protobuf::SpecialFields::new(),
         };
         &instance
@@ -1014,22 +1032,23 @@ pub mod cardinality_tracker_config {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n3pulse/config/processor/v1/cardinality_tracker.proto\x12\x19pulse.conf\
     ig.processor.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x17validate/va\
-    lidate.proto\"\xb4\x05\n\x18CardinalityTrackerConfig\x12g\n\x0etracking_\
+    lidate.proto\"\xec\x05\n\x18CardinalityTrackerConfig\x12g\n\x0etracking_\
     types\x18\x01\x20\x03(\x0b2@.pulse.config.processor.v1.CardinalityTracke\
     rConfig.TrackingTypeR\rtrackingTypes\x12F\n\x0crotate_after\x18\x02\x20\
     \x01(\x0b2\x19.google.protobuf.DurationR\x0brotateAfterB\x08\xfaB\x05\
-    \xaa\x01\x02*\0\x1a/\n\x05Count\x12&\n\nname_regex\x18\x01\x20\x01(\tR\t\
-    nameRegexB\x07\xfaB\x04r\x02\x10\x01\x1a\xd6\x01\n\x04TopK\x12\x1f\n\nna\
-    me_regex\x18\x01\x20\x01(\tH\0R\tnameRegex\x12_\n\ttag_names\x18\x02\x20\
-    \x01(\x0b2@.pulse.config.processor.v1.CardinalityTrackerConfig.TopK.TagL\
-    istH\0R\x08tagNames\x12\x1c\n\x05top_k\x18\x03\x20\x01(\rR\x04topKB\x07\
-    \xfaB\x04*\x02\x20\0\x1a\x1d\n\x07TagList\x12\x12\n\x04tags\x18\x01\x20\
-    \x03(\tR\x04tagsB\x0f\n\x08group_by\x12\x03\xf8B\x01\x1a\xdc\x01\n\x0cTr\
-    ackingType\x12Q\n\x05count\x18\x01\x20\x01(\x0b29.pulse.config.processor\
-    .v1.CardinalityTrackerConfig.CountH\0R\x05count\x12O\n\x05top_k\x18\x02\
-    \x20\x01(\x0b28.pulse.config.processor.v1.CardinalityTrackerConfig.TopKH\
-    \0R\x04topK\x12\x1b\n\x04name\x18\x03\x20\x01(\tR\x04nameB\x07\xfaB\x04r\
-    \x02\x10\x01B\x0b\n\x04type\x12\x03\xf8B\x01b\x06proto3\
+    \xaa\x01\x02*\0\x126\n\x17emit_cardinality_gauges\x18\x03\x20\x01(\x08R\
+    \x15emitCardinalityGauges\x1a/\n\x05Count\x12&\n\nname_regex\x18\x01\x20\
+    \x01(\tR\tnameRegexB\x07\xfaB\x04r\x02\x10\x01\x1a\xd6\x01\n\x04TopK\x12\
+    \x1f\n\nname_regex\x18\x01\x20\x01(\tH\0R\tnameRegex\x12_\n\ttag_names\
+    \x18\x02\x20\x01(\x0b2@.pulse.config.processor.v1.CardinalityTrackerConf\
+    ig.TopK.TagListH\0R\x08tagNames\x12\x1c\n\x05top_k\x18\x03\x20\x01(\rR\
+    \x04topKB\x07\xfaB\x04*\x02\x20\0\x1a\x1d\n\x07TagList\x12\x12\n\x04tags\
+    \x18\x01\x20\x03(\tR\x04tagsB\x0f\n\x08group_by\x12\x03\xf8B\x01\x1a\xdc\
+    \x01\n\x0cTrackingType\x12Q\n\x05count\x18\x01\x20\x01(\x0b29.pulse.conf\
+    ig.processor.v1.CardinalityTrackerConfig.CountH\0R\x05count\x12O\n\x05to\
+    p_k\x18\x02\x20\x01(\x0b28.pulse.config.processor.v1.CardinalityTrackerC\
+    onfig.TopKH\0R\x04topK\x12\x1b\n\x04name\x18\x03\x20\x01(\tR\x04nameB\
+    \x07\xfaB\x04r\x02\x10\x01B\x0b\n\x04type\x12\x03\xf8B\x01b\x06proto3\
 ";
 
 /// `FileDescriptorProto` object which was a source for this generated file

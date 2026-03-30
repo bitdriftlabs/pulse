@@ -78,4 +78,10 @@ message CardinalityTrackerConfig {
   // topk phase and the cardinality counting phase. Thus, to see anything on the admin endpoint it
   // will require 2x this interval. If not specified this defaults to 5 minutes.
   google.protobuf.Duration rotate_after = 2 [(validate.rules).duration.gt = {}];
+
+  // If true, emit internal gauge stats for the snapped cardinality of each tracker using the
+  // fixed metric name "cardinality_tracker". Every emitted series includes tracker_name and value
+  // labels so they share one metric family. For Count trackers the value label is empty. For TopK
+  // trackers the value label contains the tracked top-k item.
+  bool emit_cardinality_gauges = 3;
 }

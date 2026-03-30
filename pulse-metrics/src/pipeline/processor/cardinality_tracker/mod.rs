@@ -28,10 +28,11 @@ use futures::FutureExt;
 use hyperloglogplus::{HyperLogLog, HyperLogLogPlus};
 use itertools::Itertools;
 use parking_lot::Mutex;
+use prometheus::IntGaugeVec;
 use pulse_common::proto::ProtoDurationToStdDuration;
 use pulse_protobuf::protos::pulse::config::processor::v1::cardinality_tracker;
 use regex::bytes::Regex;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use time::Duration;
 use time::ext::NumericalDuration;
@@ -42,11 +43,106 @@ use topk::FilteredSpaceSaving;
 // Tracker
 //
 
+const CARDINALITY_GAUGE_NAME: &str = "cardinality_tracker";
+
+enum TrackerSnapshot {
+  Count(Option<f64>),
+  TopK(Option<Vec<(Bytes, f64)>>),
+}
+
+enum TrackerUpdate {
+  Count(f64),
+  TopK(Vec<(Bytes, f64)>),
+}
+
+enum GaugeEmitter {
+  Count {
+    tracker_name: String,
+    gauges: IntGaugeVec,
+  },
+  TopK {
+    tracker_name: String,
+    gauges: IntGaugeVec,
+    previous_values: HashSet<String>,
+  },
+}
+
+impl GaugeEmitter {
+  fn emit(&mut self, update: TrackerUpdate) {
+    match (self, update) {
+      (
+        Self::Count {
+          tracker_name,
+          gauges,
+        },
+        TrackerUpdate::Count(count),
+      ) => {
+        gauges
+          .with_label_values(&[tracker_name.as_str(), ""])
+          .set(cardinality_to_gauge_value(count));
+      },
+      (
+        Self::TopK {
+          tracker_name,
+          gauges,
+          previous_values,
+        },
+        TrackerUpdate::TopK(entries),
+      ) => {
+        let mut active_values = HashSet::with_capacity(entries.len());
+        for (value, count) in entries {
+          let value = String::from_utf8_lossy(&value).to_string();
+          active_values.insert(value.clone());
+          gauges
+            .with_label_values(&[tracker_name.as_str(), value.as_str()])
+            .set(cardinality_to_gauge_value(count));
+        }
+
+        for value in previous_values.difference(&active_values) {
+          gauges
+            .with_label_values(&[tracker_name.as_str(), value.as_str()])
+            .set(0);
+        }
+
+        *previous_values = active_values;
+      },
+      _ => unreachable!("tracker update type did not match configured gauge emitter"),
+    }
+  }
+}
+
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+fn cardinality_to_gauge_value(count: f64) -> i64 {
+  count.round() as i64
+}
+
+fn snapshot_to_admin_output(snapshot: TrackerSnapshot) -> String {
+  match snapshot {
+    TrackerSnapshot::Count(previous_cardinality) => {
+      previous_cardinality.map_or_else(|| " populating".to_string(), |count| format!(" {count}"))
+    },
+    TrackerSnapshot::TopK(previous_topk) => previous_topk.map_or_else(
+      || " populating".to_string(),
+      |previous_topk| {
+        let mut table = Table::new();
+        table.load_preset(NOTHING);
+        for (key, count) in previous_topk {
+          table.add_row(vec![
+            std::string::String::from_utf8_lossy(&key).to_string(),
+            count.to_string(),
+          ]);
+        }
+        table.trim_fmt()
+      },
+    ),
+  }
+}
+
 // Generic trait for all kinds of trackers.
 trait Tracker: Send + Sync {
   fn track(&self, metric: &ParsedMetric);
-  fn rotate(&self);
-  fn to_admin_output(&self) -> String;
+  fn rotate(&self) -> Option<TrackerUpdate>;
+  fn snapshot(&self) -> TrackerSnapshot;
 }
 
 //
@@ -80,20 +176,19 @@ impl Tracker for CountTracker {
     }
   }
 
-  fn rotate(&self) {
+  fn rotate(&self) -> Option<TrackerUpdate> {
     // During rotation we make a new HLL and swap it with the old one. Then we take the count
     // of the old one and move it into the previous_cardinality field.
     let new_hyperloglog = HyperLogLogPlus::new(10, RandomState::new()).unwrap();
     let mut previous_hyperloglog =
       std::mem::replace(&mut *self.hyperloglog.lock(), new_hyperloglog);
-    *self.previous_cardinality.lock() = Some(previous_hyperloglog.count());
+    let count = previous_hyperloglog.count();
+    *self.previous_cardinality.lock() = Some(count);
+    Some(TrackerUpdate::Count(count))
   }
 
-  fn to_admin_output(&self) -> String {
-    self
-      .previous_cardinality
-      .lock()
-      .map_or(" populating".to_string(), |c| format!(" {c}"))
+  fn snapshot(&self) -> TrackerSnapshot {
+    TrackerSnapshot::Count(*self.previous_cardinality.lock())
   }
 }
 
@@ -209,7 +304,7 @@ impl Tracker for TopKTracker {
     }
   }
 
-  fn rotate(&self) {
+  fn rotate(&self) -> Option<TrackerUpdate> {
     let previous_state = {
       let mut topk_state = self.topk_state.lock();
       match &mut *topk_state {
@@ -247,7 +342,7 @@ impl Tracker for TopKTracker {
     };
 
     match previous_state {
-      TopKState::EstimatingTopK { topk: _ } => {},
+      TopKState::EstimatingTopK { topk: _ } => None,
       TopKState::FinalizingTopK { topk } => {
         // In this case we pull out every key and approximate cardinality, and then sort it
         // first by count, and then by name.
@@ -256,28 +351,14 @@ impl Tracker for TopKTracker {
           previous_topk.push((key, hyperloglog.count()));
         }
         previous_topk.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap().then(a.0.cmp(&b.0)));
-        *self.previous_topk.lock() = Some(previous_topk);
+        *self.previous_topk.lock() = Some(previous_topk.clone());
+        Some(TrackerUpdate::TopK(previous_topk))
       },
     }
   }
 
-  fn to_admin_output(&self) -> String {
-    let previous_topk = self.previous_topk.lock();
-    (*previous_topk).as_ref().map_or_else(
-      || " populating".to_string(),
-      |previous_topk| {
-        // This creates a nice table so everything is aligned in the output.
-        let mut table = Table::new();
-        table.load_preset(NOTHING);
-        for (key, count) in previous_topk {
-          table.add_row(vec![
-            std::string::String::from_utf8_lossy(key).to_string(),
-            count.to_string(),
-          ]);
-        }
-        table.trim_fmt()
-      },
-    )
+  fn snapshot(&self) -> TrackerSnapshot {
+    TrackerSnapshot::TopK(self.previous_topk.lock().clone())
   }
 }
 
@@ -288,6 +369,7 @@ impl Tracker for TopKTracker {
 struct TrackerWrapper {
   tracker: Box<dyn Tracker>,
   name: String,
+  gauge_emitter: Option<Mutex<GaugeEmitter>>,
 }
 pub struct CardinalityTrackerProcessor {
   dispatcher: Arc<dyn PipelineDispatch>,
@@ -300,17 +382,41 @@ impl CardinalityTrackerProcessor {
     config: CardinalityTrackerConfig,
     context: ProcessorFactoryContext,
   ) -> anyhow::Result<Arc<Self>> {
+    let rotate_after = config.rotate_after.unwrap_duration_or(5.minutes());
+    let emit_cardinality_gauges = config.emit_cardinality_gauges;
+    let cardinality_gauges = emit_cardinality_gauges.then(|| {
+      context
+        .scope
+        .gauge_vec(CARDINALITY_GAUGE_NAME, &["tracker_name", "value"])
+    });
     let trackers = config
       .tracking_types
       .into_iter()
       .map(|tracking_type| {
-        Ok::<_, anyhow::Error>(TrackerWrapper {
-          tracker: match tracking_type.type_.expect("pgv") {
-            Type::Count(count) => Box::new(CountTracker::new(&count)?) as Box<dyn Tracker>,
-            Type::TopK(top_k) => Box::new(TopKTracker::new(top_k)?),
-          },
-          name: tracking_type.name.to_string(),
-        })
+        let name = tracking_type.name.to_string();
+        match tracking_type.type_.expect("pgv") {
+          Type::Count(count) => Ok::<_, anyhow::Error>(TrackerWrapper {
+            tracker: Box::new(CountTracker::new(&count)?) as Box<dyn Tracker>,
+            gauge_emitter: cardinality_gauges.as_ref().map(|cardinality_gauges| {
+              Mutex::new(GaugeEmitter::Count {
+                tracker_name: name.clone(),
+                gauges: cardinality_gauges.clone(),
+              })
+            }),
+            name,
+          }),
+          Type::TopK(top_k) => Ok(TrackerWrapper {
+            tracker: Box::new(TopKTracker::new(top_k)?),
+            gauge_emitter: cardinality_gauges.as_ref().map(|cardinality_gauges| {
+              Mutex::new(GaugeEmitter::TopK {
+                tracker_name: name.clone(),
+                gauges: cardinality_gauges.clone(),
+                previous_values: HashSet::new(),
+              })
+            }),
+            name,
+          }),
+        }
       })
       .try_collect()?;
 
@@ -331,9 +437,7 @@ impl CardinalityTrackerProcessor {
 
     let cloned_processor = processor.clone();
     tokio::spawn(async move {
-      cloned_processor
-        .rotation_loop(config.rotate_after.unwrap_duration_or(5.minutes()))
-        .await;
+      cloned_processor.rotation_loop(rotate_after).await;
     });
 
     Ok(processor)
@@ -345,7 +449,11 @@ impl CardinalityTrackerProcessor {
       interval.tick().await;
       log::debug!("doing tracker rotation");
       for tracker in &self.trackers {
-        tracker.tracker.rotate();
+        if let Some(update) = tracker.tracker.rotate()
+          && let Some(gauge_emitter) = &tracker.gauge_emitter
+        {
+          gauge_emitter.lock().emit(update);
+        }
       }
       log::debug!("tracker rotation complete");
     }
@@ -359,7 +467,7 @@ impl CardinalityTrackerProcessor {
         format!(
           "{} (approximate cardinality):\n{}",
           tracker.name,
-          tracker.tracker.to_admin_output()
+          snapshot_to_admin_output(tracker.tracker.snapshot())
         )
       })
       .join("\n\n");
