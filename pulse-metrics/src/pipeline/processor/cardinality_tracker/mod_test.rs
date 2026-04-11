@@ -384,9 +384,8 @@ async fn emit_cardinality_gauges() {
       ("value", "new:metric"),
     ],
   );
-  assert_cardinality_gauge(
+  assert_cardinality_gauge_absent(
     &helper,
-    0,
     &[
       ("tracker_name", "top metric by name"),
       ("value", "old:metric"),
