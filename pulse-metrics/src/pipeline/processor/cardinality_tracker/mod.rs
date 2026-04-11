@@ -99,9 +99,8 @@ impl GaugeEmitter {
         }
 
         for value in previous_values.difference(&active_values) {
-          gauges
-            .with_label_values(&[tracker_name.as_str(), value.as_str()])
-            .set(0);
+          let removed = gauges.remove_label_values(&[tracker_name.as_str(), value.as_str()]);
+          debug_assert!(removed.is_ok());
         }
 
         *previous_values = active_values;
