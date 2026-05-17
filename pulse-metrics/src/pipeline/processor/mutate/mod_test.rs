@@ -245,6 +245,122 @@ async fn flatten_summary() {
 }
 
 #[tokio::test]
+async fn change_mtype_counter_to_gauge() {
+  let mut helper = Helper::new(
+    r#"
+.mtype = "gauge"
+    "#,
+  );
+
+  helper
+    .expect_send_and_receive(
+      make_abs_counter("foo", &[("tag", "value")], 0, 1.0),
+      vec![make_gauge("foo", &[("tag", "value")], 0, 1.0)],
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn change_mtype_gauge_to_delta_gauge() {
+  let mut helper = Helper::new(
+    r#"
+.mtype = "delta_gauge"
+    "#,
+  );
+
+  helper
+    .expect_send_and_receive(
+      make_gauge("foo", &[("tag", "value")], 0, 1.0),
+      vec![make_metric_ex(
+        "foo",
+        &[("tag", "value")],
+        0,
+        Some(MetricType::DeltaGauge),
+        None,
+        MetricValue::Simple(1.0),
+        MetricSource::PromRemoteWrite,
+        DownstreamId::LocalOrigin,
+        None,
+      )],
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn reject_histogram_mtype_change() {
+  let helper = Helper::new(
+    r#"
+.mtype = "counter"
+    "#,
+  );
+
+  helper
+    .processor
+    .clone()
+    .recv_samples(vec![make_metric_ex(
+      "foo",
+      &[],
+      0,
+      Some(MetricType::Histogram),
+      None,
+      MetricValue::Histogram(HistogramData {
+        buckets: vec![HistogramBucket {
+          le: 3.0,
+          count: 1.0,
+        }],
+        sample_count: 1.0,
+        sample_sum: 2.0,
+      }),
+      MetricSource::PromRemoteWrite,
+      DownstreamId::LocalOrigin,
+      None,
+    )])
+    .await;
+
+  helper
+    .helper
+    .stats_helper
+    .assert_counter_eq(1, "processor:drop_error", &labels! {});
+}
+
+#[tokio::test]
+async fn reject_summary_mtype_change() {
+  let helper = Helper::new(
+    r#"
+.mtype = "counter"
+    "#,
+  );
+
+  helper
+    .processor
+    .clone()
+    .recv_samples(vec![make_metric_ex(
+      "foo",
+      &[],
+      0,
+      Some(MetricType::Summary),
+      None,
+      MetricValue::Summary(SummaryData {
+        quantiles: vec![SummaryBucket {
+          quantile: 3.0,
+          value: 1.0,
+        }],
+        sample_count: 1.0,
+        sample_sum: 2.0,
+      }),
+      MetricSource::PromRemoteWrite,
+      DownstreamId::LocalOrigin,
+      None,
+    )])
+    .await;
+
+  helper
+    .helper
+    .stats_helper
+    .assert_counter_eq(1, "processor:drop_error", &labels! {});
+}
+
+#[tokio::test]
 async fn modify_all_tags() {
   let mut helper = Helper::new(
     r#"
@@ -765,6 +881,19 @@ fn editable_parsed_metric() {
     editable_metric.change_name("foo".into());
     drop(editable_metric);
     assert_eq!(metric, make_abs_counter("foo", &[], 0, 1.0));
+    assert_matches!(metric.cached_metric(), CachedMetric::NotInitialized);
+  }
+
+  {
+    let mut metric = make_abs_counter("prod:some_service:test:name", &[], 0, 1.0);
+    metric.initialize_cache(&metric_cache);
+    let mut editable_metric = EditableParsedMetric::new(&mut metric);
+    editable_metric.change_mtype(b"gauge").unwrap();
+    drop(editable_metric);
+    assert_eq!(
+      metric,
+      make_gauge("prod:some_service:test:name", &[], 0, 1.0)
+    );
     assert_matches!(metric.cached_metric(), CachedMetric::NotInitialized);
   }
 
