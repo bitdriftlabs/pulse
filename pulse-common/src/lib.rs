@@ -3,7 +3,7 @@
 //
 // Use of this source code is governed by a source available license that can be found in the
 // LICENSE file or at:
-// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+// https://polyformproject.org/licenses/strict/1.0.0.txt
 
 pub mod bind_resolver;
 pub mod k8s;
@@ -15,7 +15,7 @@ use bd_log::SwapLogger;
 use bd_panic::PanicType;
 
 #[cfg(test)]
-#[ctor::ctor]
+#[ctor::ctor(unsafe)]
 fn test_global_init() {
   global_initialize();
 }

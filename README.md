@@ -169,8 +169,8 @@ pulse-vrl-tester binaries.
 
 ## License
 
-The source code is licensed using [PolyForm Shield](LICENSE). If you are an end user, broadly you
-can do whatever you want with this code. See the [License FAQ](LICENSE_FAQ.md) for more information.
+The source code is licensed using [PolyForm Strict](LICENSE). See the [License FAQ](LICENSE_FAQ.md)
+for more information.
 
 ## Support
 

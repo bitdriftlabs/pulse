@@ -3,7 +3,7 @@
 //
 // Use of this source code is governed by a source available license that can be found in the
 // LICENSE file or at:
-// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+// https://polyformproject.org/licenses/strict/1.0.0.txt
 
 use super::{MetricCache, MetricKey};
 use crate::lru_map::Equivalent;
@@ -154,7 +154,7 @@ fn slots() {
 
   // The retention is currently hard coded to 1 hour, make sure that if we advance past that, but
   // with the same metric, we retain the previous metric and bump the time.
-  let metric1 = make_metric("metric1", &metric_cache, now + Duration::from_secs(61 * 60));
+  let metric1 = make_metric("metric1", &metric_cache, now + Duration::from_mins(61));
   assert_matches!(
     metric1
       .cached_metric()
@@ -163,11 +163,7 @@ fn slots() {
   );
 
   // Advance further with a new metric, this should LRU metric1.
-  let metric2 = make_metric(
-    "metric2",
-    &metric_cache,
-    now + Duration::from_secs(122 * 60),
-  );
+  let metric2 = make_metric("metric2", &metric_cache, now + Duration::from_mins(122));
   assert_matches!(
     metric2
       .cached_metric()
@@ -175,11 +171,7 @@ fn slots() {
       .get_or_init(&handle1, || 1000_u64),
     GetOrInitResult::Inserted(_)
   );
-  let metric1 = make_metric(
-    "metric1",
-    &metric_cache,
-    now + Duration::from_secs(122 * 60),
-  );
+  let metric1 = make_metric("metric1", &metric_cache, now + Duration::from_mins(122));
   assert_matches!(
     metric1
       .cached_metric()
@@ -199,7 +191,7 @@ fn metric_cache_overflow() {
   let metric2 = make_metric("metric2", &metric_cache, now);
   assert_matches!(metric2.cached_metric(), CachedMetric::Overflow);
 
-  let metric2 = make_metric("metric2", &metric_cache, now + Duration::from_secs(61 * 60));
+  let metric2 = make_metric("metric2", &metric_cache, now + Duration::from_mins(61));
   assert_matches!(metric2.cached_metric(), CachedMetric::Loaded(_, _));
 }
 

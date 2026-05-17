@@ -3,7 +3,7 @@
 //
 // Use of this source code is governed by a source available license that can be found in the
 // LICENSE file or at:
-// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+// https://polyformproject.org/licenses/strict/1.0.0.txt
 
 use crate::{ServerHooks, run_server};
 use axum::extract::{Request, State};
@@ -100,7 +100,7 @@ async fn write_all(stream: &mut TcpStream, lines: &[&str]) {
 async fn make_admin_request(addr: SocketAddr, path: &str) -> String {
   let client = Client::builder(TokioExecutor::new()).build_http::<Empty<Bytes>>();
   let response = client
-    .get(format!("http://{addr}{path}",).try_into().unwrap())
+    .get(format!("http://{addr}{path}").try_into().unwrap())
     .await
     .unwrap();
   assert!(response.status().is_success());
@@ -176,7 +176,7 @@ impl HelperBindResolver {
       .lock()
       .get(name)
       .unwrap_or_else(|| {
-        panic!("bind resolver could not find TCP '{name}'. Make sure it is registered.",)
+        panic!("bind resolver could not find TCP '{name}'. Make sure it is registered.")
       })
       .local_addr()
   }
@@ -190,7 +190,7 @@ impl HelperBindResolver {
       .lock()
       .remove(name)
       .unwrap_or_else(|| {
-        panic!("bind resolver could not find UDP '{name}'. Make sure it is registered.",)
+        panic!("bind resolver could not find UDP '{name}'. Make sure it is registered.")
       })
       .local_addr()
       .unwrap()
