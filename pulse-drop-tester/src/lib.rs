@@ -3,7 +3,7 @@
 //
 // Use of this source code is governed by a source available license that can be found in the
 // LICENSE file or at:
-// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+// https://polyformproject.org/licenses/strict/1.0.0.txt
 
 #[cfg(test)]
 mod test;
@@ -27,7 +27,7 @@ use pulse_protobuf::protos::pulse::drop_tester::v1::drop_tester::drop_test_case:
 use pulse_protobuf::protos::pulse::drop_tester::v1::drop_tester::{DropTestCase, DropTesterConfig};
 use std::time::Instant;
 
-#[ctor::ctor]
+#[ctor::ctor(unsafe)]
 fn global_init() {
   bd_log::SwapLogger::initialize();
 }

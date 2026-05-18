@@ -3,7 +3,7 @@
 //
 // Use of this source code is governed by a source available license that can be found in the
 // LICENSE file or at:
-// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+// https://polyformproject.org/licenses/strict/1.0.0.txt
 
 use protobuf_codegen::Customize;
 use std::path::Path;
@@ -13,7 +13,7 @@ const GENERATED_HEADER: &str = r"// proto - bitdrift's client/server API definit
 //
 // Use of this source code and APIs are governed by a source available license that can be found in
 // the LICENSE file or at:
-// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+// https://polyformproject.org/licenses/strict/1.0.0.txt
 ";
 
 fn generate_directory(root_path: &Path, partial_path: &Path) {

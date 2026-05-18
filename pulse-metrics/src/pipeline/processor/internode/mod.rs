@@ -3,7 +3,7 @@
 //
 // Use of this source code is governed by a source available license that can be found in the
 // LICENSE file or at:
-// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+// https://polyformproject.org/licenses/strict/1.0.0.txt
 
 #[cfg(test)]
 #[path = "./mod_test.rs"]
@@ -26,7 +26,7 @@ use backoff::ExponentialBackoffBuilder;
 use bd_grpc::compression::Compression;
 use bd_grpc::service::ServiceMethod;
 use bd_grpc::stats::EndpointStats;
-use bd_grpc::{Handler, make_unary_router};
+use bd_grpc::{Handler, UnaryRouterBuilder};
 use bd_log::warn_every;
 use bd_server_stats::stats::{AutoGauge, Scope};
 use bd_shutdown::{ComponentShutdown, ComponentShutdownTriggerHandle};
@@ -735,6 +735,7 @@ impl Handler<LastElidedTimestampRequest, LastElidedTimestampResponse> for Intern
       Err(e) => Err(bd_grpc::error::Error::Grpc(bd_grpc::status::Status::new(
         bd_grpc_codec::code::Code::Internal,
         e.to_string(),
+        None,
       ))),
     }
   }
@@ -756,51 +757,48 @@ impl Handler<ReadyRequest, ReadyResponse> for InternodeHandler {
 }
 
 fn make_router(handler: &Arc<InternodeHandler>) -> Router {
-  make_unary_router(
+  UnaryRouterBuilder::new(
     &ServiceMethod::<InternodeMetricsRequest, InternodeMetricsResponse>::new(
       "Internode",
       "InternodeMetrics",
     ),
     handler.clone(),
-    |_| {},
-    Some(&handler.endpoint_stats),
-    false,
   )
+  .error_handler(|_| {})
+  .endpoint_stats(&handler.endpoint_stats)
+  .build()
   .unwrap()
   .merge(
-    make_unary_router(
+    UnaryRouterBuilder::new(
       &ServiceMethod::<PeersComparisonRequest, PeersComparisonResponse>::new(
         "Internode",
         "GetPeersComparison",
       ),
       handler.clone(),
-      |_| {},
-      None,
-      false,
     )
+    .error_handler(|_| {})
+    .build()
     .unwrap(),
   )
   .merge(
-    make_unary_router(
+    UnaryRouterBuilder::new(
       &ServiceMethod::<LastElidedTimestampRequest, LastElidedTimestampResponse>::new(
         "Internode",
         "LastElidedTimestamp",
       ),
       handler.clone(),
-      |_| {},
-      None,
-      false,
     )
+    .error_handler(|_| {})
+    .build()
     .unwrap(),
   )
   .merge(
-    make_unary_router(
+    UnaryRouterBuilder::new(
       &ServiceMethod::<ReadyRequest, ReadyResponse>::new("Internode", "Ready"),
       handler.clone(),
-      |_| {},
-      None,
-      false,
     )
+    .error_handler(|_| {})
+    .build()
     .unwrap(),
   )
 }

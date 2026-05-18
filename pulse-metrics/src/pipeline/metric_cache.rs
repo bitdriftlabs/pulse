@@ -3,7 +3,7 @@
 //
 // Use of this source code is governed by a source available license that can be found in the
 // LICENSE file or at:
-// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+// https://polyformproject.org/licenses/strict/1.0.0.txt
 
 #[cfg(test)]
 #[path = "./metric_cache_test.rs"]
@@ -421,7 +421,7 @@ impl MetricCache {
 
   pub fn get(self: &Arc<Self>, metric: &Metric, received_at: Instant) -> CachedMetric {
     // TODO(mattklein123): Make this configurable.
-    const MAX_AGE: Duration = Duration::from_secs(60 * 60);
+    const MAX_AGE: Duration = Duration::from_hours(1);
 
     // First, try to get the metric without obtaining a write lock.
     if let Some(cached_metric) = self.cache.get(metric.get_id())

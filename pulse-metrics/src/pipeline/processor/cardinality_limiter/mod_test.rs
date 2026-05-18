@@ -3,7 +3,7 @@
 //
 // Use of this source code is governed by a source available license that can be found in the
 // LICENSE file or at:
-// https://polyformproject.org/wp-content/uploads/2020/06/PolyForm-Shield-1.0.0.txt
+// https://polyformproject.org/licenses/strict/1.0.0.txt
 
 use crate::pipeline::processor::PipelineProcessor;
 use crate::pipeline::processor::cardinality_limiter::CardinalityLimiterProcessor;
@@ -73,7 +73,7 @@ async fn all_per_pod() {
           ..Default::default()
         })),
         buckets: 2,
-        rotate_after: Some(Duration::from_secs(600).into()).into(),
+        rotate_after: Some(Duration::from_mins(10).into()).into(),
         ..Default::default()
       },
       context,
@@ -152,7 +152,7 @@ async fn all_per_pod() {
 
   // Rotate twice to make sure everything is cleared.
   tokio::time::sleep(Duration::from_secs(601)).await;
-  tokio::time::sleep(Duration::from_secs(600)).await;
+  tokio::time::sleep(Duration::from_mins(10)).await;
 
   // Send some new metrics and make sure they get through.
   make_mut(&mut helper.dispatcher)
@@ -190,7 +190,7 @@ async fn all_global() {
           ..Default::default()
         })),
         buckets: 2,
-        rotate_after: Some(Duration::from_secs(600).into()).into(),
+        rotate_after: Some(Duration::from_mins(10).into()).into(),
         ..Default::default()
       },
       context,
@@ -256,7 +256,7 @@ async fn all_global() {
     .assert_counter_eq(2, "processor:drop", &labels! {});
 
   // Rotate out. We should still have 1 in the second bucket.
-  tokio::time::sleep(Duration::from_secs(600)).await;
+  tokio::time::sleep(Duration::from_mins(10)).await;
 
   make_mut(&mut helper.dispatcher)
     .expect_send()
