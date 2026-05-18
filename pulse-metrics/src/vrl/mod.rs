@@ -18,6 +18,7 @@ use vrl::compiler::state::{ExternalEnv, RuntimeState};
 use vrl::compiler::{
   CompileConfig,
   Context,
+  ExpressionError,
   OwnedValueOrRef,
   Program,
   Resolved,
@@ -43,6 +44,7 @@ mod pulse_log;
 struct EditableMetricVrlTarget<'a> {
   metric: EditableParsedMetric<'a>,
   flatten_prom_histogram_and_summary: bool,
+  runtime_error: Option<&'static str>,
 }
 
 impl<'a> EditableMetricVrlTarget<'a> {
@@ -50,6 +52,7 @@ impl<'a> EditableMetricVrlTarget<'a> {
     Self {
       metric,
       flatten_prom_histogram_and_summary: false,
+      runtime_error: None,
     }
   }
 }
@@ -89,6 +92,18 @@ impl Target for EditableMetricVrlTarget<'_> {
                 .ok_or_else(|| "assigning to name requires a string".to_string())?
                 .clone(),
             );
+          },
+          [mtype] if mtype == "mtype" => {
+            let Some(mtype) = value.as_bytes() else {
+              self
+                .runtime_error
+                .get_or_insert("assigning to mtype requires a string");
+              return Ok(());
+            };
+
+            if let Err(error) = self.metric.change_mtype(mtype) {
+              self.runtime_error.get_or_insert(error);
+            }
           },
           [tags, tag_name] if tags == "tags" => {
             self.metric.add_or_change_tag(TagValue {
@@ -368,9 +383,18 @@ impl ProgramWrapper {
       Context::new(&mut target, &mut state, &timezone).with_dynamic_state(&mut dynamic_data);
     let resolved = self.program.resolve(&mut ctx);
     let flatten_prom_histogram_and_summary = target.flatten_prom_histogram_and_summary;
+    let runtime_error = target.runtime_error;
 
     // Drop target to release mutable borrow of sample before applying downstream ID suffix.
     drop(target);
+
+    let resolved = match (resolved, runtime_error) {
+      (
+        Ok(_) | Err(ExpressionError::Return { .. } | ExpressionError::Abort { .. }),
+        Some(error),
+      ) => Err(ExpressionError::from(error)),
+      (resolved, _) => resolved,
+    };
 
     // Apply downstream ID suffix if set by VRL program.
     if let Some(suffix) = dynamic_data.downstream_id_suffix {

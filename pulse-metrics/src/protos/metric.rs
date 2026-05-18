@@ -618,6 +618,7 @@ pub struct EditableParsedMetric<'a> {
   metric: &'a mut ParsedMetric,
   tag_insertion_index: Option<usize>,
   name_changed: bool,
+  mtype_changed: bool,
   deleted_tags: Option<Vec<bool>>,
 }
 
@@ -627,6 +628,7 @@ impl<'a> EditableParsedMetric<'a> {
       metric,
       tag_insertion_index: None,
       name_changed: false,
+      mtype_changed: false,
       deleted_tags: None,
     }
   }
@@ -736,6 +738,28 @@ impl<'a> EditableParsedMetric<'a> {
     self.name_changed = true;
   }
 
+  pub fn change_mtype(&mut self, mtype: &[u8]) -> Result<(), &'static str> {
+    if !matches!(self.metric.metric.value, MetricValue::Simple(_)) {
+      return Err("assigning to mtype is only supported for simple metrics");
+    }
+
+    let mtype = match mtype {
+      b"counter" => MetricType::Counter(CounterType::Absolute),
+      b"gauge" => MetricType::Gauge,
+      b"delta_gauge" => MetricType::DeltaGauge,
+      b"direct_gauge" => MetricType::DirectGauge,
+      b"timer" => MetricType::Timer,
+      _ => return Err("assigning to mtype requires a supported metric type string"),
+    };
+
+    if self.metric.metric.id.mtype() != Some(mtype) {
+      self.metric.metric.id.set_mtype(mtype);
+      self.mtype_changed = true;
+    }
+
+    Ok(())
+  }
+
   #[must_use]
   pub fn metric(&self) -> &ParsedMetric {
     self.metric
@@ -765,7 +789,11 @@ impl Drop for EditableParsedMetric<'_> {
       self.metric.metric.id.tags.sort_unstable();
     }
 
-    if self.tag_insertion_index.is_some() || self.name_changed || self.deleted_tags.is_some() {
+    if self.tag_insertion_index.is_some()
+      || self.name_changed
+      || self.mtype_changed
+      || self.deleted_tags.is_some()
+    {
       self.metric.cached_metric = CachedMetric::NotInitialized;
     }
   }
