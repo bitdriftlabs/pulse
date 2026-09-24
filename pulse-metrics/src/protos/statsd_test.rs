@@ -254,7 +254,7 @@ fn invalid_line() {
 fn test_parse_tag() {
   let tag_v: bytes::Bytes = "name:value".into();
   let r = parse_tags(tag_v).unwrap();
-  assert!(r.len() == 1);
+  assert_eq!(r.len(), 1);
   assert_eq!(r[0].tag, "name");
   assert_eq!(r[0].value, "value");
 }
@@ -271,7 +271,7 @@ fn test_parse_tag_naked_single() {
 fn test_parse_tag_complex_name() {
   let tag_v: bytes::Bytes = "name:value:value:value,name2:value2:value2:value2".into();
   let r = parse_tags(tag_v).unwrap();
-  assert!(r.len() == 2);
+  assert_eq!(r.len(), 2);
   assert_eq!(r[0].tag, "name");
   assert_eq!(r[0].value, "value:value:value");
   assert_eq!(r[1].tag, "name2");
@@ -289,7 +289,7 @@ fn test_parse_tag_none() {
 fn test_parse_tag_multiple() {
   let tag_v: bytes::Bytes = "name:value,name2:value2,name3:value3".into();
   let r = parse_tags(tag_v).unwrap();
-  assert!(r.len() == 3);
+  assert_eq!(r.len(), 3);
   assert_eq!(r[0].tag, "name");
   assert_eq!(r[0].value, "value");
   assert_eq!(r[1].tag, "name2");
@@ -302,7 +302,7 @@ fn test_parse_tag_multiple() {
 fn test_parse_tag_multiple_short() {
   let tag_v: bytes::Bytes = "name:value,name2,name3:value3".into();
   let r = parse_tags(tag_v).unwrap();
-  assert!(r.len() == 3);
+  assert_eq!(r.len(), 3);
   assert_eq!(r[0].tag, "name");
   assert_eq!(r[0].value, "value");
   assert_eq!(r[1].tag, "name2");

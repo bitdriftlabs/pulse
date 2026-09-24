@@ -22,7 +22,7 @@ use crate::protos::metric::{
 };
 use crate::vrl::{ProgramWrapper, PulseDynamicState};
 use async_trait::async_trait;
-use bd_log::warn_every;
+use bd_log_util::warn_every;
 use bd_server_stats::stats::Scope;
 use bytes::BytesMut;
 use itertools::Either;
@@ -231,7 +231,7 @@ impl PipelineProcessor for MutateProcessor {
           Err(e) => {
             // We assume that errors are not intentional and are either an issue in the environment
             // or a bug in the script so in this case warn the user.
-            warn_every!(1.minutes(), "metric drop due to VRL error: {}", e);
+            warn_every!(1.minutes(), "metric drop due to VRL error: {e}");
             self.stats.drop_error.inc();
             Either::Right(Either::Right(empty()))
           },

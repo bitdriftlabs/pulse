@@ -17,7 +17,7 @@ use aws_sdk_sqs::Client;
 use aws_sdk_sqs::config::StalledStreamProtectionConfig;
 use aws_sdk_sqs::types::DeleteMessageBatchRequestEntry;
 use base64ct::{Base64Unpadded, Encoding};
-use bd_log::warn_every;
+use bd_log_util::warn_every;
 use bytes::Bytes;
 use http::HeaderMap;
 use itertools::Itertools;
@@ -170,7 +170,7 @@ pub async fn maybe_queue_for_retry(
     * (u32::try_from(serialized.retry_attempts()).unwrap());
 
   if let Err(e) = offload_queue.queue_write_request(serialized, backoff).await {
-    warn_every!(15.seconds(), "failed to queue to offload: {}", e);
+    warn_every!(15.seconds(), "failed to queue to offload: {e}");
     return false;
   }
 

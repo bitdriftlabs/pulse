@@ -52,6 +52,7 @@ impl ServerHooks for NullHooks {
   async fn server_started(&self, _collector: Collector) {}
 }
 
+#[allow(clippy::large_futures)]
 fn main() -> anyhow::Result<()> {
   global_initialize();
   let opts = Options::parse();

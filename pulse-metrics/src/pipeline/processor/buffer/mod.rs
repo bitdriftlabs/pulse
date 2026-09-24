@@ -13,7 +13,7 @@ use super::{PipelineProcessor, ProcessorFactoryContext};
 use crate::pipeline::PipelineDispatch;
 use crate::protos::metric::ParsedMetric;
 use async_trait::async_trait;
-use bd_log::warn_every;
+use bd_log_util::warn_every;
 use bd_shutdown::ComponentShutdown;
 use event_listener::{Event, listener};
 use parking_lot::Mutex;

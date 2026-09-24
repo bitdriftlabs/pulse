@@ -26,7 +26,7 @@ use crate::protos::metric::{
   default_timestamp,
 };
 use async_trait::async_trait;
-use bd_log::warn_every;
+use bd_log_util::warn_every;
 use bd_server_stats::stats::Scope;
 use bd_shutdown::{ComponentShutdown, ComponentShutdownTrigger, ComponentShutdownTriggerHandle};
 use bd_time::{ProtoDurationExt, TimeDurationExt};
@@ -569,9 +569,7 @@ impl<Jitter: DurationJitter + 'static> Scraper<Jitter> {
           } else {
             warn_every!(
               1.minutes(),
-              "failed to scrape prometheus endpoint {}, got {} code",
-              id,
-              status
+              "failed to scrape prometheus endpoint {id}, got {status} code"
             );
             self.stats.scrape_failure.inc();
             None
@@ -580,9 +578,7 @@ impl<Jitter: DurationJitter + 'static> Scraper<Jitter> {
         Err(e) => {
           warn_every!(
             1.minutes(),
-            "failed to scrape prometheus endpoint {}: {:#}",
-            id,
-            e
+            "failed to scrape prometheus endpoint {id}: {e:#}"
           );
           self.stats.scrape_failure.inc();
           None
@@ -604,12 +600,7 @@ impl<Jitter: DurationJitter + 'static> Scraper<Jitter> {
             Some(metrics)
           },
           Err(e) => {
-            warn_every!(
-              1.minutes(),
-              "failed to parse prom response from {}: {}",
-              id,
-              e
-            );
+            warn_every!(1.minutes(), "failed to parse prom response from {id}: {e}");
             self.stats.parse_failure.inc();
             None
           },

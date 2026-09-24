@@ -13,7 +13,7 @@ use crate::pipeline::PipelineDispatch;
 use crate::pipeline::inflow::wire::pre_buffer::PreBuffer;
 use crate::pipeline::time::{DurationJitter, RealDurationJitter};
 use crate::protos::metric::{DownstreamId, ParsedMetric};
-use bd_log::warn_every;
+use bd_log_util::warn_every;
 use bd_server_stats::stats::{AutoGauge, Scope};
 use bd_shutdown::ComponentShutdown;
 use bd_time::{ProtoDurationExt, TimeDurationExt};
@@ -118,8 +118,7 @@ pub(super) fn bind_k8s_metadata(
     } else {
       warn_every!(
         1.minutes(),
-        "dropping metrics from '{}' due to missing Kubernetes pod metadata",
-        ip_addr
+        "dropping metrics from '{ip_addr}' due to missing Kubernetes pod metadata"
       );
       no_k8s_pod_metadata.inc_by(metrics.len().try_into().unwrap());
       metrics.clear();
@@ -149,10 +148,7 @@ pub(super) fn parse_lines(
       Err(e) => {
         warn_every!(
           15.seconds(),
-          "parse failure {:?}. (original line: {:?}). source address: {:?}",
-          e,
-          line,
-          downstream_id
+          "parse failure {e:?}. (original line: {line:?}). source address: {downstream_id:?}"
         );
 
         unparsable.inc();

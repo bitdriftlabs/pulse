@@ -25,7 +25,7 @@ use crate::protos::metric::{
 use anyhow::bail;
 use async_trait::async_trait;
 use axum::response::Response;
-use bd_log::warn_every;
+use bd_log_util::warn_every;
 use bytes::Bytes;
 use hashbrown::HashMap;
 use http::{HeaderMap, StatusCode};
@@ -102,7 +102,7 @@ fn kv_to_iterator(metadata: Vec<KeyValue>) -> impl Iterator<Item = (Bytes, Bytes
       None => None,
       Some(AnyValue::StringValue(v)) => Some(v),
       e => {
-        warn_every!(1.minutes(), "unsupported OTLP KeyValue type: {:?}", e);
+        warn_every!(1.minutes(), "unsupported OTLP KeyValue type: {e:?}");
         None
       },
     };
@@ -341,7 +341,7 @@ fn metric_to_samples(
         ) {
           Ok(sample) => samples.push(sample),
           Err(e) => {
-            warn_every!(1.minutes(), "failed to parse histogram: {}", e);
+            warn_every!(1.minutes(), "failed to parse histogram: {e}");
             return None;
           },
         }

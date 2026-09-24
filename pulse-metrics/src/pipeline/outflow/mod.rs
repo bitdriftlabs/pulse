@@ -108,6 +108,7 @@ pub struct OutflowFactoryContext {
   pub shutdown_trigger_handle: ComponentShutdownTriggerHandle,
 }
 
+#[allow(clippy::large_futures)]
 pub async fn to_outflow(
   config: OutflowConfig,
   context: OutflowFactoryContext,

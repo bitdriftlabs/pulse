@@ -92,6 +92,7 @@ pub fn make_prom_batch_router(
   }
 }
 
+#[allow(clippy::large_futures)]
 pub async fn make_prom_outflow(
   config: PromRemoteWriteClientConfig,
   context: OutflowFactoryContext,

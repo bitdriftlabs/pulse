@@ -96,6 +96,7 @@ pub fn build_stats_provider(config: &Config) -> anyhow::Result<StatsProvider> {
   Ok(StatsProvider::new(meta_node_id, meta_tags))
 }
 
+#[allow(clippy::large_futures)]
 pub async fn run_server<
   ShutdownFuture: Future<Output = ()>,
   K8sWatchFuture: Future<Output = anyhow::Result<Arc<PodsInfoSingleton>>> + Send + 'static,

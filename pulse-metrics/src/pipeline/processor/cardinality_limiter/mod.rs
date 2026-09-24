@@ -15,7 +15,7 @@ use crate::protos::metric::{MetricId, ParsedMetric};
 use crate::vrl::{ProgramWrapper, PulseDynamicState};
 use ahash::{HashMap, HashMapExt};
 use async_trait::async_trait;
-use bd_log::warn_every;
+use bd_log_util::warn_every;
 use bd_server_stats::stats::Scope;
 use bd_shutdown::{ComponentShutdown, ComponentShutdownTriggerHandle};
 use bd_time::TimeDurationExt;
@@ -216,8 +216,7 @@ impl<H: Hasher + Default + Send + 'static> K8sPodLimiter<H> {
                 warn_every!(
                   1.minutes(),
                   "cardinality VRL program did not return an integer for '{namespace_and_name}': \
-                   {:?}",
-                  result
+                   {result:?}"
                 );
                 None
               },

@@ -9,7 +9,7 @@ use super::http::remote_write::{BatchRouter, DefaultBatchRouter, HttpRemoteWrite
 use super::{OutflowFactoryContext, OutflowStats};
 use crate::protos::metric::{CounterType, MetricType, ParsedMetric};
 use crate::protos::prom::prom_name;
-use bd_log::warn_every;
+use bd_log_util::warn_every;
 use bd_shutdown::ComponentShutdown;
 use bytes::Bytes;
 use hashbrown::HashMap;
@@ -70,6 +70,7 @@ pub fn make_otlp_batch_router(
   ))
 }
 
+#[allow(clippy::large_futures)]
 pub async fn make_otlp_outflow(
   config: OtlpClientConfig,
   context: OutflowFactoryContext,
@@ -288,7 +289,7 @@ pub fn finish_otlp_batch(
       MetricType::Histogram => make_histogram_metric(samples, name, convert_names_to_prom),
       MetricType::Summary => make_summary_metric(samples, name, convert_names_to_prom),
       MetricType::DeltaGauge | MetricType::Timer | MetricType::BulkTimer => {
-        warn_every!(1.minutes(), "unsupported OTLP metric type: {:?}", mtype);
+        warn_every!(1.minutes(), "unsupported OTLP metric type: {mtype:?}");
         None
       },
     };

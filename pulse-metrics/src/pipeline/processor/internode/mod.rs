@@ -27,7 +27,7 @@ use bd_grpc::compression::Compression;
 use bd_grpc::service::ServiceMethod;
 use bd_grpc::stats::EndpointStats;
 use bd_grpc::{Handler, UnaryRouterBuilder};
-use bd_log::warn_every;
+use bd_log_util::warn_every;
 use bd_server_stats::stats::{AutoGauge, Scope};
 use bd_shutdown::{ComponentShutdown, ComponentShutdownTriggerHandle};
 use bd_time::ProtoDurationExt;
@@ -403,8 +403,7 @@ impl InternodeProcessor {
 
           warn_every!(
             15.seconds(),
-            "internode call error, falling back to local {:?}",
-            e
+            "internode call error, falling back to local {e:?}"
           );
           self.stats.internode_failure.inc();
           self

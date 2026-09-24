@@ -124,7 +124,7 @@ fn snapshot_to_admin_output(snapshot: TrackerSnapshot) -> String {
       || " populating".to_string(),
       |previous_topk| {
         let mut table = Table::new();
-        table.load_preset(NOTHING);
+        table.load_style(NOTHING);
         for (key, count) in previous_topk {
           table.add_row(vec![
             std::string::String::from_utf8_lossy(&key).to_string(),

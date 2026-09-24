@@ -44,6 +44,7 @@ fn advance_metrics(metrics: &[ParsedMetric], value: f64) -> Vec<ParsedMetric> {
 }
 
 #[tokio::main]
+#[allow(clippy::large_futures)]
 pub async fn main() {
   global_initialize();
 

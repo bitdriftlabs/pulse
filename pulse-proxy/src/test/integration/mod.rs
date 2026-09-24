@@ -244,6 +244,7 @@ impl Helper {
     Self::new_with_k8s(config_yaml, bind_resolver, None).await
   }
 
+  #[allow(clippy::large_futures)]
   pub async fn new_with_k8s(
     config_yaml: &str,
     bind_resolver: Arc<dyn BindResolver>,
@@ -302,7 +303,7 @@ struct FakeRemoteFileSource {
 }
 
 impl FakeRemoteFileSource {
-  #[allow(clippy::unused_async)]
+  #[allow(clippy::unused_async, clippy::unused_async_trait_impl)]
   async fn handler(
     State(state): State<Arc<Self>>,
     request: Request,

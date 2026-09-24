@@ -27,7 +27,7 @@ use super::metric::{
   TagValue,
   unwrap_timestamp,
 };
-use bd_log::warn_every;
+use bd_log_util::warn_every;
 use bd_proto::protos::prometheus::prompb;
 use bd_server_stats::stats::{Collector, Scope};
 use bytes::{BufMut, Bytes, BytesMut};
@@ -339,10 +339,7 @@ impl ChangedTypeTracker {
 
     warn_every!(
       15.seconds(),
-      "mismatched metric types for {}: {:?} != {:?}",
-      family_name,
-      old,
-      new
+      "mismatched metric types for {family_name}: {old:?} != {new:?}"
     );
   }
 }
@@ -706,8 +703,7 @@ fn timeseries_to_metrics(
         if s.bulk_values.is_empty() {
           warn_every!(
             15.seconds(),
-            "ignoring prom sample with empty bulk values: {}",
-            id
+            "ignoring prom sample with empty bulk values: {id}"
           );
           return None;
         }

@@ -13,7 +13,7 @@ use axum::extract::{ConnectInfo, Request, State};
 use axum::response::Response;
 use axum::routing::{get, post};
 use bd_grpc::axum_helper::serve_with_connect_info;
-use bd_log::warn_every;
+use bd_log_util::warn_every;
 use bd_server_stats::stats::{AutoGauge, Scope};
 use bd_shutdown::ComponentShutdownTriggerHandle;
 use bytes::{BufMut, Bytes, BytesMut};
@@ -122,7 +122,7 @@ impl HttpInflow {
         shutdown.cancelled(),
       )
       .await;
-      info!("terminated remote write server running at {}", &self.bind);
+      info!("terminated remote write server running at {}", self.bind);
     });
   }
 }
@@ -170,8 +170,7 @@ impl DownstreamIdProviderImpl {
           .or_else(|| {
             warn_every!(
               1.minutes(),
-              "downstream ID header '{}' not found",
-              header_name
+              "downstream ID header '{header_name}' not found"
             );
             None
           }),
@@ -230,9 +229,8 @@ async fn remote_write_handler(
     state.stats.requests_4xx.inc();
     warn_every!(
       1.minutes(),
-      "remote write request body size ({} bytes) exceeds limit ({} bytes)",
-      req_content_length,
-      MAX_ALLOWED_REQUEST_SIZE
+      "remote write request body size ({req_content_length} bytes) exceeds limit \
+       ({MAX_ALLOWED_REQUEST_SIZE} bytes)"
     );
     return Ok(make_error_response(
       StatusCode::PAYLOAD_TOO_LARGE,
