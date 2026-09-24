@@ -15,9 +15,8 @@ use crate::clients::http::{
   HttpRemoteWriteClient,
   HttpRemoteWriteError,
   HyperHttpRemoteWriteClient,
-  should_retry,
 };
-use crate::clients::retry::Retry;
+use crate::clients::retry::make_retry;
 use crate::pipeline::config::{
   DEFAULT_CONNECT_TIMEOUT,
   DEFAULT_REQUEST_TIMEOUT,
@@ -25,12 +24,13 @@ use crate::pipeline::config::{
 };
 use crate::pipeline::outflow::http::retry_offload::maybe_queue_for_retry;
 use crate::pipeline::outflow::{OutflowFactoryContext, OutflowStats, PipelineOutflow};
-use crate::pipeline::time::RealTimeProvider;
+use crate::pipeline::time::{RealTimeProvider, TimeProvider};
 use crate::protos::metric::ParsedMetric;
 use async_trait::async_trait;
 use backoff::ExponentialBackoffBuilder;
 use backoff::backoff::Backoff;
 use bd_log_util::warn_every;
+use bd_otlp_metrics::{BackoffFactory, DeliveryEngine, DeliveryObserver};
 use bd_server_stats::stats::{AutoGauge, Scope};
 use bd_shutdown::{ComponentShutdown, ComponentStatus};
 use bd_time::{ProtoDurationExt, TimeDurationExt};
@@ -73,6 +73,16 @@ struct HttpRemoteWriteOutflowStats {
   offload_queue_tx: IntCounter,
   offload_queue_rx: IntCounter,
   tx_bytes: IntCounter,
+}
+
+impl DeliveryObserver for HttpRemoteWriteOutflowStats {
+  fn request_sent(&self, request_size: usize) {
+    self.tx_bytes.inc_by(request_size as u64);
+  }
+
+  fn request_retry(&self) {
+    self.requests_retry.inc();
+  }
 }
 
 impl HttpRemoteWriteOutflowStats {
@@ -132,12 +142,10 @@ enum SendRequest {
 pub struct HttpRemoteWriteOutflow {
   name: String,
   stats: HttpRemoteWriteOutflowStats,
-  retry: Arc<Retry>,
-  backoff: Arc<dyn Fn() -> Box<dyn Backoff + Send> + Send + Sync>,
+  delivery: Arc<DeliveryEngine>,
   batch_router: Arc<dyn BatchRouter>,
   offload_queue: Option<Arc<dyn OffloadQueue>>,
   semaphore: Arc<Semaphore>,
-  client: Arc<dyn HttpRemoteWriteClient>,
   max_in_flight: usize,
   retry_policy: RetryPolicy,
   request_deserializer: RequestDeserializer,
@@ -205,8 +213,7 @@ impl HttpRemoteWriteOutflow {
     shutdown: ComponentShutdown,
     request_deserializer: RequestDeserializer,
   ) -> anyhow::Result<Arc<Self>> {
-    let stats = HttpRemoteWriteOutflowStats::new(stats);
-    let retry = Retry::new(&retry_policy)?;
+    let retry = make_retry(&retry_policy)?;
     let offload_queue = if let Some(queue_type) = retry_policy
       .offload_queue
       .as_ref()
@@ -223,15 +230,20 @@ impl HttpRemoteWriteOutflow {
       .unwrap();
     let semaphore = Arc::new(Semaphore::new(max_in_flight));
 
+    let stats = HttpRemoteWriteOutflowStats::new(stats);
+    let delivery = Arc::new(DeliveryEngine::new(
+      client.clone(),
+      retry,
+      backoff as BackoffFactory,
+      Arc::new(stats.clone()),
+    ));
     let outflow = Arc::new(Self {
       name,
       stats,
-      retry,
-      backoff,
+      delivery,
       batch_router,
       offload_queue,
       semaphore,
-      client,
       max_in_flight,
       retry_policy,
       request_deserializer,
@@ -287,39 +299,11 @@ impl HttpRemoteWriteOutflow {
           .observe(compressed_write_request.len().lossy_to_f64());
         let time = self.stats.requests_time.start_timer();
         let res = self
-          .retry
-          .retry_notify(
-            (self.backoff)(),
-            || async {
-              self
-                .stats
-                .tx_bytes
-                .inc_by(compressed_write_request.len() as u64);
-
-              match self
-                .client
-                .send_write_request(
-                  compressed_write_request.clone(),
-                  extra_headers.as_ref().map(std::convert::AsRef::as_ref),
-                )
-                .await
-              {
-                Ok(()) => Ok(()),
-                Err(e) => {
-                  // Skip retries if shutdown is pending.
-                  if should_retry(&e)
-                    && shutdown.component_status() != ComponentStatus::PendingShutdown
-                  {
-                    Err(backoff::Error::transient(e))
-                  } else {
-                    Err(backoff::Error::permanent(e))
-                  }
-                },
-              }
-            },
-            || {
-              self.stats.requests_retry.inc();
-            },
+          .delivery
+          .send(
+            compressed_write_request.clone(),
+            extra_headers.as_ref().map(std::convert::AsRef::as_ref),
+            shutdown.component_status() == ComponentStatus::PendingShutdown,
           )
           .await;
 
@@ -347,7 +331,7 @@ impl HttpRemoteWriteOutflow {
                 &compressed_write_request,
                 extra_headers.clone(),
                 num_metrics,
-                &RealTimeProvider {},
+                RealTimeProvider {}.unix_now(),
               ),
               &RealTimeProvider {},
             )

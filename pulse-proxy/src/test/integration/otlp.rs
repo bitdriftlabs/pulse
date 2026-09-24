@@ -6,6 +6,20 @@
 // https://polyformproject.org/licenses/strict/1.0.0.txt
 
 use crate::test::integration::{FakeHttpUpstream, Helper, HelperBindResolver, OtlpClient};
+use bd_otlp_metrics::protos::common::any_value::Value;
+use bd_otlp_metrics::protos::common::{AnyValue, InstrumentationScope, KeyValue};
+use bd_otlp_metrics::protos::metrics::metric::Data;
+use bd_otlp_metrics::protos::metrics::{
+  AggregationTemporality,
+  Metric,
+  NumberDataPoint,
+  ResourceMetrics,
+  ScopeMetrics,
+  Sum,
+  number_data_point,
+};
+use bd_otlp_metrics::protos::metrics_service::ExportMetricsServiceRequest;
+use bd_otlp_metrics::protos::resource::Resource;
 use pretty_assertions::assert_eq;
 use protobuf::Message;
 use pulse_metrics::clients::http::HttpRemoteWriteClient;
@@ -20,20 +34,6 @@ use pulse_metrics::protos::metric::{
   SummaryData,
 };
 use pulse_metrics::test::{make_abs_counter, make_gauge, make_metric, make_metric_ex};
-use pulse_protobuf::protos::opentelemetry::common::any_value::Value;
-use pulse_protobuf::protos::opentelemetry::common::{AnyValue, InstrumentationScope, KeyValue};
-use pulse_protobuf::protos::opentelemetry::metrics::metric::Data;
-use pulse_protobuf::protos::opentelemetry::metrics::{
-  AggregationTemporality,
-  Metric,
-  NumberDataPoint,
-  ResourceMetrics,
-  ScopeMetrics,
-  Sum,
-  number_data_point,
-};
-use pulse_protobuf::protos::opentelemetry::metrics_service::ExportMetricsServiceRequest;
-use pulse_protobuf::protos::opentelemetry::resource::Resource;
 use reusable_fmt::{fmt, fmt_reuse};
 
 fmt_reuse! {

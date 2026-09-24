@@ -14,7 +14,7 @@ use self::shard_map::{ShardMap, shardmap_from_config};
 use super::elision::get_last_elided::GetLastElided;
 use super::{PipelineProcessor, ProcessorFactoryContext};
 use crate::admin::server::Admin;
-use crate::clients::retry::Retry;
+use crate::clients::retry::{Retry, make_retry};
 use crate::pipeline::PipelineDispatch;
 use crate::pipeline::processor::internode::shard_map::peer_list_is_match;
 use crate::protos::metric::ParsedMetric;
@@ -223,7 +223,7 @@ impl InternodeProcessor {
     context: ProcessorFactoryContext,
   ) -> anyhow::Result<Arc<Self>> {
     let stats = Stats::new_with_scope(&context.scope);
-    let retry = Retry::new(&config.request_policy.retry_policy)?;
+    let retry = make_retry(&config.request_policy.retry_policy)?;
 
     let shardmap = match shardmap_from_config(&config, |node_config: &NodeConfig| {
       Client::new(

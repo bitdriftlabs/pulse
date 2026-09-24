@@ -20,95 +20,100 @@ use quickcheck_macros::quickcheck;
 pub mod arbitraries {
   use super::*;
   use crate::test::make_tag;
+  use quickcheck::{Arbitrary, Gen};
 
-  impl quickcheck::Arbitrary for MetricType {
-    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
-      match u8::arbitrary(g) {
-        0 ..= 50 => Self::Counter(CounterType::Delta),
-        51 ..= 101 => Self::DirectGauge,
-        102 ..= 152 => Self::Gauge,
-        153 ..= 255 => Self::Timer,
-      }
+  #[derive(Clone, Debug)]
+  pub struct ArbitraryMetric(pub Metric);
+
+  #[derive(Clone, Debug)]
+  pub struct ArbitraryParsedMetric(pub ParsedMetric);
+
+  fn arbitrary_metric_type(g: &mut Gen) -> MetricType {
+    match u8::arbitrary(g) {
+      0 ..= 50 => MetricType::Counter(CounterType::Delta),
+      51 ..= 101 => MetricType::DirectGauge,
+      102 ..= 152 => MetricType::Gauge,
+      153 ..= 255 => MetricType::Timer,
     }
   }
 
-  impl quickcheck::Arbitrary for MetricId {
-    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
-      let mtype = Option::<MetricType>::arbitrary(g);
+  fn arbitrary_metric_id(g: &mut Gen) -> MetricId {
+    let mtype = bool::arbitrary(g).then(|| arbitrary_metric_type(g));
 
-      // One metric name per type to ensure unqiue metric/type pairs.
-      let name: bytes::Bytes = match mtype {
-        Some(MetricType::Counter(CounterType::Delta)) => "foo.bar.c",
-        Some(MetricType::DeltaGauge) => "foo.bar.baz.g",
-        Some(MetricType::DirectGauge) => "foo.bar.G",
-        Some(MetricType::Gauge) => "foo.bar.g",
-        Some(
-          MetricType::Histogram
-          | MetricType::Summary
-          | MetricType::Counter(CounterType::Absolute)
-          | MetricType::BulkTimer,
-        ) => unreachable!(),
-        Some(MetricType::Timer) => "foo.bar.ms",
-        None => "foo.bar",
-      }
-      .into();
-
-      let potential_tags = [
-        make_tag("name", "value"),
-        make_tag("name2", "value2"),
-        make_tag("name3", "value:value:value"),
-        make_tag("name4", "value2:value2:value2"),
-        make_tag("atag", "avalue:withanextracolon"),
-        make_tag("tags.extra.name", "value=iscool"),
-      ];
-      let n_tags = usize::arbitrary(g) % (potential_tags.len() + 1);
-      let tags = potential_tags[0 .. n_tags].to_vec();
-
-      Self::new(name, mtype, tags, false).unwrap()
+    // One metric name per type to ensure unique metric/type pairs.
+    let name: bytes::Bytes = match mtype {
+      Some(MetricType::Counter(CounterType::Delta)) => "foo.bar.c",
+      Some(MetricType::DeltaGauge) => "foo.bar.baz.g",
+      Some(MetricType::DirectGauge) => "foo.bar.G",
+      Some(MetricType::Gauge) => "foo.bar.g",
+      Some(
+        MetricType::Histogram
+        | MetricType::Summary
+        | MetricType::Counter(CounterType::Absolute)
+        | MetricType::BulkTimer,
+      ) => unreachable!(),
+      Some(MetricType::Timer) => "foo.bar.ms",
+      None => "foo.bar",
     }
+    .into();
+
+    let potential_tags = [
+      make_tag("name", "value"),
+      make_tag("name2", "value2"),
+      make_tag("name3", "value:value:value"),
+      make_tag("name4", "value2:value2:value2"),
+      make_tag("atag", "avalue:withanextracolon"),
+      make_tag("tags.extra.name", "value=iscool"),
+    ];
+    let n_tags = usize::arbitrary(g) % (potential_tags.len() + 1);
+    let tags = potential_tags[0 .. n_tags].to_vec();
+
+    MetricId::new(name, mtype, tags, false).unwrap()
   }
 
-  impl quickcheck::Arbitrary for Metric {
-    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
-      let id = MetricId::arbitrary(g);
+  impl Arbitrary for ArbitraryMetric {
+    fn arbitrary(g: &mut Gen) -> Self {
+      let id = arbitrary_metric_id(g);
       let sample_rate = match u8::arbitrary(g) {
         0 ..= 127 => None,
         128 ..= 255 => Some(1. - f64::from(u8::arbitrary(g)) / 256.),
       };
       // timestamp should be a positive integer
       let timestamp = u64::from(u32::arbitrary(g)) + 1;
-      let value = match id.mtype {
+      let value = match id.mtype() {
         // Gauge is non-negative. Otherwise, it is a DeltaGauge.
         Some(MetricType::Gauge) => f64::from(u16::arbitrary(g)) * 1.25,
         _ => f64::from(i16::arbitrary(g)) * 1.25,
       };
 
-      Self {
+      Self(Metric::new(
         id,
         sample_rate,
         timestamp,
-        value: MetricValue::Simple(value), //
-      }
+        MetricValue::Simple(value),
+      ))
     }
   }
 
-  impl quickcheck::Arbitrary for ParsedMetric {
-    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
-      Self {
-        metric: Metric::arbitrary(g),
+  impl Arbitrary for ArbitraryParsedMetric {
+    fn arbitrary(g: &mut Gen) -> Self {
+      let ArbitraryMetric(metric) = ArbitraryMetric::arbitrary(g);
+      Self(ParsedMetric {
+        metric,
         source: MetricSource::PromRemoteWrite,
         received_at: Instant::now(),
         cached_metric: CachedMetric::Overflow,
         downstream_id: DownstreamId::LocalOrigin,
         metadata: None,
-      }
+      })
     }
   }
 }
 
 #[quickcheck]
 #[allow(clippy::needless_pass_by_value)]
-fn metrics_roundtrip_write_request(input: Vec<ParsedMetric>) -> anyhow::Result<()> {
+fn metrics_roundtrip_write_request(input: Vec<ArbitraryParsedMetric>) -> anyhow::Result<()> {
+  let input: Vec<ParsedMetric> = input.into_iter().map(|metric| metric.0).collect();
   let write_request = ParsedMetric::to_write_request(
     input.clone(),
     &ToWriteRequestOptions {
@@ -210,36 +215,33 @@ fn metrics_from_write_request() {
       },
     );
     assert!(errors.is_empty());
-    let expected_metric_id = MetricId {
-      name: "metric_name".into(),
-      mtype: expected_metric_type,
-      tags: vec![make_tag("tag1", "value1"), make_tag("tag2", "value2")],
-    };
+    let expected_metric_id = MetricId::new(
+      "metric_name".into(),
+      expected_metric_type,
+      vec![make_tag("tag1", "value1"), make_tag("tag2", "value2")],
+      true,
+    )
+    .unwrap();
 
     assert_eq!(
       metrics,
       vec![
-        Metric {
-          id: expected_metric_id.clone(),
-          sample_rate: None,
-          timestamp: 1,
-          value: MetricValue::Simple(5.),
-        },
-        Metric {
-          id: expected_metric_id.clone(),
-          sample_rate: Some(0.5),
-          timestamp: 2,
-          value: MetricValue::Simple(10.),
-        }
+        Metric::new(expected_metric_id.clone(), None, 1, MetricValue::Simple(5.)),
+        Metric::new(
+          expected_metric_id.clone(),
+          Some(0.5),
+          2,
+          MetricValue::Simple(10.)
+        )
       ]
     );
   }
 }
 
 #[quickcheck]
-fn metrics_to_write_request_metadata_only(input: ParsedMetric) {
+fn metrics_to_write_request_metadata_only(input: ArbitraryParsedMetric) {
   let write_request = ParsedMetric::to_write_request(
-    vec![input],
+    vec![input.0],
     &ToWriteRequestOptions {
       metadata: MetadataType::Only,
       convert_name: true,

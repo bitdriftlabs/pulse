@@ -5,6 +5,8 @@
 // LICENSE file or at:
 // https://polyformproject.org/licenses/strict/1.0.0.txt
 
+#![allow(clippy::result_large_err)]
+
 use super::make_tls_connector;
 use async_trait::async_trait;
 use aws_config::identity::IdentityCache;
@@ -32,7 +34,13 @@ use aws_smithy_runtime_api::client::runtime_components::{
 };
 use aws_smithy_types::config_bag::ConfigBag;
 use axum::body::Body;
-use axum::http::{HeaderMap, Request, StatusCode};
+use axum::http::{HeaderMap, Request};
+pub use bd_otlp_metrics::{
+  HttpRemoteWriteClient,
+  HttpRemoteWriteError,
+  MockHttpRemoteWriteClient,
+  should_retry,
+};
 use bd_time::TimeDurationExt;
 use bytes::Bytes;
 use http::Method;
@@ -58,20 +66,6 @@ pub const PROM_REMOTE_WRITE_HEADERS: &[(&str, &str)] = &[
   ("X-Prometheus-Remote-Write-Version", "0.1.0"),
 ];
 
-#[derive(thiserror::Error, Debug)]
-pub enum HttpRemoteWriteError {
-  #[error("AWS error: {0}")]
-  Aws(String),
-  #[error("hyper client error: {0}")]
-  HyperClient(#[from] hyper_util::client::legacy::Error),
-  #[error("IO error: {0}")]
-  Io(#[from] std::io::Error),
-  #[error("response error: {0}: {1}, headers: {2:?}")]
-  Response(StatusCode, String, HeaderMap),
-  #[error("request timeout")]
-  Timeout,
-}
-
 pub type Result<T> = std::result::Result<T, HttpRemoteWriteError>;
 
 struct AwsAuthInner {
@@ -86,18 +80,6 @@ struct AwsAuthInner {
 enum Auth {
   Bearer(String),
   Aws(Box<AwsAuthInner>),
-}
-
-/// A thin client wrapper used for mocking in tests
-#[allow(clippy::ref_option_ref)] // Spurious
-#[mockall::automock]
-#[async_trait]
-pub trait HttpRemoteWriteClient: Send + Sync {
-  async fn send_write_request<'a>(
-    &self,
-    compressed_write_request: Bytes,
-    extra_headers: Option<&'a HeaderMap>,
-  ) -> Result<()>;
 }
 
 pub struct HyperHttpRemoteWriteClient {
@@ -323,18 +305,5 @@ impl HttpRemoteWriteClient for HyperHttpRemoteWriteClient {
       },
       Err(e) => Err(HttpRemoteWriteError::HyperClient(e)),
     }
-  }
-}
-
-#[must_use]
-pub fn should_retry(e: &HttpRemoteWriteError) -> bool {
-  match e {
-    HttpRemoteWriteError::Response(status, ..) => {
-      status.is_server_error() || *status == StatusCode::TOO_MANY_REQUESTS
-    },
-    // This is imperfect and will catch some Hyper errors that likely cannot ever succeed. Still,
-    // it seems safer to just always retry these cases. If nothing is going to succeed (bad host,
-    // whatever) the buffers will just overflow anyway.
-    _ => true,
   }
 }

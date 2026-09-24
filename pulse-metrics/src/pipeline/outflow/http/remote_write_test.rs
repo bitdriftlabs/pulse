@@ -5,6 +5,8 @@
 // LICENSE file or at:
 // https://polyformproject.org/licenses/strict/1.0.0.txt
 
+#![allow(clippy::result_large_err)]
+
 use super::*;
 use crate::clients::http::{HttpRemoteWriteError, MockHttpRemoteWriteClient};
 use crate::pipeline::outflow::prom::make_prom_batch_router;

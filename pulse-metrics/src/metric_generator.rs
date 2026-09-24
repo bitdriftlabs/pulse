@@ -13,6 +13,7 @@ use crate::protos::metric::{
   MetricValue,
   ParsedMetric,
   TagValue,
+  metric_to_wire_format,
 };
 use pulse_protobuf::protos::pulse::config::common::v1::common::WireProtocol;
 use pulse_protobuf::protos::pulse::config::common::v1::common::wire_protocol::Protocol_type;
@@ -145,7 +146,7 @@ impl MetricGenerator {
           MetricValue::Simple(0.0),
         );
 
-        let bytes = metric.to_wire_format(wire_protocol);
+        let bytes = metric_to_wire_format(&metric, wire_protocol);
         let source = match wire_protocol.protocol_type {
           Some(Protocol_type::Statsd(_)) => MetricSource::Statsd(bytes),
           Some(Protocol_type::Carbon(_)) => MetricSource::Carbon(bytes),

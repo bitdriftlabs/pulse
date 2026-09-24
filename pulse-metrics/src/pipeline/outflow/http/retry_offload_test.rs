@@ -7,12 +7,9 @@
 
 use super::maybe_queue_for_retry;
 use crate::clients::http::HttpRemoteWriteError;
-use crate::pipeline::outflow::http::retry_offload::{
-  MockOffloadQueue,
-  OffloadQueue,
-  SerializedOffloadRequest,
-};
-use crate::pipeline::time::TestTimeProvider;
+use crate::pipeline::outflow::http::retry_offload::{OffloadQueue, SerializedOffloadRequest};
+use crate::pipeline::time::{TestTimeProvider, TimeProvider};
+use bd_otlp_metrics::MockOffloadQueue;
 use bd_test_helpers::make_mut;
 use bd_time::ToProtoDuration;
 use bytes::Bytes;
@@ -37,7 +34,7 @@ async fn maybe_queue_for_retry_max_window() {
   let (tx, mut rx) = mpsc::channel(1);
 
   // First try.
-  let serialized = SerializedOffloadRequest::new(&Bytes::new(), None, 5, &time_provider);
+  let serialized = SerializedOffloadRequest::new(&Bytes::new(), None, 5, time_provider.unix_now());
   let cloned_tx = tx.clone();
   make_mut(&mut mock_offload_queue)
     .expect_queue_write_request()
@@ -87,7 +84,7 @@ async fn maybe_queue_for_retry_max_attempts() {
   let (tx, mut rx) = mpsc::channel(1);
 
   // No offload queue.
-  let serialized = SerializedOffloadRequest::new(&Bytes::new(), None, 5, &time_provider);
+  let serialized = SerializedOffloadRequest::new(&Bytes::new(), None, 5, time_provider.unix_now());
   assert!(
     !maybe_queue_for_retry(
       None,
@@ -100,7 +97,7 @@ async fn maybe_queue_for_retry_max_attempts() {
   );
 
   // First try.
-  let serialized = SerializedOffloadRequest::new(&Bytes::new(), None, 5, &time_provider);
+  let serialized = SerializedOffloadRequest::new(&Bytes::new(), None, 5, time_provider.unix_now());
   let cloned_tx = tx.clone();
   make_mut(&mut mock_offload_queue)
     .expect_queue_write_request()

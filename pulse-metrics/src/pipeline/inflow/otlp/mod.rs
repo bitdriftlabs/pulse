@@ -26,26 +26,26 @@ use anyhow::bail;
 use async_trait::async_trait;
 use axum::response::Response;
 use bd_log_util::warn_every;
-use bytes::Bytes;
-use hashbrown::HashMap;
-use http::{HeaderMap, StatusCode};
-use protobuf::Message;
-use pulse_common::LossyIntToFloat;
-use pulse_protobuf::protos::opentelemetry::common::KeyValue;
-use pulse_protobuf::protos::opentelemetry::common::any_value::Value as AnyValue;
-use pulse_protobuf::protos::opentelemetry::metrics::metric::Data;
-use pulse_protobuf::protos::opentelemetry::metrics::number_data_point::Value;
-use pulse_protobuf::protos::opentelemetry::metrics::{
+use bd_otlp_metrics::protos::common::KeyValue;
+use bd_otlp_metrics::protos::common::any_value::Value as AnyValue;
+use bd_otlp_metrics::protos::metrics::metric::Data;
+use bd_otlp_metrics::protos::metrics::number_data_point::Value;
+use bd_otlp_metrics::protos::metrics::{
   AggregationTemporality,
   HistogramDataPoint,
   Metric as OtlpMetric,
   NumberDataPoint,
   SummaryDataPoint,
 };
-use pulse_protobuf::protos::opentelemetry::metrics_service::{
+use bd_otlp_metrics::protos::metrics_service::{
   ExportMetricsServiceRequest,
   ExportMetricsServiceResponse,
 };
+use bytes::Bytes;
+use hashbrown::HashMap;
+use http::{HeaderMap, StatusCode};
+use protobuf::Message;
+use pulse_common::LossyIntToFloat;
 use pulse_protobuf::protos::pulse::config::inflow::v1::otlp::OtlpServerConfig;
 use std::io::Read;
 use std::sync::Arc;

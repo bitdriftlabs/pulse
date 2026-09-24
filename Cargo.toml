@@ -31,6 +31,7 @@ bd-grpc                = { git = "https://github.com/bitdriftlabs/shared-core.gi
 bd-grpc-codec          = { git = "https://github.com/bitdriftlabs/shared-core.git" }
 bd-log                 = { git = "https://github.com/bitdriftlabs/shared-core.git" }
 bd-log-util            = { git = "https://github.com/bitdriftlabs/shared-core.git" }
+bd-otlp-metrics        = { git = "https://github.com/bitdriftlabs/shared-core.git" }
 bd-panic               = { git = "https://github.com/bitdriftlabs/shared-core.git" }
 bd-pgv                 = { git = "https://github.com/bitdriftlabs/shared-core.git" }
 bd-proto               = { git = "https://github.com/bitdriftlabs/shared-core.git" }

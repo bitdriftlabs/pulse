@@ -168,20 +168,18 @@ pub fn prom_metric_type_to_internal_metric_type(
 }
 
 // Convert from internal metric type to prom metric type.
-impl From<MetricType> for PromMetricType {
-  fn from(t: MetricType) -> Self {
-    #[allow(clippy::match_same_arms)]
-    match t {
-      MetricType::Counter(CounterType::Absolute) => Self::COUNTER,
-      MetricType::Counter(CounterType::Delta) => Self::DIRECTCOUNTER,
-      MetricType::DeltaGauge => Self::DELTAGAUGE,
-      MetricType::DirectGauge => Self::DIRECTGAUGE,
-      MetricType::Gauge => Self::GAUGE,
-      MetricType::Histogram => Self::HISTOGRAM,
-      MetricType::Timer => Self::TIMER,
-      MetricType::Summary => Self::SUMMARY,
-      MetricType::BulkTimer => Self::BULKTIMER,
-    }
+fn internal_metric_type_to_prom_metric_type(t: MetricType) -> PromMetricType {
+  #[allow(clippy::match_same_arms)]
+  match t {
+    MetricType::Counter(CounterType::Absolute) => PromMetricType::COUNTER,
+    MetricType::Counter(CounterType::Delta) => PromMetricType::DIRECTCOUNTER,
+    MetricType::DeltaGauge => PromMetricType::DELTAGAUGE,
+    MetricType::DirectGauge => PromMetricType::DIRECTGAUGE,
+    MetricType::Gauge => PromMetricType::GAUGE,
+    MetricType::Histogram => PromMetricType::HISTOGRAM,
+    MetricType::Timer => PromMetricType::TIMER,
+    MetricType::Summary => PromMetricType::SUMMARY,
+    MetricType::BulkTimer => PromMetricType::BULKTIMER,
   }
 }
 
@@ -1096,11 +1094,10 @@ fn update_metadata_map(
   metric: &ParsedMetric,
   changed_type_tracker: &ChangedTypeTracker,
 ) {
-  let prom_type = metric
-    .metric()
-    .get_id()
-    .mtype()
-    .map_or(PromMetricType::UNKNOWN, std::convert::Into::into);
+  let prom_type = metric.metric().get_id().mtype().map_or(
+    PromMetricType::UNKNOWN,
+    internal_metric_type_to_prom_metric_type,
+  );
   if let Some(old) = metadata_map.insert(family_name.clone(), prom_type) {
     if old != prom_type {
       changed_type_tracker.changed_type_warning(family_name, old, prom_type);

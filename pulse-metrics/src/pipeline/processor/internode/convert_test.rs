@@ -6,7 +6,7 @@
 // https://polyformproject.org/licenses/strict/1.0.0.txt
 
 use super::*;
-use crate::protos::metric::{HistogramData, SummaryData};
+use crate::protos::metric::{ArbitraryMetric, HistogramData, SummaryData};
 use crate::test::make_tag;
 use bytes::Bytes;
 use quickcheck_macros::quickcheck;
@@ -152,9 +152,9 @@ fn test_convert() {
 }
 
 #[quickcheck]
-fn parsed_metric_roundtrip_metric(metric: Metric) -> anyhow::Result<()> {
+fn parsed_metric_roundtrip_metric(metric: ArbitraryMetric) -> anyhow::Result<()> {
   let m = ParsedMetric::new(
-    metric,
+    metric.0,
     MetricSource::PromRemoteWrite,
     Instant::now(),
     DownstreamId::IpAddress("::1".parse().unwrap()),

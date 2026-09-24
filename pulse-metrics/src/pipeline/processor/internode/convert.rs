@@ -60,38 +60,34 @@ pub enum ParseError {
   MissingMetricId,
 }
 
-impl From<MetricType> for ProtoMetricType {
-  fn from(t: MetricType) -> Self {
-    match t {
-      MetricType::Counter(CounterType::Delta) => Self::METRIC_TYPE_DELTA_COUNTER,
-      MetricType::Counter(CounterType::Absolute) => Self::METRIC_TYPE_ABSOLUTE_COUNTER,
-      MetricType::DeltaGauge => Self::METRIC_TYPE_DELTA_GAUGE,
-      MetricType::DirectGauge => Self::METRIC_TYPE_DIRECT_GAUGE,
-      MetricType::Gauge => Self::METRIC_TYPE_GAUGE,
-      MetricType::Histogram => Self::METRIC_TYPE_HISTOGRAM,
-      MetricType::Summary => Self::METRIC_TYPE_SUMMARY,
-      MetricType::Timer => Self::METRIC_TYPE_TIMER,
-      MetricType::BulkTimer => Self::METRIC_TYPE_BULK_TIMER,
-    }
+fn metric_type_to_proto_metric_type(t: MetricType) -> ProtoMetricType {
+  match t {
+    MetricType::Counter(CounterType::Delta) => ProtoMetricType::METRIC_TYPE_DELTA_COUNTER,
+    MetricType::Counter(CounterType::Absolute) => ProtoMetricType::METRIC_TYPE_ABSOLUTE_COUNTER,
+    MetricType::DeltaGauge => ProtoMetricType::METRIC_TYPE_DELTA_GAUGE,
+    MetricType::DirectGauge => ProtoMetricType::METRIC_TYPE_DIRECT_GAUGE,
+    MetricType::Gauge => ProtoMetricType::METRIC_TYPE_GAUGE,
+    MetricType::Histogram => ProtoMetricType::METRIC_TYPE_HISTOGRAM,
+    MetricType::Summary => ProtoMetricType::METRIC_TYPE_SUMMARY,
+    MetricType::Timer => ProtoMetricType::METRIC_TYPE_TIMER,
+    MetricType::BulkTimer => ProtoMetricType::METRIC_TYPE_BULK_TIMER,
   }
 }
 
-impl TryFrom<EnumOrUnknown<ProtoMetricType>> for MetricType {
-  type Error = ParseError;
-
-  fn try_from(t: EnumOrUnknown<ProtoMetricType>) -> Result<Self, Self::Error> {
-    match t.enum_value_or(ProtoMetricType::METRIC_TYPE_UNSPECIFIED) {
-      ProtoMetricType::METRIC_TYPE_UNSPECIFIED => Err(ParseError::UnspecifiedEnum),
-      ProtoMetricType::METRIC_TYPE_DELTA_COUNTER => Ok(Self::Counter(CounterType::Delta)),
-      ProtoMetricType::METRIC_TYPE_ABSOLUTE_COUNTER => Ok(Self::Counter(CounterType::Absolute)),
-      ProtoMetricType::METRIC_TYPE_DELTA_GAUGE => Ok(Self::DeltaGauge),
-      ProtoMetricType::METRIC_TYPE_DIRECT_GAUGE => Ok(Self::DirectGauge),
-      ProtoMetricType::METRIC_TYPE_GAUGE => Ok(Self::Gauge),
-      ProtoMetricType::METRIC_TYPE_HISTOGRAM => Ok(Self::Histogram),
-      ProtoMetricType::METRIC_TYPE_SUMMARY => Ok(Self::Summary),
-      ProtoMetricType::METRIC_TYPE_TIMER => Ok(Self::Timer),
-      ProtoMetricType::METRIC_TYPE_BULK_TIMER => Ok(Self::BulkTimer),
-    }
+fn proto_metric_type_to_metric_type(
+  t: EnumOrUnknown<ProtoMetricType>,
+) -> Result<MetricType, ParseError> {
+  match t.enum_value_or(ProtoMetricType::METRIC_TYPE_UNSPECIFIED) {
+    ProtoMetricType::METRIC_TYPE_UNSPECIFIED => Err(ParseError::UnspecifiedEnum),
+    ProtoMetricType::METRIC_TYPE_DELTA_COUNTER => Ok(MetricType::Counter(CounterType::Delta)),
+    ProtoMetricType::METRIC_TYPE_ABSOLUTE_COUNTER => Ok(MetricType::Counter(CounterType::Absolute)),
+    ProtoMetricType::METRIC_TYPE_DELTA_GAUGE => Ok(MetricType::DeltaGauge),
+    ProtoMetricType::METRIC_TYPE_DIRECT_GAUGE => Ok(MetricType::DirectGauge),
+    ProtoMetricType::METRIC_TYPE_GAUGE => Ok(MetricType::Gauge),
+    ProtoMetricType::METRIC_TYPE_HISTOGRAM => Ok(MetricType::Histogram),
+    ProtoMetricType::METRIC_TYPE_SUMMARY => Ok(MetricType::Summary),
+    ProtoMetricType::METRIC_TYPE_TIMER => Ok(MetricType::Timer),
+    ProtoMetricType::METRIC_TYPE_BULK_TIMER => Ok(MetricType::BulkTimer),
   }
 }
 
@@ -173,7 +169,7 @@ impl From<&ParsedMetric> for ProtoMetric {
           .metric()
           .get_id()
           .mtype()
-          .map(|t| ProtoMetricType::from(t).into()),
+          .map(|t| metric_type_to_proto_metric_type(t).into()),
         tag_values: m
           .metric()
           .get_id()
@@ -237,30 +233,26 @@ impl From<&ParsedMetric> for ProtoMetric {
   }
 }
 
-impl TryFrom<ProtoMetricId> for MetricId {
-  type Error = ParseError;
-
-  fn try_from(id: ProtoMetricId) -> Result<Self, Self::Error> {
-    let mtype: Option<MetricType> = match id.metric_type {
-      Some(t) => Some(MetricType::try_from(t)?),
-      None => None,
-    };
-    Ok(
-      Self::new(
-        id.name,
-        mtype,
-        id.tag_values
-          .into_iter()
-          .map(|tv| TagValue {
-            tag: tv.tag,
-            value: tv.value,
-          })
-          .collect(),
-        true, // Assume sorted already in the other process.
-      )
-      .expect("validated by other node"),
+fn proto_metric_id_to_metric_id(id: ProtoMetricId) -> Result<MetricId, ParseError> {
+  let mtype: Option<MetricType> = match id.metric_type {
+    Some(t) => Some(proto_metric_type_to_metric_type(t)?),
+    None => None,
+  };
+  Ok(
+    MetricId::new(
+      id.name,
+      mtype,
+      id.tag_values
+        .into_iter()
+        .map(|tv| TagValue {
+          tag: tv.tag,
+          value: tv.value,
+        })
+        .collect(),
+      true, // Assume sorted already in the other process.
     )
-  }
+    .expect("validated by other node"),
+  )
 }
 
 pub fn proto_metric_to_parsed_metric(m: ProtoMetric) -> Result<ParsedMetric, ParseError> {
@@ -271,7 +263,7 @@ pub fn proto_metric_to_parsed_metric(m: ProtoMetric) -> Result<ParsedMetric, Par
 
   let id: MetricId = m.id.into_option().map_or(
     Err(ParseError::MissingMetricId),
-    std::convert::TryInto::try_into,
+    proto_metric_id_to_metric_id,
   )?;
 
   Ok(ParsedMetric::new(

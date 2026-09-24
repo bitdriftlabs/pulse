@@ -9,38 +9,38 @@ use super::http::remote_write::{BatchRouter, DefaultBatchRouter, HttpRemoteWrite
 use super::{OutflowFactoryContext, OutflowStats};
 use crate::protos::metric::{CounterType, MetricType, ParsedMetric};
 use crate::protos::prom::prom_name;
-use bd_log_util::warn_every;
-use bd_shutdown::ComponentShutdown;
-use bytes::Bytes;
-use hashbrown::HashMap;
-use http::HeaderMap;
-use http::header::CONTENT_ENCODING;
-use protobuf::{Chars, Message};
-use pulse_common::LossyFloatToInt;
-use pulse_protobuf::protos::opentelemetry::common::any_value::Value;
-use pulse_protobuf::protos::opentelemetry::common::{AnyValue, KeyValue};
-use pulse_protobuf::protos::opentelemetry::metrics::metric::Data;
-use pulse_protobuf::protos::opentelemetry::metrics::summary_data_point::ValueAtQuantile;
-use pulse_protobuf::protos::opentelemetry::metrics::{
+use bd_otlp_metrics::protos::common::any_value::Value;
+use bd_otlp_metrics::protos::common::{AnyValue, KeyValue};
+use bd_otlp_metrics::protos::metrics::metric::Data;
+use bd_otlp_metrics::protos::metrics::summary_data_point::ValueAtQuantile;
+use bd_otlp_metrics::protos::metrics::{
   AggregationTemporality,
   Gauge,
   Histogram,
   HistogramDataPoint,
   Metric,
   NumberDataPoint,
-  ResourceMetrics,
-  ScopeMetrics,
   Sum,
   Summary,
   SummaryDataPoint,
   number_data_point,
 };
-use pulse_protobuf::protos::opentelemetry::metrics_service::ExportMetricsServiceRequest;
+use bd_otlp_metrics::{
+  MetricId as SharedMetricId,
+  OtlpCompression as SharedOtlpCompression,
+  TagValue as SharedTagValue,
+  deserialize_otlp_metrics_request,
+  encode_otlp_metrics,
+};
+use bd_shutdown::ComponentShutdown;
+use bytes::Bytes;
+use http::HeaderMap;
+use http::header::CONTENT_ENCODING;
+use protobuf::Chars;
+use pulse_common::LossyFloatToInt;
 use pulse_protobuf::protos::pulse::config::outflow::v1::otlp::OtlpClientConfig;
 use pulse_protobuf::protos::pulse::config::outflow::v1::otlp::otlp_client_config::OtlpCompression;
-use std::io::Write;
 use std::sync::Arc;
-use time::ext::NumericalDuration;
 
 pub fn make_otlp_batch_router(
   config: &OtlpClientConfig,
@@ -98,6 +98,7 @@ pub async fn make_otlp_outflow(
   .await
 }
 
+#[allow(dead_code)]
 fn tags_to_key_value(metric: &ParsedMetric, convert_names_to_prom: bool) -> Vec<KeyValue> {
   metric
     .metric()
@@ -126,6 +127,7 @@ fn tags_to_key_value(metric: &ParsedMetric, convert_names_to_prom: bool) -> Vec<
     .collect()
 }
 
+#[allow(dead_code)]
 fn make_simple_metric(
   samples: Vec<ParsedMetric>,
   name: Bytes,
@@ -167,6 +169,7 @@ fn make_simple_metric(
   })
 }
 
+#[allow(dead_code)]
 fn make_histogram_metric(
   samples: Vec<ParsedMetric>,
   name: Bytes,
@@ -217,6 +220,7 @@ fn make_histogram_metric(
   })
 }
 
+#[allow(dead_code)]
 fn make_summary_metric(
   samples: Vec<ParsedMetric>,
   name: Bytes,
@@ -263,88 +267,45 @@ pub fn finish_otlp_batch(
   compression: OtlpCompression,
   convert_names_to_prom: bool,
 ) -> Bytes {
-  let metrics_by_name_and_type: HashMap<(Bytes, MetricType), Vec<ParsedMetric>> =
-    samples.into_iter().fold(HashMap::new(), |mut acc, sample| {
-      let key = (
-        sample.metric().get_id().name().clone(),
-        sample
-          .metric()
-          .get_id()
-          .mtype()
-          .unwrap_or(MetricType::Gauge),
+  let metrics = samples
+    .into_iter()
+    .map(|sample| {
+      let mut metric = sample.metric().clone();
+      let (name, metric_type, tags) = metric.get_id().clone().into_parts();
+      let tags = tags
+        .into_iter()
+        .map(|tag| SharedTagValue {
+          tag: prom_name(&tag.tag, b'_', convert_names_to_prom, sample.source()),
+          value: tag.value,
+        })
+        .collect();
+      metric.set_id(
+        SharedMetricId::new(
+          prom_name(&name, b':', convert_names_to_prom, sample.source()),
+          metric_type,
+          tags,
+          true,
+        )
+        .expect("Pulse metric IDs have already been length validated"),
       );
-      acc.entry(key).or_default().push(sample);
-      acc
-    });
-
-  let mut metrics = Vec::new();
-  for ((name, mtype), samples) in metrics_by_name_and_type {
-    // For right now we assume all samples come from the same source for the perspective of name
-    // conversion. This is not necessarily true.
-    let name = prom_name(&name, b':', convert_names_to_prom, samples[0].source());
-    let metric = match mtype {
-      MetricType::Gauge | MetricType::DirectGauge | MetricType::Counter(_) => {
-        make_simple_metric(samples, name, mtype, convert_names_to_prom)
-      },
-      MetricType::Histogram => make_histogram_metric(samples, name, convert_names_to_prom),
-      MetricType::Summary => make_summary_metric(samples, name, convert_names_to_prom),
-      MetricType::DeltaGauge | MetricType::Timer | MetricType::BulkTimer => {
-        warn_every!(1.minutes(), "unsupported OTLP metric type: {mtype:?}");
-        None
-      },
-    };
-    if let Some(metric) = metric {
-      metrics.push(metric);
-    }
-  }
-
-  let request = ExportMetricsServiceRequest {
-    resource_metrics: vec![ResourceMetrics {
-      scope_metrics: vec![ScopeMetrics {
-        metrics,
-        ..Default::default()
-      }],
-      ..Default::default()
-    }],
-    ..Default::default()
-  };
-
-  log::trace!("ExportMetricsServiceRequest batched and ready to send: {request}");
-  let uncompressed_write_request = request.write_to_bytes().unwrap();
-  let compressed_write_request = match compression {
-    OtlpCompression::NONE => uncompressed_write_request,
-    OtlpCompression::SNAPPY => {
-      log::trace!("compressing ExportMetricsServiceRequest with snappy");
-      let mut compressed = Vec::new();
-      snap::write::FrameEncoder::new(&mut compressed)
-        .write_all(&uncompressed_write_request)
-        .unwrap();
-      compressed
+      metric
+    })
+    .collect();
+  encode_otlp_metrics(
+    metrics,
+    match compression {
+      OtlpCompression::NONE => SharedOtlpCompression::None,
+      OtlpCompression::SNAPPY => SharedOtlpCompression::Snappy,
     },
-  };
-
-  compressed_write_request.into()
+  )
 }
 
 fn deserialize_otlp_request(compressed_bytes: &[u8], compression: OtlpCompression) -> String {
-  // Decompress if needed
-  let decompressed = match compression {
-    OtlpCompression::NONE => compressed_bytes.to_vec(),
-    OtlpCompression::SNAPPY => {
-      let mut decompressed = Vec::new();
-      match std::io::copy(
-        &mut snap::read::FrameDecoder::new(compressed_bytes),
-        &mut decompressed,
-      ) {
-        Ok(_) => decompressed,
-        Err(e) => return format!("failed to decompress request: {e}"),
-      }
+  deserialize_otlp_metrics_request(
+    compressed_bytes,
+    match compression {
+      OtlpCompression::NONE => SharedOtlpCompression::None,
+      OtlpCompression::SNAPPY => SharedOtlpCompression::Snappy,
     },
-  };
-
-  // Parse the protobuf
-  match ExportMetricsServiceRequest::parse_from_bytes(&decompressed) {
-    Ok(request) => format!("{request}"),
-    Err(e) => format!("failed to parse ExportMetricsServiceRequest: {e}"),
-  }
+  )
 }
