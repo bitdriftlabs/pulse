@@ -53,7 +53,7 @@ use crate::protos::metric::{
 use crate::test::thread_synchronizer::ThreadSynchronizer;
 use anyhow::bail;
 use async_trait::async_trait;
-use bd_log::warn_every;
+use bd_log_util::warn_every;
 use bd_server_stats::stats::Scope;
 use bd_shutdown::ComponentShutdown;
 use bd_time::{ProtoDurationExt, TimeDurationExt};
@@ -615,7 +615,7 @@ fn make_metric(
       // true if/when we start supporting tag stripping during aggregation.
       MetricId::new(name, Some(metric_type), tags, true)
         .map_err(|e| {
-          warn_every!(1.minutes(), "unable to create aggregated metric: {}", e);
+          warn_every!(1.minutes(), "unable to create aggregated metric: {e}");
         })
         .ok()?,
       sample_rate,

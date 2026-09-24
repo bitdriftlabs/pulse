@@ -6,9 +6,9 @@
 // https://polyformproject.org/licenses/strict/1.0.0.txt
 
 use super::client::{Client, ConnectTo};
+use deadpool::managed;
 // Re-export the pool
 pub use deadpool::managed::reexports::*;
-use deadpool::managed::{self, QueueMode};
 use time::Duration;
 deadpool::managed_reexports!(
   "carbon_client",
@@ -64,6 +64,7 @@ impl managed::Manager for ClientManager {
     Ok(client)
   }
 
+  #[allow(clippy::unused_async_trait_impl)]
   async fn recycle(
     &self,
     client: &mut Client,

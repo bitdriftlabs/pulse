@@ -15,7 +15,7 @@ use crate::pipeline::inflow::http_inflow::make_error_response;
 use crate::protos::metric::{DownstreamIdProvider, ParsedMetric};
 use async_trait::async_trait;
 use axum::response::{IntoResponse, Response};
-use bd_log::warn_every;
+use bd_log_util::warn_every;
 use bd_proto::protos::prometheus::prompb::remote::WriteRequest;
 use bytes::Bytes;
 use http::StatusCode;
@@ -78,8 +78,7 @@ fn prom_request_to_response(
       inflow.stats.requests_4xx.inc();
       warn_every!(
         1.minutes(),
-        "prometheus remote write request body failed to decode: {}",
-        e
+        "prometheus remote write request body failed to decode: {e}"
       );
       return (
         vec![],
@@ -106,7 +105,7 @@ fn prom_request_to_response(
   } else {
     inflow.stats.requests_4xx.inc();
     let errors = errors.into_iter().map(|e| e.to_string()).join(",");
-    warn_every!(1.minutes(), "invalid write request: {}", errors);
+    warn_every!(1.minutes(), "invalid write request: {errors}");
     (
       samples,
       make_error_response(

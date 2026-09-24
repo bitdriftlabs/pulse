@@ -30,7 +30,7 @@ use crate::protos::metric::ParsedMetric;
 use async_trait::async_trait;
 use backoff::ExponentialBackoffBuilder;
 use backoff::backoff::Backoff;
-use bd_log::warn_every;
+use bd_log_util::warn_every;
 use bd_server_stats::stats::{AutoGauge, Scope};
 use bd_shutdown::{ComponentShutdown, ComponentStatus};
 use bd_time::{ProtoDurationExt, TimeDurationExt};
@@ -433,7 +433,7 @@ impl HttpRemoteWriteOutflow {
     let serialized_requests = match received {
       Ok(serialized_requests) => serialized_requests,
       Err(e) => {
-        warn_every!(15.seconds(), "failed to received from offload queue: {}", e);
+        warn_every!(15.seconds(), "failed to received from offload queue: {e}");
         1.seconds().sleep().await;
         return;
       },

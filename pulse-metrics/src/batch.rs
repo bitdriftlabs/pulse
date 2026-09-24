@@ -9,7 +9,7 @@
 #[path = "./batch_test.rs"]
 mod batch_test;
 
-use bd_log::warn_every;
+use bd_log_util::warn_every;
 use bd_server_stats::stats::Scope;
 use bd_shutdown::ComponentShutdown;
 use bd_time::TimeDurationExt;

@@ -318,6 +318,7 @@ impl ItemFactory for RealItemFactory {
     processor::to_processor(config, context).await
   }
 
+  #[allow(clippy::large_futures)]
   async fn to_outflow(
     &self,
     config: OutflowConfig,
@@ -862,7 +863,7 @@ impl MetricPipeline {
         return;
       }
 
-      let components = ts.pop_all();
+      let components: Vec<_> = ts.pop_batch();
       let mut futures: FuturesUnordered<BoxFuture<'_, _>> = FuturesUnordered::default();
       for component in components {
         let name = component.name;

@@ -17,7 +17,7 @@ use crate::protos::metric::{
   default_timestamp,
 };
 use crate::reservoir_timer::ReservoirTimer;
-use bd_log::warn_every;
+use bd_log_util::warn_every;
 use hashbrown::hash_map::RawEntryMut;
 use pulse_common::LossyIntToFloat;
 use std::time::Instant;
@@ -80,9 +80,7 @@ impl PreBuffer {
             _ => {
               warn_every!(
                 15.seconds(),
-                "Unsupported pre-buffer metric type {:?} for metric {}",
-                mtype,
-                metric_id
+                "Unsupported pre-buffer metric type {mtype:?} for metric {metric_id}"
               );
               continue;
             },
@@ -95,7 +93,9 @@ impl PreBuffer {
 
       match (metric, mtype) {
         (PreBufferMetric::Counter(counter), Some(MetricType::Counter(CounterType::Delta))) => {
-          *counter += value.to_simple() * (1.0 / sample_rate.unwrap_or(1.0));
+          *counter = value
+            .to_simple()
+            .mul_add(1.0 / sample_rate.unwrap_or(1.0), *counter);
         },
         (PreBufferMetric::Gauge(gauge), Some(MetricType::Gauge | MetricType::DirectGauge)) => {
           *gauge = value.to_simple();
@@ -107,7 +107,7 @@ impl PreBuffer {
           timer.aggregate(value.to_simple(), sample_rate.unwrap_or(1.0));
         },
         _ => {
-          warn_every!(15.seconds(), "Pre-buffer metric changed type {:?}", mtype);
+          warn_every!(15.seconds(), "Pre-buffer metric changed type {mtype:?}");
         },
       }
     }

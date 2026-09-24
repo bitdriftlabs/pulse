@@ -11,7 +11,7 @@ use crate::clients::client_pool::Pool;
 use crate::pipeline::config::default_max_in_flight;
 use crate::protos::metric::{Metric, MetricId, MetricType, MetricValue, ParsedMetric};
 use async_trait::async_trait;
-use bd_log::warn_every;
+use bd_log_util::warn_every;
 use bd_server_stats::stats::AutoGauge;
 use bd_shutdown::ComponentShutdown;
 use itertools::Either;
@@ -229,12 +229,7 @@ async fn send_task(
             let mut client = match pool.get().await {
               Ok(c) => c,
               Err(e) => {
-                warn_every!(
-                  15.seconds(),
-                  "client pool error in \"{}\" outflow: {}",
-                  name,
-                  e
-                );
+                warn_every!(15.seconds(), "client pool error in \"{name}\" outflow: {e}");
                 stats.client_pool_error.inc();
                 on_send_error(&stats, bytes, samples, &received_at, shutdown);
                 return;
@@ -243,9 +238,7 @@ async fn send_task(
             if let Err(e) = client.write(&mut batch.payload).await {
               warn_every!(
                 15.seconds(),
-                "client write error in \"{}\" outflow: {}",
-                name,
-                e
+                "client write error in \"{name}\" outflow: {e}"
               );
               stats.client_write_error.inc();
               on_send_error(&stats, bytes, samples, &received_at, shutdown);
@@ -256,9 +249,7 @@ async fn send_task(
             if let Err(e) = socket.send(&batch.payload).await {
               warn_every!(
                 15.seconds(),
-                "client write error in \"{}\" outflow: {}",
-                name,
-                e
+                "client write error in \"{name}\" outflow: {e}"
               );
               stats.client_write_error.inc();
               on_send_error(&stats, bytes, samples, &received_at, shutdown);

@@ -25,7 +25,7 @@ use crate::protos::metric::{
   ParsedMetric,
 };
 use crate::protos::prom::prom_stale_marker;
-use bd_log::warn_every;
+use bd_log_util::warn_every;
 use hashbrown::HashMap;
 use log::Level;
 use pulse_common::proto::ProtoDurationToStdDuration;
@@ -102,7 +102,7 @@ impl AbsoluteCounterAggregation {
       warn_every!(
         1.minutes(),
         "{}: sample below zero, dropping",
-        metric.get_id().to_string()
+        metric.get_id()
       );
       return;
     }
