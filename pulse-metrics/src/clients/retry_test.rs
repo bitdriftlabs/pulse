@@ -5,7 +5,7 @@
 // LICENSE file or at:
 // https://polyformproject.org/licenses/strict/1.0.0.txt
 
-use crate::clients::retry::Retry;
+use crate::clients::retry::make_retry;
 use anyhow::anyhow;
 use futures::poll;
 use matches::assert_matches;
@@ -18,7 +18,7 @@ use tokio::sync::Notify;
 
 #[tokio::test]
 async fn retry() {
-  let retry = Retry::new(&RetryPolicy::default()).unwrap();
+  let retry = make_retry(&RetryPolicy::default()).unwrap();
 
   // Successful request.
   retry
@@ -53,7 +53,7 @@ async fn retry() {
 
 #[tokio::test]
 async fn max_retries() {
-  let retry = Retry::new(&RetryPolicy {
+  let retry = make_retry(&RetryPolicy {
     max_retries: Some(0),
     ..Default::default()
   })
@@ -76,7 +76,7 @@ async fn max_retries() {
 
 #[tokio::test]
 async fn over_budget() {
-  let retry = Retry::new(&RetryPolicy::default()).unwrap();
+  let retry = make_retry(&RetryPolicy::default()).unwrap();
 
   // Create a request with a retry that is pending until we notify it.
   let calls = Arc::new(AtomicU64::default());

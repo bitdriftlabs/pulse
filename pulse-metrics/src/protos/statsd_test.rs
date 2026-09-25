@@ -6,6 +6,7 @@
 // https://polyformproject.org/licenses/strict/1.0.0.txt
 
 use super::*;
+use crate::protos::metric::ArbitraryMetric;
 use crate::test::make_counter;
 use anyhow::bail;
 use nom::AsBytes;
@@ -377,7 +378,8 @@ fn parsed_tags_complex() {
 }
 
 #[quickcheck]
-fn metric_roundtrip_statsd_line(mut input: Metric) -> anyhow::Result<()> {
+fn metric_roundtrip_statsd_line(input: ArbitraryMetric) -> anyhow::Result<()> {
+  let mut input = input.0;
   let statsd_line = to_statsd_line(&input);
   let mut output = parse(&statsd_line, StatsD::default_instance())?;
   // Statsd requires a metric type. We default to counter if none is provided.

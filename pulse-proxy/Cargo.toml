@@ -11,6 +11,7 @@ doctest = false
 [dependencies]
 anyhow.workspace            = true
 async-trait.workspace       = true
+bd-otlp-metrics.workspace   = true
 bd-runtime-config.workspace = true
 bd-server-stats.workspace   = true
 bd-shutdown.workspace       = true

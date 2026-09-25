@@ -6,6 +6,7 @@
 // https://polyformproject.org/licenses/strict/1.0.0.txt
 
 use super::*;
+use crate::protos::metric::ArbitraryMetric;
 use anyhow::bail;
 use matches::assert_matches;
 use nom::AsBytes;
@@ -364,7 +365,8 @@ fn metric_to_datetime_ms() {
 }
 
 #[quickcheck]
-fn metric_roundtrip_carbon_line(mut input: Metric) -> anyhow::Result<()> {
+fn metric_roundtrip_carbon_line(input: ArbitraryMetric) -> anyhow::Result<()> {
+  let mut input = input.0;
   // Carbon wire format does not support metric types or sample rates, so we omit them.
   let id = MetricId::new(
     input.get_id().name().clone(),
